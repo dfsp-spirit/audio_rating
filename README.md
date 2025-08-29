@@ -2,6 +2,9 @@
 Web-based tool for continuous multi-dimensional rating of audio content with interactive waveform visualization
 
 
+
+![Vis](./audio_rating.png?raw=true "Audio rating")
+
 ## About
 
 This is a small javascript web widget to allow users to play an audio file, visualize the waveform, and assign ratings to the sections of the audio. The user can create sections, and assign a discrete rating to each section.
