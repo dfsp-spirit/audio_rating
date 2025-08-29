@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Step-based Continuous Rating (Wavesurfer Prototype)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial; margin: 16px; }
+    #container { position: relative; width: 100%; max-width: 1000px; margin: 0 auto; }
+    #waveform { position: relative; background: #fafafa; border: 1px solid #ddd; }
+    canvas#overlay { position: absolute; top: 0; left: 0; z-index: 5; pointer-events: auto; }
+    .controls { margin-top: 8px; display:flex; gap:8px; align-items:center; }
+    button { padding: 6px 10px; border-radius:6px; border:1px solid #bbb; background:#fff; cursor:pointer; }
+    button:active{ transform: translateY(1px); }
+    label { font-size:13px; color:#333; }
+    #info { margin-top:8px; font-size:13px; color:#444; }
+    .small { font-size:12px; color:#666; }
+    #rating-legend { margin-left: 12px; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+    .legend-item { padding:4px 6px; border-radius:4px; font-size:12px; color:#fff; }
+  </style>
+</head>
+<body>
+  <h2>Step-based Rating Prototype (Wavesurfer)</h2>
+  <p class="small">Double-click waveform to split a segment. Drag inside a segment vertically to change rating (snaps to 10 steps). Drag boundaries horizontally to move them. Right-click a split handle to delete it. Click segment to jump playback.</p>
+
+  <div id="container">
+    <div id="waveform"></div>
+    <canvas id="overlay"></canvas>
+  </div>
+
+  <div class="controls">
+    <button id="play">Play</button>
+    <button id="stop">Stop</button>
+    <button id="zoom-in">Zoom +</button>
+    <button id="zoom-out">Zoom -</button>
+    <label>Step levels: <strong id="steps-label">10</strong></label>
+    <div id="rating-legend"></div>
+  </div>
+
+  <div id="info">
+    <span id="status">Loading...</span>
+  </div>
+
+  <script type="module">
+    import WaveSurfer from 'https://unpkg.com/wavesurfer.js@7.0.0/dist/wavesurfer.esm.js';
+
+    // CONFIG
+    //const AUDIO_URL = 'https://wavesurfer-js.org/example/media/demo.wav';
+    const AUDIO_URL = './demo.wav';
+    const INITIAL_STEPS = 10;   // discrete rating levels (0..steps-1)
+    const MIN_RATING = 0;
+    const MAX_RATING = INITIAL_STEPS - 1;
+    const CANVAS_HEIGHT = 140;  // same as waveform height below
+    const HANDLE_HIT = 8;       // px tolerance for hitting a split handle
+
+    // DOM
+    const container = document.getElementById('container');
+    const waveformEl = document.getElementById('waveform');
+    const overlay = document.getElementById('overlay');
+    const playBtn = document.getElementById('play');
+    const stopBtn = document.getElementById('stop');
+    const zoomIn = document.getElementById('zoom-in');
+    const zoomOut = document.getElementById('zoom-out');
+    const status = document.getElementById('status');
+    const stepsLabel = document.getElementById('steps-label');
+    const legend = document.getElementById('rating-legend');
+
+    stepsLabel.textContent = INITIAL_STEPS;
+
+    const wavesurfer = WaveSurfer.create({
+  container: '#waveform',
+  waveColor: '#bfc8d6',
+  progressColor: '#6b46c1',
+  height: CANVAS_HEIGHT,
+  scrollParent: true,
+  minPxPerSec: 100 // ensures zoom works
+});
+
+    // Simple color map for ratings (maps 0..MAX_RATING -> color)
+    function colorForRating(r) {
+      // from blue (low) to red (high), linear interpolation in HSL
+      const t = r / (MAX_RATING || 1);
+      const hue = 220 - (220 - 10) * t; // 220 (blue) -> 10 (red)
+      return `hsl(${hue} 80% 50% / 0.45)`; // slightly transparent fill
+    }
+    // Legend
+    for (let r = MAX_RATING; r >= MIN_RATING; r--) {
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.style.background = colorForRating(r).replace('/ 0.45)', '/ 1)');
+      item.textContent = `${r}`;
+      legend.appendChild(item);
+    }
+
+    // Data model: initial single segment (0..duration placeholder)
+    // Will set end to actual duration on ready
+    let segments = [{ start: 0, end: 1e9, value: Math.floor(INITIAL_STEPS / 2) }];
+
+    // Canvas and drawing
+    const ctx = overlay.getContext('2d');
+
+    function resizeOverlay() {
+      const rect = waveformEl.getBoundingClientRect();
+      overlay.width = Math.max(100, rect.width);
+      overlay.height = CANVAS_HEIGHT;
+      overlay.style.width = rect.width + 'px';
+      overlay.style.height = CANVAS_HEIGHT + 'px';
+      overlay.style.left = waveformEl.offsetLeft + 'px';
+      drawAll();
+    }
+
+    window.addEventListener('resize', () => {
+      // small delay to allow wavesurfer to adjust
+      setTimeout(resizeOverlay, 120);
+    });
+
+    // Helpers: map time <-> x
+    function durationOrOne() {
+      const d = wavesurfer.getDuration();
+      return (d && isFinite(d)) ? d : 1;
+    }
+    function timeToX(time) {
+      const dur = durationOrOne();
+      return Math.max(0, Math.min(overlay.width, (time / dur) * overlay.width));
+    }
+    function xToTime(x) {
+      const w = overlay.width || 1;
+      const dur = durationOrOne();
+      return Math.max(0, Math.min(dur, (x / w) * dur));
+    }
+
+    // Find segment index containing given time
+    function findSegmentIndexAtTime(time) {
+      for (let i = 0; i < segments.length; i++) {
+        if (segments[i].start <= time && time <= segments[i].end) return i;
+      }
+      return -1;
+    }
+
+    // Draw segments
+    function drawAll() {
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+      const h = overlay.height;
+      const w = overlay.width;
+
+      // draw horizontal grid lines for discrete steps + labels
+      for (let s = 0; s < INITIAL_STEPS; s++) {
+        const y = h - (s / (INITIAL_STEPS - 1)) * h;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.lineWidth = (s === Math.floor((INITIAL_STEPS - 1) / 2)) ? 1.2 : 0.7;
+        ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+        ctx.stroke();
+
+        // label at left
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.font = '12px system-ui, Arial';
+        ctx.fillText(String(s), 6, Math.max(12, y - 4));
+      }
+
+      // draw segments as colored rectangles
+      const dur = durationOrOne();
+      segments.forEach((seg, idx) => {
+        const x1 = timeToX(seg.start);
+        const x2 = timeToX(seg.end);
+        const heightFromTop = (1 - (seg.value / (INITIAL_STEPS - 1))) * h;
+        const color = colorForRating(seg.value);
+
+        // rectangle representing rating filled from y->bottom
+        ctx.fillStyle = color;
+        ctx.fillRect(x1, heightFromTop, Math.max(2, x2 - x1), h - heightFromTop);
+
+        // borders
+        ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x1 + 0.5, heightFromTop + 0.5, Math.max(1, x2 - x1 - 1), h - heightFromTop - 1);
+
+        // text label for rating near top-left of segment
+        ctx.fillStyle = 'rgba(0,0,0,0.85)';
+        ctx.font = '12px system-ui, Arial';
+        const text = `${seg.value}`;
+        ctx.fillText(text, x1 + 6, Math.max(12, heightFromTop + 12));
+
+        // draw small draggable handle at boundaries
+        if (idx > 0) {
+          // left handle = seg.start
+          const hx = x1;
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.fillRect(hx - 1, 0, 2, h);
+        }
+      });
+
+      // draw current playback cursor
+      if (wavesurfer.isReady) {
+        const t = wavesurfer.getCurrentTime();
+        const x = timeToX(t);
+        ctx.beginPath();
+        ctx.moveTo(x + 0.5, 0);
+        ctx.lineTo(x + 0.5, h);
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+
+    // Interaction state
+    let pointerDown = false;
+    let activeSegIndex = null;     // index of segment being vertically dragged
+    let activeHandle = null;       // { segIndex, which: 'left'|'right' } when moving boundary
+    let lastPointerX = 0;
+    let lastPointerY = 0;
+
+    // Utility: identify if pointer is near a boundary and return handle info
+    function hitTestHandle(x, y) {
+      const time = xToTime(x);
+      for (let i = 1; i < segments.length; i++) {
+        const boundaryTime = segments[i].start;
+        const bx = timeToX(boundaryTime);
+        if (Math.abs(bx - x) <= HANDLE_HIT) {
+          return { segIndex: i, which: 'boundary' };
+        }
+      }
+      return null;
+    }
+
+    // Pointer events on overlay
+    overlay.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault();
+      const rect = overlay.getBoundingClientRect();
+      const x = ev.clientX - rect.left;
+      const y = ev.clientY - rect.top;
+      lastPointerX = x;
+      lastPointerY = y;
+      pointerDown = true;
+
+      const handle = hitTestHandle(x, y);
+      if (handle) {
+        // prepare to move the boundary horizontally
+        activeHandle = { index: handle.segIndex, startSeg: handle.segIndex - 1, endSeg: handle.segIndex };
+        overlay.setPointerCapture(ev.pointerId);
+        return;
+      }
+
+      // Otherwise, find segment and set for vertical dragging
+      const time = xToTime(x);
+      const si = findSegmentIndexAtTime(time);
+      if (si >= 0) {
+        activeSegIndex = si;
+        overlay.setPointerCapture(ev.pointerId);
+        // clicking segment also jumps playback to that time
+        wavesurfer.setCurrentTime(time);
+      }
+      drawAll();
+    });
+
+    overlay.addEventListener('pointermove', (ev) => {
+      if (!pointerDown) return;
+      const rect = overlay.getBoundingClientRect();
+      const x = ev.clientX - rect.left;
+      const y = ev.clientY - rect.top;
+      const dx = x - lastPointerX;
+      const dy = y - lastPointerY;
+      lastPointerX = x;
+      lastPointerY = y;
+
+      if (activeHandle) {
+        // Move boundary horizontally (resize adjacent segments)
+        const time = xToTime(x);
+        const idx = activeHandle.index;
+        const leftSeg = segments[activeHandle.startSeg];
+        const rightSeg = segments[activeHandle.endSeg];
+
+        // clamp time between leftSeg.start + small epsilon and rightSeg.end - small epsilon
+        const epsilon = 0.02; // 20ms
+        const minT = leftSeg.start + epsilon;
+        const maxT = rightSeg.end - epsilon;
+        const newBoundary = Math.max(minT, Math.min(maxT, time));
+
+        // update segments
+        leftSeg.end = newBoundary;
+        rightSeg.start = newBoundary;
+        drawAll();
+        return;
+      }
+
+      if (activeSegIndex != null) {
+        // Vertical drag: change rating (snapped)
+        const seg = segments[activeSegIndex];
+        const h = overlay.height;
+        // convert y to rating
+        const ratio = 1 - (y / h);
+        let raw = Math.round(ratio * (INITIAL_STEPS - 1));
+        raw = Math.max(MIN_RATING, Math.min(MAX_RATING, raw));
+        seg.value = raw;
+        drawAll();
+        return;
+      }
+    });
+
+    overlay.addEventListener('pointerup', (ev) => {
+      pointerDown = false;
+      activeSegIndex = null;
+      activeHandle = null;
+      try { overlay.releasePointerCapture(ev.pointerId); } catch(_) {}
+      drawAll();
+    });
+
+    // Double-click to split a segment
+    overlay.addEventListener('dblclick', (ev) => {
+      ev.preventDefault();
+      const rect = overlay.getBoundingClientRect();
+      const x = ev.clientX - rect.left;
+      const time = xToTime(x);
+      const si = findSegmentIndexAtTime(time);
+      if (si === -1) return;
+      const seg = segments[si];
+
+      // avoid creating extremely small segments (require >0.1s)
+      const MIN_SEG = 0.08;
+      if ((time - seg.start) < MIN_SEG || (seg.end - time) < MIN_SEG) return;
+
+      // split: left keeps start..time, right is time..end copying same value
+      const right = { start: time, end: seg.end, value: seg.value };
+      seg.end = time;
+      segments.splice(si + 1, 0, right);
+      drawAll();
+    });
+
+    // Right-click on overlay: if near boundary, delete it (merge)
+    overlay.addEventListener('contextmenu', (ev) => {
+      ev.preventDefault();
+      const rect = overlay.getBoundingClientRect();
+      const x = ev.clientX - rect.left;
+      const handle = hitTestHandle(x, rect.top);
+      if (handle) {
+        const i = handle.segIndex;
+        // merge segments i-1 and i
+        const left = segments[i - 1];
+        const right = segments[i];
+        // choose rating for merged segment (we pick left)
+        left.end = right.end;
+        segments.splice(i, 1);
+        drawAll();
+      }
+    });
+
+    // Playback cursor update loop to redraw overlay
+    let renderLoop = null;
+    function startRenderLoop() {
+      if (renderLoop) cancelAnimationFrame(renderLoop);
+      function loop() {
+        drawAll();
+        renderLoop = requestAnimationFrame(loop);
+      }
+      renderLoop = requestAnimationFrame(loop);
+    }
+    function stopRenderLoop() {
+      if (renderLoop) cancelAnimationFrame(renderLoop);
+      renderLoop = null;
+    }
+
+    // Controls
+    playBtn.addEventListener('click', () => {
+      wavesurfer.playPause();
+      playBtn.textContent = wavesurfer.isPlaying() ? 'Pause' : 'Play';
+    });
+    stopBtn.addEventListener('click', () => {
+      wavesurfer.stop();
+      playBtn.textContent = 'Play';
+    });
+    zoomIn.addEventListener('click', () => {
+      const current = wavesurfer.params.minPxPerSec || 100;
+      wavesurfer.zoom(Math.min(2000, (current || 100) + 50));
+      resizeOverlay();
+    });
+    zoomOut.addEventListener('click', () => {
+      const current = wavesurfer.params.minPxPerSec || 100;
+      wavesurfer.zoom(Math.max(20, (current || 100) - 50));
+      resizeOverlay();
+    });
+
+    // keyboard space toggle
+    window.addEventListener('keydown', (ev) => {
+      if (ev.code === 'Space' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        ev.preventDefault();
+        wavesurfer.playPause();
+        playBtn.textContent = wavesurfer.isPlaying() ? 'Pause' : 'Play';
+      }
+    });
+
+    // Wire with wavesurfer
+    wavesurfer.load(AUDIO_URL);
+
+    wavesurfer.on('ready', () => {
+      // set initial segment end to duration
+      const duration = wavesurfer.getDuration();
+      if (segments.length === 1) {
+        segments[0].end = duration;
+      } else {
+        // clamp any placeholder ends > duration
+        segments.forEach(s => { if (s.end > duration) s.end = duration; });
+      }
+      resizeOverlay();
+      status.textContent = `Duration: ${duration.toFixed(2)}s — Double-click to split segments.`;
+      wavesurfer.isReady = true;
+      startRenderLoop();
+    });
+
+    wavesurfer.on('audioprocess', () => {
+      // redraw overlay with cursor
+      // drawAll() is driven by renderLoop already
+    });
+
+    wavesurfer.on('seek', () => drawAll());
+    wavesurfer.on('finish', () => {
+      playBtn.textContent = 'Play';
+    });
+
+    // ensure overlay covers waveform area after initial drawing by wavesurfer
+    setTimeout(() => resizeOverlay(), 400);
+
+    // helpful: expose current segments to window for debugging/export
+    window.getSegments = () => JSON.parse(JSON.stringify(segments));
+    window.setSegments = (s) => { segments = s; drawAll(); };
+
+    // draw initial
+    drawAll();
+
+    // small tip: log segments on unload
+    window.addEventListener('beforeunload', () => {
+      console.log('Segments at unload:', segments);
+    });
+  </script>
+</body>
+</html>
