@@ -20,6 +20,13 @@
     .dimension-buttons { margin-bottom: 8px; display:flex; gap:6px; flex-wrap:wrap; }
     input[type=range] { width: 100%; }
     #slider-container { width: 100%; max-width: 2000px; margin-top:6px; }
+
+    /* Add this CSS for active dimension button */
+    .dimension-buttons button.active {
+      background: #2563eb;
+      color: white;
+      border-color: #1e40af;
+    }
   </style>
 </head>
 <body>
@@ -206,7 +213,7 @@
 
       const time=xToTime(x);
       const si=findSegmentIndexAtTime(time);
-      if(si>=0){ activeSegIndex=si; overlay.setPointerCapture(ev.pointerId); wavesurfer.setCurrentTime(time);}
+      if(si>=0){ activeSegIndex=si; overlay.setPointerCapture(ev.pointerId);}
       drawAll();
     });
 
@@ -286,6 +293,13 @@
       wavesurfer.seekTo(t/durationOrOne());
     });
 
+    // Function to update active button
+    function updateActiveButton() {
+      dimButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.dim === currentDimension);
+      });
+    }
+
     // Dimension buttons
     dimButtons.forEach(btn=>{
       btn.addEventListener('click',()=>{
@@ -294,11 +308,13 @@
         currentDimension = btn.dataset.dim;
         segments = dimensionData[currentDimension];
         updateLegend(dimensionDefinition[currentDimension].num_values);
+        updateActiveButton(); // Update the active button
         drawAll();
       });
     });
 
     updateLegend(dimensionDefinition[currentDimension].num_values);
+    updateActiveButton(); // Set initial active button
 
     // expose segments per dimension for debugging/export
     window.getDimensionData = () => JSON.parse(JSON.stringify(dimensionData));
@@ -328,4 +344,3 @@
   </script>
 </body>
 </html>
-
