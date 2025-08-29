@@ -11,7 +11,7 @@ The widget support several rating dimensions, so that users can rate, for exampl
 It is intended to be used in psychological research on music perception and based on the great [wavesurfer.js](https://wavesurfer.xyz/) audio visualization library for JavaScript.
 
 
-## Demo
+## Online Live Demo
 
 You can [try audio_rating live here](https://dfsp-spirit.github.io/audio_rating/) on GitHub pages.
 
@@ -23,7 +23,11 @@ All you need is to have Python installed. Then run the `run.bash` script, which 
 If you don't have Python or don't like its web server, use any other web server instead.
 
 
+## Author and Dependencies
 
+This was written by Tim Schäfer.
+
+The major part of the work is done by [wavesurfer.js](https://wavesurfer.xyz/) though.
 
 
 
