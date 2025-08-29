@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Step-based Continuous Rating (Simplified)</title>
+<title>Step-based Rating with Interactive Slider</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
   body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial; margin: 16px; }
@@ -17,15 +17,23 @@
   .small { font-size:12px; color:#666; }
   #rating-legend { margin-left: 12px; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
   .legend-item { padding:4px 6px; border-radius:4px; font-size:12px; color:#fff; }
+  #slider-container { margin-top: 12px; display:flex; align-items:center; gap:8px; max-width: 2000px; }
+  #time-slider { flex:1; }
 </style>
 </head>
 <body>
-<h2>Step-based Rating Prototype (Simplified)</h2>
-<p class="small">Double-click waveform to split a segment. Drag inside a segment vertically to change rating (snaps to 10 steps). Drag boundaries horizontally to move them. Right-click a split handle to delete it. Click segment to jump playback.</p>
+<h2>Step-based Rating Prototype (with Interactive Playback Slider)</h2>
+<p class="small">Double-click waveform to split a segment. Drag inside a segment vertically to change rating (snaps to 10 steps). Drag boundaries horizontally to move them. Right-click a split handle to delete it. Click segment to jump playback. Use the slider below to jump to any position.</p>
 
 <div id="container">
   <div id="waveform"></div>
   <canvas id="overlay"></canvas>
+</div>
+
+<div id="slider-container">
+  <span id="current-time">0.00</span>
+  <input type="range" id="time-slider" min="0" max="1" step="0.01" value="0">
+  <span id="total-time">0.00</span>
 </div>
 
 <div class="controls">
@@ -55,6 +63,9 @@ const stopBtn = document.getElementById('stop');
 const stepsLabel = document.getElementById('steps-label');
 const legend = document.getElementById('rating-legend');
 const status = document.getElementById('status');
+const timeSlider = document.getElementById('time-slider');
+const currentTimeLabel = document.getElementById('current-time');
+const totalTimeLabel = document.getElementById('total-time');
 
 stepsLabel.textContent = INITIAL_STEPS;
 
@@ -66,7 +77,7 @@ const wavesurfer = WaveSurfer.create({
   scrollParent: true
 });
 
-// Color map
+// Color map for ratings
 function colorForRating(r){
   const t = r / (MAX_RATING||1);
   const hue = 220 - (220-10)*t;
@@ -90,7 +101,7 @@ function timeToX(time){ return (time/durationOrOne())*overlay.width; }
 function xToTime(x){ return (x/overlay.width)*durationOrOne(); }
 function findSegmentIndexAtTime(time){ for(let i=0;i<segments.length;i++){ if(segments[i].start<=time&&time<=segments[i].end) return i; } return -1; }
 
-// Resize overlay to match waveform
+// Resize overlay
 function resizeOverlay(){
   overlay.width = waveformEl.clientWidth;
   overlay.height = waveformEl.clientHeight;
@@ -106,7 +117,6 @@ function drawAll(){
   const h = overlay.height;
   const w = overlay.width;
 
-  // Horizontal grid
   for(let s=0;s<INITIAL_STEPS;s++){
     const y = h-(s/(INITIAL_STEPS-1))*h;
     ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y);
@@ -126,14 +136,6 @@ function drawAll(){
     ctx.fillStyle='rgba(0,0,0,0.85)'; ctx.fillText(`${seg.value}`,x1+6,Math.max(12,heightFromTop+12));
     if(idx>0){ ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(x1-1,0,2,h); }
   });
-
-  // Playback cursor
-  if(wavesurfer.isReady){
-    const t = wavesurfer.getCurrentTime();
-    const x = timeToX(t);
-    ctx.beginPath(); ctx.moveTo(x+0.5,0); ctx.lineTo(x+0.5,h);
-    ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1; ctx.stroke();
-  }
 }
 
 // Interaction
@@ -152,7 +154,6 @@ overlay.addEventListener('pointerdown',ev=>{
   ev.preventDefault();
   const rect = overlay.getBoundingClientRect();
   const x = ev.clientX-rect.left;
-  const y = ev.clientY-rect.top;
   pointerDown=true;
 
   const handleIdx = hitTestHandle(x);
@@ -211,13 +212,31 @@ overlay.addEventListener('contextmenu',ev=>{
 playBtn.addEventListener('click',()=>{ wavesurfer.playPause(); playBtn.textContent=wavesurfer.isPlaying()?'Pause':'Play'; });
 stopBtn.addEventListener('click',()=>{ wavesurfer.stop(); playBtn.textContent='Play'; });
 
+// Slider seeking
+timeSlider.addEventListener('input', () => {
+    const t = parseFloat(timeSlider.value);
+    console.log('Slider to', t);
+    //wavesurfer.setCurrentTime(t); // jump audio immediately
+    wavesurfer.seekTo(t/durationOrOne()); // smoother
+});
+
+// Load audio
 wavesurfer.load(AUDIO_URL);
 wavesurfer.on('ready',()=>{
   if(segments.length===1) segments[0].end=wavesurfer.getDuration();
   resizeOverlay();
   status.textContent=`Duration: ${wavesurfer.getDuration().toFixed(2)}s`;
-  wavesurfer.isReady=true;
-  requestAnimationFrame(drawAll);
+  timeSlider.max = wavesurfer.getDuration();
+  totalTimeLabel.textContent = wavesurfer.getDuration().toFixed(2);
+
+  function renderLoop(){
+    drawAll();
+    const t = wavesurfer.getCurrentTime();
+    timeSlider.value = t; // always update slider to current audio
+    currentTimeLabel.textContent = t.toFixed(2);
+    requestAnimationFrame(renderLoop);
+  }
+  renderLoop();
 });
 </script>
 </body>
