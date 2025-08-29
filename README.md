@@ -16,6 +16,13 @@ It is intended to be used in psychological research on music perception and base
 You can [try audio_rating live here](https://dfsp-spirit.github.io/audio_rating/) on GitHub pages.
 
 
+## Running locally
+
+All you need is to have Python installed. Then run the `run.bash` script, which will serve the root directory of this repo (the [index.html](./index.html) file and the demo.wav file) in Python's built-in web server on port 8000 on your computer. Then connect to [http://localhost:8000](http://localhost:8000).
+
+If you don't have Python or don't like its web server, use any other web server instead.
+
+
 
 
 
