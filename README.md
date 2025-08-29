@@ -10,8 +10,6 @@ The widget support several rating dimensions, so that users can rate, for exampl
 
 It is intended to be used in psychological research on music perception and based on the great [wavesurfer.js](https://wavesurfer.xyz/) audio visualization library for JavaScript.
 
-![Vis](./audio_rating.gif?raw=true "Audio rating demo")
-
 
 ## Demo
 
