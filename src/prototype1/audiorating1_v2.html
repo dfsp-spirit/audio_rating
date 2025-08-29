@@ -38,6 +38,8 @@
     <canvas id="overlay"></canvas>
   </div>
 
+  <button id="export-btn">Download CSV</button>
+
   <div id="slider-container">
     <input type="range" id="time-slider" min="0" max="1" step="0.001" value="0">
   </div>
@@ -301,6 +303,24 @@
 
     window.addEventListener('beforeunload',()=>{ console.log('Segments at unload:', dimensionData); });
     setTimeout(()=>resizeOverlay(),400);
+
+    document.getElementById('export-btn').addEventListener('click', () => {
+    let csvContent = "data:text/csv;charset=utf-8,dimension,start,end,value\n";
+
+    for (const dim in dimensionData) {
+        dimensionData[dim].forEach(seg => {
+            csvContent += `${dim},${seg.start.toFixed(2)},${seg.end.toFixed(2)},${seg.value}\n`;
+        });
+    }
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "ratings.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+});
 
   </script>
 </body>
