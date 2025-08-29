@@ -13,6 +13,11 @@ It is intended to be used in psychological research on music perception and base
 ![Vis](./audio_rating.gif?raw=true "Audio rating demo")
 
 
+## Demo
+
+You can [try audio_rating live here](https://dfsp-spirit.github.io/audio_rating/) on GitHub pages.
+
+
 
 
 
