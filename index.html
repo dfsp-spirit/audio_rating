@@ -24,7 +24,7 @@
 </head>
 <body>
   <h2>Multi-Dimensional Step Rating Prototype</h2>
-  <p class="small">Double-click waveform to split a segment. Drag inside a segment vertically to change rating (snaps to steps). Drag boundaries horizontally to move them. Right-click a split handle to delete it. Click segment to jump playback. Use the slider below to jump in audio.</p>
+  <p class="small">Double-click waveform to split a segment. Drag inside a segment vertically to change rating. Drag boundaries horizontally to move them. Right-click a split handle to delete it. Use the slider below to jump in audio.</p>
 
   <div class="dimension-buttons">
     <button data-dim="valence">Valence</button>
@@ -38,17 +38,20 @@
     <canvas id="overlay"></canvas>
   </div>
 
+  <div class="controls" id="rating-info">
+    <label>Step levels: <strong id="steps-label"></strong></label>
+    <div id="rating-legend"></div>
   <button id="export-btn">Download CSV</button>
+</div>
 
   <div id="slider-container">
     <input type="range" id="time-slider" min="0" max="1" step="0.001" value="0">
   </div>
 
-  <div class="controls">
+  <div class="controls" id="audio-controls">
     <button id="play">Play</button>
     <button id="stop">Stop</button>
-    <label>Step levels: <strong id="steps-label"></strong></label>
-    <div id="rating-legend"></div>
+
   </div>
 
   <div id="info">
@@ -264,7 +267,7 @@
       const duration=wavesurfer.getDuration();
       for(const dim in dimensionData){dimensionData[dim].forEach(s=>{if(s.end>duration)s.end=duration;});}
       resizeOverlay();
-      status.textContent=`Duration: ${duration.toFixed(2)}s — Double-click to split segments.`;
+      status.textContent=`Audio duration: ${duration.toFixed(2)}s. Press Space to Play/Pause.`;
       wavesurfer.isReady=true;
       startRenderLoop();
       timeSlider.max=duration;
