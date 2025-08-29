@@ -208,15 +208,18 @@ overlay.addEventListener('contextmenu',ev=>{
   }
 });
 
-// Playback
-playBtn.addEventListener('click',()=>{ wavesurfer.playPause(); playBtn.textContent=wavesurfer.isPlaying()?'Pause':'Play'; });
-stopBtn.addEventListener('click',()=>{ wavesurfer.stop(); playBtn.textContent='Play'; });
+// Playback buttons
+playBtn.addEventListener('click',()=>{ wavesurfer.playPause(); });
+stopBtn.addEventListener('click',()=>{ wavesurfer.stop(); });
+
+// Update button text based on events
+wavesurfer.on('play',()=>{ playBtn.textContent='Pause'; });
+wavesurfer.on('pause',()=>{ playBtn.textContent='Play'; });
+wavesurfer.on('finish',()=>{ playBtn.textContent='Play'; });
 
 // Slider seeking
 timeSlider.addEventListener('input', () => {
     const t = parseFloat(timeSlider.value);
-    console.log('Slider to', t);
-    //wavesurfer.setCurrentTime(t); // jump audio immediately
     wavesurfer.seekTo(t/durationOrOne()); // smoother
 });
 
@@ -232,7 +235,7 @@ wavesurfer.on('ready',()=>{
   function renderLoop(){
     drawAll();
     const t = wavesurfer.getCurrentTime();
-    timeSlider.value = t; // always update slider to current audio
+    timeSlider.value = t;
     currentTimeLabel.textContent = t.toFixed(2);
     requestAnimationFrame(renderLoop);
   }
