@@ -1,246 +1,308 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<title>Step-based Rating with Interactive Slider</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<style>
-  body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial; margin: 16px; }
-  #container { position: relative; width: 100%; max-width: 2000px; margin: 0 auto; }
-  #waveform { position: relative; background: #fafafa; border: 1px solid #ddd; height: 140px; }
-  canvas#overlay { position: absolute; top: 0; left: 0; z-index: 5; pointer-events: auto; }
-  .controls { margin-top: 8px; display:flex; gap:8px; align-items:center; }
-  button { padding: 6px 10px; border-radius:6px; border:1px solid #bbb; background:#fff; cursor:pointer; }
-  button:active{ transform: translateY(1px); }
-  label { font-size:13px; color:#333; }
-  #info { margin-top:8px; font-size:13px; color:#444; }
-  .small { font-size:12px; color:#666; }
-  #rating-legend { margin-left: 12px; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
-  .legend-item { padding:4px 6px; border-radius:4px; font-size:12px; color:#fff; }
-  #slider-container { margin-top: 12px; display:flex; align-items:center; gap:8px; max-width: 2000px; }
-  #time-slider { flex:1; }
-</style>
+  <meta charset="utf-8" />
+  <title>Multi-Dimensional Step Rating (Wavesurfer Prototype)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial; margin: 16px; }
+    #container { position: relative; width: 100%; max-width: 2000px; margin: 0 auto; }
+    #waveform { position: relative; background: #fafafa; border: 1px solid #ddd; }
+    canvas#overlay { position: absolute; top: 0; left: 0; z-index: 5; pointer-events: auto; }
+    .controls { margin-top: 8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    button { padding: 6px 10px; border-radius:6px; border:1px solid #bbb; background:#fff; cursor:pointer; }
+    button:active{ transform: translateY(1px); }
+    label { font-size:13px; color:#333; }
+    #info { margin-top:8px; font-size:13px; color:#444; }
+    .small { font-size:12px; color:#666; }
+    #rating-legend { margin-left: 12px; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+    .legend-item { padding:4px 6px; border-radius:4px; font-size:12px; color:#fff; }
+    .dimension-buttons { margin-bottom: 8px; display:flex; gap:6px; flex-wrap:wrap; }
+    input[type=range] { width: 100%; }
+    #slider-container { width: 100%; max-width: 2000px; margin-top:6px; }
+  </style>
 </head>
 <body>
-<h2>Step-based Rating Prototype (with Interactive Playback Slider)</h2>
-<p class="small">Double-click waveform to split a segment. Drag inside a segment vertically to change rating (snaps to 10 steps). Drag boundaries horizontally to move them. Right-click a split handle to delete it. Click segment to jump playback. Use the slider below to jump to any position.</p>
+  <h2>Multi-Dimensional Step Rating Prototype</h2>
+  <p class="small">Double-click waveform to split a segment. Drag inside a segment vertically to change rating (snaps to steps). Drag boundaries horizontally to move them. Right-click a split handle to delete it. Click segment to jump playback. Use the slider below to jump in audio.</p>
 
-<div id="container">
-  <div id="waveform"></div>
-  <canvas id="overlay"></canvas>
-</div>
+  <div class="dimension-buttons">
+    <button data-dim="valence">Valence</button>
+    <button data-dim="arousal">Arousal</button>
+    <button data-dim="enjoyment">Enjoyment</button>
+    <button data-dim="is_cool">Is Cool</button>
+  </div>
 
-<div id="slider-container">
-  <span id="current-time">0.00</span>
-  <input type="range" id="time-slider" min="0" max="1" step="0.01" value="0">
-  <span id="total-time">0.00</span>
-</div>
+  <div id="container">
+    <div id="waveform"></div>
+    <canvas id="overlay"></canvas>
+  </div>
 
-<div class="controls">
-  <button id="play">Play</button>
-  <button id="stop">Stop</button>
-  <label>Step levels: <strong id="steps-label">10</strong></label>
-  <div id="rating-legend"></div>
-</div>
+  <div id="slider-container">
+    <input type="range" id="time-slider" min="0" max="1" step="0.001" value="0">
+  </div>
 
-<div id="info">
-  <span id="status">Loading...</span>
-</div>
+  <div class="controls">
+    <button id="play">Play</button>
+    <button id="stop">Stop</button>
+    <label>Step levels: <strong id="steps-label"></strong></label>
+    <div id="rating-legend"></div>
+  </div>
 
-<script type="module">
-import WaveSurfer from 'https://unpkg.com/wavesurfer.js@7.0.0/dist/wavesurfer.esm.js';
+  <div id="info">
+    <span id="status">Loading...</span>
+  </div>
 
-const AUDIO_URL = './demo.wav';
-const INITIAL_STEPS = 10;
-const MIN_RATING = 0;
-const MAX_RATING = INITIAL_STEPS - 1;
-const HANDLE_HIT = 8;
+  <script type="module">
+    import WaveSurfer from 'https://unpkg.com/wavesurfer.js@7.0.0/dist/wavesurfer.esm.js';
 
-const waveformEl = document.getElementById('waveform');
-const overlay = document.getElementById('overlay');
-const playBtn = document.getElementById('play');
-const stopBtn = document.getElementById('stop');
-const stepsLabel = document.getElementById('steps-label');
-const legend = document.getElementById('rating-legend');
-const status = document.getElementById('status');
-const timeSlider = document.getElementById('time-slider');
-const currentTimeLabel = document.getElementById('current-time');
-const totalTimeLabel = document.getElementById('total-time');
+    const AUDIO_URL = './demo.wav';
 
-stepsLabel.textContent = INITIAL_STEPS;
+    // DIMENSIONS CONFIG
+    const dimensionDefinition = {
+      valence: { num_values: 10 },
+      arousal: { num_values: 5 },
+      enjoyment: { num_values: 10 },
+      is_cool: { num_values: 2 }
+    };
 
-const wavesurfer = WaveSurfer.create({
-  container: '#waveform',
-  waveColor: '#bfc8d6',
-  progressColor: '#6b46c1',
-  height: 140,
-  scrollParent: true
-});
+    let dimensionData = {};
+    let currentDimension = 'valence';
+    const segmentsDefault = (num_values) => [{ start:0, end:1e9, value: Math.floor(num_values/2) }];
 
-// Color map for ratings
-function colorForRating(r){
-  const t = r / (MAX_RATING||1);
-  const hue = 220 - (220-10)*t;
-  return `hsl(${hue} 80% 50% / 0.45)`;
-}
-for(let r=MAX_RATING;r>=MIN_RATING;r--){
-  const item=document.createElement('div');
-  item.className='legend-item';
-  item.style.background=colorForRating(r).replace('/ 0.45)','/1)');
-  item.textContent=`${r}`;
-  legend.appendChild(item);
-}
+    for (const dim in dimensionDefinition){
+      dimensionData[dim] = segmentsDefault(dimensionDefinition[dim].num_values);
+    }
 
-// Data
-let segments=[{start:0,end:1e9,value:Math.floor(INITIAL_STEPS/2)}];
-const ctx = overlay.getContext('2d');
+    const container = document.getElementById('container');
+    const waveformEl = document.getElementById('waveform');
+    const overlay = document.getElementById('overlay');
+    const playBtn = document.getElementById('play');
+    const stopBtn = document.getElementById('stop');
+    const status = document.getElementById('status');
+    const stepsLabel = document.getElementById('steps-label');
+    const legend = document.getElementById('rating-legend');
+    const timeSlider = document.getElementById('time-slider');
+    const dimButtons = document.querySelectorAll('.dimension-buttons button');
 
-// Map time <-> x
-function durationOrOne(){ const d=wavesurfer.getDuration(); return (d&&isFinite(d))?d:1; }
-function timeToX(time){ return (time/durationOrOne())*overlay.width; }
-function xToTime(x){ return (x/overlay.width)*durationOrOne(); }
-function findSegmentIndexAtTime(time){ for(let i=0;i<segments.length;i++){ if(segments[i].start<=time&&time<=segments[i].end) return i; } return -1; }
+    // Canvas & drawing
+    const ctx = overlay.getContext('2d');
+    const CANVAS_HEIGHT = 140;
+    const HANDLE_HIT = 8;
 
-// Resize overlay
-function resizeOverlay(){
-  overlay.width = waveformEl.clientWidth;
-  overlay.height = waveformEl.clientHeight;
-  overlay.style.width = waveformEl.clientWidth + 'px';
-  overlay.style.height = waveformEl.clientHeight + 'px';
-  drawAll();
-}
-window.addEventListener('resize', resizeOverlay);
+    let segments = dimensionData[currentDimension];
 
-// Draw segments
-function drawAll(){
-  ctx.clearRect(0,0,overlay.width,overlay.height);
-  const h = overlay.height;
-  const w = overlay.width;
+    function durationOrOne(){ const d=wavesurfer.getDuration(); return (d&&isFinite(d))?d:1;}
+    function timeToX(time){return Math.max(0,Math.min(overlay.width,(time/durationOrOne())*overlay.width));}
+    function xToTime(x){return Math.max(0,Math.min(durationOrOne(), (x/overlay.width)*durationOrOne()));}
 
-  for(let s=0;s<INITIAL_STEPS;s++){
-    const y = h-(s/(INITIAL_STEPS-1))*h;
-    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y);
-    ctx.lineWidth = (s===Math.floor((INITIAL_STEPS-1)/2))?1.2:0.7;
-    ctx.strokeStyle='rgba(0,0,0,0.06)'; ctx.stroke();
-    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.font='12px system-ui, Arial';
-    ctx.fillText(String(s),6,Math.max(12,y-4));
-  }
+    function findSegmentIndexAtTime(time){ for(let i=0;i<segments.length;i++){if(segments[i].start<=time && time<=segments[i].end) return i;} return -1; }
 
-  segments.forEach((seg,idx)=>{
-    const x1=timeToX(seg.start), x2=timeToX(seg.end);
-    const heightFromTop = (1-(seg.value/(INITIAL_STEPS-1)))*h;
-    ctx.fillStyle = colorForRating(seg.value);
-    ctx.fillRect(x1,heightFromTop,Math.max(2,x2-x1),h-heightFromTop);
-    ctx.strokeStyle='rgba(0,0,0,0.08)'; ctx.lineWidth=1;
-    ctx.strokeRect(x1+0.5,heightFromTop+0.5,Math.max(1,x2-x1-1),h-heightFromTop-1);
-    ctx.fillStyle='rgba(0,0,0,0.85)'; ctx.fillText(`${seg.value}`,x1+6,Math.max(12,heightFromTop+12));
-    if(idx>0){ ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(x1-1,0,2,h); }
-  });
-}
+    function colorForRating(r, num_values){ const t = r/(num_values-1||1); const hue = 220-(220-10)*t; return `hsl(${hue} 80% 50% / 0.45)`; }
 
-// Interaction
-let pointerDown=false,activeSegIndex=null,activeHandle=null;
+    function updateLegend(num_values){
+      legend.innerHTML = '';
+      for(let r=num_values-1;r>=0;r--){
+        const item = document.createElement('div');
+        item.className='legend-item';
+        item.style.background=colorForRating(r,num_values).replace('/ 0.45)','/1)');
+        item.textContent=r;
+        legend.appendChild(item);
+      }
+      stepsLabel.textContent=num_values;
+    }
 
-function hitTestHandle(x){
-  const time=xToTime(x);
-  for(let i=1;i<segments.length;i++){
-    const bx = timeToX(segments[i].start);
-    if(Math.abs(bx-x)<=HANDLE_HIT) return i;
-  }
-  return null;
-}
+    function resizeOverlay(){
+      const rect = waveformEl.getBoundingClientRect();
+      overlay.width = Math.max(100, rect.width);
+      overlay.height = CANVAS_HEIGHT;
+      overlay.style.width = rect.width+'px';
+      overlay.style.height = CANVAS_HEIGHT+'px';
+      overlay.style.left = waveformEl.offsetLeft+'px';
+      drawAll();
+    }
 
-overlay.addEventListener('pointerdown',ev=>{
-  ev.preventDefault();
-  const rect = overlay.getBoundingClientRect();
-  const x = ev.clientX-rect.left;
-  pointerDown=true;
+    window.addEventListener('resize',()=>{setTimeout(resizeOverlay,120);});
 
-  const handleIdx = hitTestHandle(x);
-  if(handleIdx!==null){ activeHandle=handleIdx; overlay.setPointerCapture(ev.pointerId); return; }
+    // Draw segments & cursor
+    function drawAll(){
+      ctx.clearRect(0,0,overlay.width,overlay.height);
+      const h=overlay.height;
+      const w=overlay.width;
+      const num_steps = dimensionDefinition[currentDimension].num_values;
 
-  const si=findSegmentIndexAtTime(xToTime(x));
-  if(si>=0){ activeSegIndex=si; overlay.setPointerCapture(ev.pointerId); wavesurfer.setCurrentTime(xToTime(x)); }
-  drawAll();
-});
+      // horizontal grid + labels
+      for(let s=0;s<num_steps;s++){
+        const y=h-(s/(num_steps-1))*h;
+        ctx.beginPath();
+        ctx.moveTo(0,y); ctx.lineTo(w,y);
+        ctx.lineWidth=(s===Math.floor((num_steps-1)/2))?1.2:0.7;
+        ctx.strokeStyle='rgba(0,0,0,0.06)';
+        ctx.stroke();
+        ctx.fillStyle='rgba(0,0,0,0.6)';
+        ctx.font='12px system-ui, Arial';
+        ctx.fillText(String(s),6,Math.max(12,y-4));
+      }
 
-overlay.addEventListener('pointermove',ev=>{
-  if(!pointerDown) return;
-  const rect=overlay.getBoundingClientRect();
-  const x=ev.clientX-rect.left;
-  const y=ev.clientY-rect.top;
+      // segments
+      segments.forEach((seg,idx)=>{
+        const x1=timeToX(seg.start), x2=timeToX(seg.end);
+        const heightFromTop=(1-(seg.value/(num_steps-1)))*h;
+        const color=colorForRating(seg.value,num_steps);
+        ctx.fillStyle=color;
+        ctx.fillRect(x1,heightFromTop,Math.max(2,x2-x1),h-heightFromTop);
+        ctx.strokeStyle='rgba(0,0,0,0.08)';
+        ctx.lineWidth=1;
+        ctx.strokeRect(x1+0.5,heightFromTop+0.5,Math.max(1,x2-x1-1),h-heightFromTop-1);
+        ctx.fillStyle='rgba(0,0,0,0.85)';
+        ctx.font='12px system-ui, Arial';
+        ctx.fillText(`${seg.value}`,x1+6,Math.max(12,heightFromTop+12));
 
-  if(activeHandle!==null){
-    const leftSeg=segments[activeHandle-1], rightSeg=segments[activeHandle];
-    const newBoundary = Math.max(leftSeg.start+0.02, Math.min(rightSeg.end-0.02, xToTime(x)));
-    leftSeg.end=newBoundary; rightSeg.start=newBoundary; drawAll(); return;
-  }
-  if(activeSegIndex!==null){
-    const seg=segments[activeSegIndex];
-    let raw=Math.round((1-(y/overlay.height))*(INITIAL_STEPS-1));
-    seg.value=Math.max(MIN_RATING, Math.min(MAX_RATING, raw)); drawAll(); return;
-  }
-});
+        if(idx>0){
+          const hx=x1;
+          ctx.fillStyle='rgba(0,0,0,0.6)';
+          ctx.fillRect(hx-1,0,2,h);
+        }
+      });
 
-overlay.addEventListener('pointerup',ev=>{ pointerDown=false; activeSegIndex=null; activeHandle=null; drawAll(); });
+      // playback cursor
+      if(wavesurfer.isReady){
+        const t=wavesurfer.getCurrentTime();
+        const x=timeToX(t);
+        ctx.beginPath();
+        ctx.moveTo(x+0.5,0);
+        ctx.lineTo(x+0.5,h);
+        ctx.strokeStyle='rgba(255,0,0,0.8)';
+        ctx.lineWidth=2;
+        ctx.stroke();
+      }
 
-// Double-click split
-overlay.addEventListener('dblclick',ev=>{
-  ev.preventDefault();
-  const x = ev.clientX - overlay.getBoundingClientRect().left;
-  const time = xToTime(x);
-  const si = findSegmentIndexAtTime(time);
-  if(si===-1) return;
-  const seg=segments[si];
-  if((time-seg.start)<0.08 || (seg.end-time)<0.08) return;
-  segments.splice(si+1,0,{start:time,end:seg.end,value:seg.value});
-  seg.end=time; drawAll();
-});
+      // update slider
+      timeSlider.value = wavesurfer.getCurrentTime();
+    }
 
-// Right-click merge
-overlay.addEventListener('contextmenu',ev=>{
-  ev.preventDefault();
-  const x = ev.clientX - overlay.getBoundingClientRect().left;
-  const handleIdx = hitTestHandle(x);
-  if(handleIdx!==null){
-    const left = segments[handleIdx-1], right = segments[handleIdx];
-    left.end = right.end; segments.splice(handleIdx,1); drawAll();
-  }
-});
+    // Interaction
+    let pointerDown=false, activeSegIndex=null, activeHandle=null, lastPointerX=0, lastPointerY=0;
 
-// Playback buttons
-playBtn.addEventListener('click',()=>{ wavesurfer.playPause(); });
-stopBtn.addEventListener('click',()=>{ wavesurfer.stop(); });
+    function hitTestHandle(x){ const time=xToTime(x); for(let i=1;i<segments.length;i++){const bx=timeToX(segments[i].start); if(Math.abs(bx-x)<=HANDLE_HIT)return{i:i};} return null;}
 
-// Update button text based on events
-wavesurfer.on('play',()=>{ playBtn.textContent='Pause'; });
-wavesurfer.on('pause',()=>{ playBtn.textContent='Play'; });
-wavesurfer.on('finish',()=>{ playBtn.textContent='Play'; });
+    overlay.addEventListener('pointerdown',(ev)=>{
+      ev.preventDefault();
+      const rect=overlay.getBoundingClientRect();
+      const x=ev.clientX-rect.left, y=ev.clientY-rect.top;
+      lastPointerX=x; lastPointerY=y; pointerDown=true;
 
-// Slider seeking
-timeSlider.addEventListener('input', () => {
-    const t = parseFloat(timeSlider.value);
-    wavesurfer.seekTo(t/durationOrOne()); // smoother
-});
+      const handle=hitTestHandle(x);
+      if(handle){
+        activeHandle={index:handle.i,startSeg:handle.i-1,endSeg:handle.i};
+        overlay.setPointerCapture(ev.pointerId);
+        return;
+      }
 
-// Load audio
-wavesurfer.load(AUDIO_URL);
-wavesurfer.on('ready',()=>{
-  if(segments.length===1) segments[0].end=wavesurfer.getDuration();
-  resizeOverlay();
-  status.textContent=`Duration: ${wavesurfer.getDuration().toFixed(2)}s`;
-  timeSlider.max = wavesurfer.getDuration();
-  totalTimeLabel.textContent = wavesurfer.getDuration().toFixed(2);
+      const time=xToTime(x);
+      const si=findSegmentIndexAtTime(time);
+      if(si>=0){ activeSegIndex=si; overlay.setPointerCapture(ev.pointerId); wavesurfer.setCurrentTime(time);}
+      drawAll();
+    });
 
-  function renderLoop(){
-    drawAll();
-    const t = wavesurfer.getCurrentTime();
-    timeSlider.value = t;
-    currentTimeLabel.textContent = t.toFixed(2);
-    requestAnimationFrame(renderLoop);
-  }
-  renderLoop();
-});
-</script>
+    overlay.addEventListener('pointermove',(ev)=>{
+      if(!pointerDown)return;
+      const rect=overlay.getBoundingClientRect();
+      const x=ev.clientX-rect.left, y=ev.clientY-rect.top;
+      const dx=x-lastPointerX, dy=y-lastPointerY; lastPointerX=x; lastPointerY=y;
+
+      if(activeHandle){
+        const time=xToTime(x), idx=activeHandle.index;
+        const leftSeg=segments[activeHandle.startSeg], rightSeg=segments[activeHandle.endSeg];
+        const epsilon=0.02;
+        const newBoundary=Math.max(leftSeg.start+epsilon,Math.min(rightSeg.end-epsilon,time));
+        leftSeg.end=newBoundary; rightSeg.start=newBoundary;
+        drawAll();
+        return;
+      }
+
+      if(activeSegIndex!=null){
+        const seg=segments[activeSegIndex]; const h=overlay.height;
+        const ratio=1-(y/h);
+        let raw=Math.round(ratio*(dimensionDefinition[currentDimension].num_values-1));
+        raw=Math.max(0,Math.min(dimensionDefinition[currentDimension].num_values-1,raw));
+        seg.value=raw; drawAll(); return;
+      }
+    });
+
+    overlay.addEventListener('pointerup',(ev)=>{ pointerDown=false; activeSegIndex=null; activeHandle=null; try{overlay.releasePointerCapture(ev.pointerId);}catch{} drawAll(); });
+
+    overlay.addEventListener('dblclick',(ev)=>{
+      ev.preventDefault(); const rect=overlay.getBoundingClientRect(); const x=ev.clientX-rect.left;
+      const time=xToTime(x); const si=findSegmentIndexAtTime(time); if(si===-1)return;
+      const seg=segments[si]; const MIN_SEG=0.08;
+      if((time-seg.start)<MIN_SEG||(seg.end-time)<MIN_SEG)return;
+      const right={start:time,end:seg.end,value:seg.value}; seg.end=time; segments.splice(si+1,0,right); drawAll();
+    });
+
+    overlay.addEventListener('contextmenu',(ev)=>{
+      ev.preventDefault(); const rect=overlay.getBoundingClientRect(); const x=ev.clientX-rect.left; const handle=hitTestHandle(x);
+      if(handle){ const i=handle.i; const left=segments[i-1], right=segments[i]; left.end=right.end; segments.splice(i,1); drawAll(); }
+    });
+
+    let renderLoop=null;
+    function startRenderLoop(){ if(renderLoop)cancelAnimationFrame(renderLoop); function loop(){ drawAll(); renderLoop=requestAnimationFrame(loop);} renderLoop=requestAnimationFrame(loop); }
+    function stopRenderLoop(){ if(renderLoop)cancelAnimationFrame(renderLoop); renderLoop=null; }
+
+    const wavesurfer=WaveSurfer.create({
+      container:'#waveform',
+      waveColor:'#bfc8d6',
+      progressColor:'#6b46c1',
+      height:CANVAS_HEIGHT,
+      scrollParent:true
+    });
+
+    wavesurfer.load(AUDIO_URL);
+    wavesurfer.on('ready',()=>{
+      const duration=wavesurfer.getDuration();
+      for(const dim in dimensionData){dimensionData[dim].forEach(s=>{if(s.end>duration)s.end=duration;});}
+      resizeOverlay();
+      status.textContent=`Duration: ${duration.toFixed(2)}s — Double-click to split segments.`;
+      wavesurfer.isReady=true;
+      startRenderLoop();
+      timeSlider.max=duration;
+    });
+
+    wavesurfer.on('finish',()=>{playBtn.textContent='Play';});
+
+    // Controls
+    playBtn.addEventListener('click',()=>{wavesurfer.playPause(); playBtn.textContent=wavesurfer.isPlaying()?'Pause':'Play';});
+    stopBtn.addEventListener('click',()=>{wavesurfer.stop(); playBtn.textContent='Play';});
+    window.addEventListener('keydown',(ev)=>{if(ev.code==='Space'&&document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA'){ev.preventDefault(); wavesurfer.playPause(); playBtn.textContent=wavesurfer.isPlaying()?'Pause':'Play';}});
+
+    // Slider seeking
+    timeSlider.addEventListener('input',()=>{
+      const t=parseFloat(timeSlider.value);
+      wavesurfer.seekTo(t/durationOrOne());
+    });
+
+    // Dimension buttons
+    dimButtons.forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        // save current segments
+        dimensionData[currentDimension] = JSON.parse(JSON.stringify(segments));
+        currentDimension = btn.dataset.dim;
+        segments = dimensionData[currentDimension];
+        updateLegend(dimensionDefinition[currentDimension].num_values);
+        drawAll();
+      });
+    });
+
+    updateLegend(dimensionDefinition[currentDimension].num_values);
+
+    // expose segments per dimension for debugging/export
+    window.getDimensionData = () => JSON.parse(JSON.stringify(dimensionData));
+    window.setDimensionData = (data) => { dimensionData=data; segments=dimensionData[currentDimension]; drawAll(); };
+
+    window.addEventListener('beforeunload',()=>{ console.log('Segments at unload:', dimensionData); });
+    setTimeout(()=>resizeOverlay(),400);
+
+  </script>
 </body>
 </html>
+
