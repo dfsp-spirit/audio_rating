@@ -19,6 +19,7 @@ It is intended to be used in psychological research on music perception and base
 * audio playback: pause/continue and jump to arbitrary positions in audio file via a slider
 * rating: split songs into arbitrary sections and rate each section
 * rate different dimensions (e.g., valence, arousal, and enjoyment) and use different scales for them
+* interactive and iterative rating possible: replay a section, then rate it, switch back and forth between dimensions freely while rating, etc.
 * export rating data and download it directly as a CSV file
 
 
