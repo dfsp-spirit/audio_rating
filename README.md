@@ -14,6 +14,15 @@ The widget support several rating dimensions, so that users can rate, for exampl
 It is intended to be used in psychological research on music perception and based on the great [wavesurfer.js](https://wavesurfer.xyz/) audio visualization library for JavaScript.
 
 
+## Features
+
+* audio file format: supports all audio file formats supported by Wavesurfer, including `.wav`, .`mp3`, and many others
+* audio playback: pause/continue and jump to arbitrary positions in audio file via a slider
+* rating: split songs into arbitrary sections and rate each section
+* rate different dimensions (e.g., valence, arousal, and enjoyment) and use different scales for them
+* export rating data and download it directly as a CSV file
+
+
 ## Online Live Demo
 
 You can [try audio_rating live here](https://dfsp-spirit.github.io/audio_rating/) on GitHub pages.
