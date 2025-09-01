@@ -26,11 +26,13 @@ All you need is to have Python installed. Then run the `run.bash` script, which 
 If you don't have Python or don't like its web server, use any other web server instead.
 
 
-## Author and Dependencies
+## Author, License and Dependencies
 
 This was written by Tim Schäfer.
 
 The major part of the work is done by [wavesurfer.js](https://wavesurfer.xyz/) though.
+
+This software is licensed under the [3-clause BSD license](./LICENSE), the same license as [used by wavesurfer](https://github.com/katspaugh/wavesurfer.js/blob/main/LICENSE).
 
 
 
