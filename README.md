@@ -1,6 +1,5 @@
 # audio_rating
-Web-based tool for continuous multi-dimensional rating of audio content with interactive waveform visualization
-
+Web-based tool for continuous, multi-dimensional rating of audio content with interactive waveform visualization.
 
 
 ![Vis](./audio_rating.png?raw=true "Audio rating")
