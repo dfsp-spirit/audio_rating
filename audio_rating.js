@@ -127,7 +127,7 @@ export class AudioRatingWidget {
       </div>
 
       <div class="arw-info">
-        <span class="arw-audio-manual">Audio Controls: Press space to toggle Play/Pause. Click or drag the slider below to seek.</span>
+        <span class="arw-audio-manual">Audio Controls: Click the buttons below or press the space key to toggle Play/Pause. Click or drag the slider below to seek.</span>
       </div>
     ` : `
       <div class="arw-dimension-buttons"></div>
@@ -211,17 +211,17 @@ export class AudioRatingWidget {
     this.wavesurfer.load(this.audioUrl);
 
     this.wavesurfer.on('ready', () => {
-      const duration = this.wavesurfer.getDuration();
-      for (const dim in this.dimensionData) {
-        this.dimensionData[dim].forEach((s) => {
-          if (s.end > duration) s.end = duration;
-        });
-      }
-      this._resizeOverlay();
-      this._updateStatus(); // Update status with current time
-      this.wavesurfer.isReady = true;
-      this._startRenderLoop();
-      this.timeSlider.max = duration;
+        const duration = this.wavesurfer.getDuration();
+        for (const dim in this.dimensionData) {
+            this.dimensionData[dim].forEach((s) => {
+            if (s.end > duration) s.end = duration;
+            });
+        }
+        this._resizeOverlay();
+        this._updateStatus(); // Update status immediately when ready
+        this.wavesurfer.isReady = true;
+        this._startRenderLoop();
+        this.timeSlider.max = duration;
     });
 
     this.wavesurfer.on('finish', () => {
@@ -240,11 +240,13 @@ export class AudioRatingWidget {
 
   _updateStatus() {
     if (this.wavesurfer && this.wavesurfer.isReady) {
-      const duration = this.wavesurfer.getDuration();
-      const currentTime = this.wavesurfer.getCurrentTime();
-      this.statusEl.textContent = `Current: ${currentTime.toFixed(2)}s / Total: ${duration.toFixed(2)}s`;
+        const duration = this.wavesurfer.getDuration();
+        const currentTime = this.wavesurfer.getCurrentTime();
+        this.statusEl.textContent = `Current: ${currentTime.toFixed(2)}s / Total: ${duration.toFixed(2)}s`;
+    } else {
+        this.statusEl.textContent = '';
     }
-  }
+    }
 
   _bindUI() {
     // Resize
