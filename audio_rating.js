@@ -24,6 +24,7 @@ export class AudioRatingWidget {
     waveColor = '#bfc8d6',
     progressColor = '#6b46c1',
     scrollParent = true,
+    with_instructions = true, // New constructor argument
   } = {}) {
     this.container = (typeof container === 'string')
       ? document.querySelector(container)
@@ -36,6 +37,7 @@ export class AudioRatingWidget {
     this.waveColor = waveColor;
     this.progressColor = progressColor;
     this.scrollParent = scrollParent;
+    this.with_instructions = with_instructions; // Store the new option
 
     // State
     this.dimensionData = {};
@@ -100,8 +102,9 @@ export class AudioRatingWidget {
     const root = document.createElement('div');
     root.className = 'arw';
     root.tabIndex = 0; // allow focus for spacebar handling
-    root.innerHTML = `
 
+    // Conditionally show instructions based on with_instructions
+    const instructionsHtml = this.with_instructions ? `
       <div class="arw-info">
         <span class="arw-dimensions-manual">Select the dimension to rate:</span>
       </div>
@@ -109,7 +112,7 @@ export class AudioRatingWidget {
       <div class="arw-dimension-buttons"></div>
 
       <div class="arw-info">
-        <span class="arw-dimensions-manual">Rating Controls: Double-click on the waveform to split a segment. Drag inside a segment vertically to change rating. Drag segment boundaries horizontally to move them. Right-click a split handle (segment border) to delete it.</span>
+        <span class="arw-ratings-manual">Rating Controls: Double-click on the waveform to split a segment. Drag inside a segment vertically to change rating. Drag segment boundaries horizontally to move them. Right-click a split handle (segment border) to delete it.</span>
       </div>
 
       <div class="arw-container">
@@ -126,7 +129,22 @@ export class AudioRatingWidget {
       <div class="arw-info">
         <span class="arw-audio-manual">Audio Controls: Press space to toggle Play/Pause. Click or drag the slider below to seek.</span>
       </div>
+    ` : `
+      <div class="arw-dimension-buttons"></div>
 
+      <div class="arw-container">
+        <div class="arw-waveform"></div>
+        <canvas class="arw-overlay"></canvas>
+      </div>
+
+      <div class="arw-controls">
+        <label>Step levels: <strong class="arw-steps-label"></strong></label>
+        <div class="arw-legend"></div>
+        <button class="arw-export">Download CSV</button>
+      </div>
+    `;
+
+    root.innerHTML = instructionsHtml + `
       <div class="arw-slider">
         <input type="range" class="arw-time-slider" min="0" max="1" step="0.001" value="0">
       </div>
@@ -200,7 +218,7 @@ export class AudioRatingWidget {
         });
       }
       this._resizeOverlay();
-      this.statusEl.textContent = `Audio duration: ${duration.toFixed(2)}s.`;
+      this._updateStatus(); // Update status with current time
       this.wavesurfer.isReady = true;
       this._startRenderLoop();
       this.timeSlider.max = duration;
@@ -213,6 +231,19 @@ export class AudioRatingWidget {
     // Button state driven by real events
     this.wavesurfer.on('play', () => { this.playBtn.textContent = 'Pause'; });
     this.wavesurfer.on('pause', () => { this.playBtn.textContent = 'Play'; });
+
+    // Update current time during playback
+    this.wavesurfer.on('timeupdate', () => {
+      this._updateStatus();
+    });
+  }
+
+  _updateStatus() {
+    if (this.wavesurfer && this.wavesurfer.isReady) {
+      const duration = this.wavesurfer.getDuration();
+      const currentTime = this.wavesurfer.getCurrentTime();
+      this.statusEl.textContent = `Current: ${currentTime.toFixed(2)}s / Total: ${duration.toFixed(2)}s`;
+    }
   }
 
   _bindUI() {
@@ -541,3 +572,4 @@ export class AudioRatingWidget {
   }
 }
 // End of audio-rating.js
+
