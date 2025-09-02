@@ -11,7 +11,6 @@
 </head>
 <body>
   <h2>Audio Rating Widget - Demo</h2>
-  <p class="small">Manual: Double-click waveform to split a segment. Drag inside a segment vertically to change rating. Drag segment boundaries horizontally to move them. Right-click a split handle (segement border) to delete it. Use the slider to jump in audio.</p>
 
   <div id="widget"></div>
 
@@ -19,7 +18,7 @@
     import { AudioRatingWidget } from './audio_rating.js';
 
     // Example custom dimensions (name: { num_values })
-    const dimensions = {
+    const rating_dimensions = {
       valence:   { num_values: 10 },
       arousal:   { num_values:  5 },
       enjoyment: { num_values: 10 },
@@ -30,7 +29,7 @@
     const widget = await AudioRatingWidget.create({
       container: '#widget',
       audioUrl: './demo.wav',       // URL or filename in same directory
-      dimensions,                    // pass your own mapping here
+      rating_dimensions,                    // pass your own mapping here
       height: 140,                   // canvas height (waveform height)
       waveColor: '#bfc8d6',
       progressColor: '#6b46c1',

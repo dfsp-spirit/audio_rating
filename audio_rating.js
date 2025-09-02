@@ -101,7 +101,16 @@ export class AudioRatingWidget {
     root.className = 'arw';
     root.tabIndex = 0; // allow focus for spacebar handling
     root.innerHTML = `
+
+      <div class="arw-info">
+        <span class="arw-dimensions-manual">Select the dimension to rate:</span>
+      </div>
+
       <div class="arw-dimension-buttons"></div>
+
+      <div class="arw-info">
+        <span class="arw-dimensions-manual">Rating Controls: Double-click on the waveform to split a segment. Drag inside a segment vertically to change rating. Drag segment boundaries horizontally to move them. Right-click a split handle (segment border) to delete it.</span>
+      </div>
 
       <div class="arw-container">
         <div class="arw-waveform"></div>
@@ -112,6 +121,10 @@ export class AudioRatingWidget {
         <label>Step levels: <strong class="arw-steps-label"></strong></label>
         <div class="arw-legend"></div>
         <button class="arw-export">Download CSV</button>
+      </div>
+
+      <div class="arw-info">
+        <span class="arw-audio-manual">Audio Controls: Press space to toggle Play/Pause. Click or drag the slider below to seek.</span>
       </div>
 
       <div class="arw-slider">
@@ -187,7 +200,7 @@ export class AudioRatingWidget {
         });
       }
       this._resizeOverlay();
-      this.statusEl.textContent = `Audio duration: ${duration.toFixed(2)}s. Press Space to Play/Pause.`;
+      this.statusEl.textContent = `Audio duration: ${duration.toFixed(2)}s.`;
       this.wavesurfer.isReady = true;
       this._startRenderLoop();
       this.timeSlider.max = duration;
@@ -197,7 +210,7 @@ export class AudioRatingWidget {
       this.playBtn.textContent = 'Play';
     });
 
-    // Button state driven by real events (fixes first click)
+    // Button state driven by real events
     this.wavesurfer.on('play', () => { this.playBtn.textContent = 'Pause'; });
     this.wavesurfer.on('pause', () => { this.playBtn.textContent = 'Play'; });
   }
