@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Audio Rating Widget - Demo</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="./audio_rating.css" />
+  <style>
+    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial; margin: 16px; }
+  </style>
+</head>
+<body>
+  <h2>Audio Rating Widget - Demo</h2>
+  <p class="small">Manual: Double-click waveform to split a segment. Drag inside a segment vertically to change rating. Drag segment boundaries horizontally to move them. Right-click a split handle (segement border) to delete it. Use the slider to jump in audio.</p>
+
+  <div id="widget"></div>
+
+  <script type="module">
+    import { AudioRatingWidget } from './audio_rating.js';
+
+    // Example custom dimensions (name: { num_values })
+    const dimensions = {
+      valence:   { num_values: 10 },
+      arousal:   { num_values:  5 },
+      enjoyment: { num_values: 10 },
+      is_cool:   { num_values:  2 },
+    };
+
+    // Top-level await is supported in module scripts in modern browsers
+    const widget = await AudioRatingWidget.create({
+      container: '#widget',
+      audioUrl: './demo.wav',       // URL or filename in same directory
+      dimensions,                    // pass your own mapping here
+      height: 140,                   // canvas height (waveform height)
+      waveColor: '#bfc8d6',
+      progressColor: '#6b46c1',
+    });
+
+    // Expose helpers if you like
+    window.widget = widget;
+    // Examples:
+    // console.log(widget.getData());
+    // widget.setData({...});
+    // widget.destroy();
+  </script>
+</body>
+</html>
