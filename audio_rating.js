@@ -25,6 +25,7 @@ export class AudioRatingWidget {
     progressColor = '#6b46c1',
     scrollParent = true,
     with_instructions = true, // New constructor argument
+    title = "Please rate this song", // Title for widget, displayed at top.
   } = {}) {
     this.container = (typeof container === 'string')
       ? document.querySelector(container)
@@ -38,6 +39,7 @@ export class AudioRatingWidget {
     this.progressColor = progressColor;
     this.scrollParent = scrollParent;
     this.with_instructions = with_instructions; // Store the new option
+    this.title = title; // Store the new option
 
     // State
     this.dimensionData = {};
@@ -104,7 +106,9 @@ export class AudioRatingWidget {
     root.tabIndex = 0; // allow focus for spacebar handling
 
     // Conditionally show instructions based on with_instructions
+    const titleHtml = "<div class='arw-title'>" + this.title + "</div>";
     const instructionsHtml = this.with_instructions ? `
+        ${titleHtml}
       <div class="arw-info">
         <span class="arw-dimensions-manual">Select the dimension to rate:</span>
       </div>
@@ -112,7 +116,7 @@ export class AudioRatingWidget {
       <div class="arw-dimension-buttons"></div>
 
       <div class="arw-info">
-        <span class="arw-ratings-manual">Rating Controls: Double-click on the waveform to split a segment. Drag inside a segment vertically to change rating. Drag segment boundaries horizontally to move them. Right-click a split handle (segment border) to delete it.</span>
+        <span class="arw-ratings-manual">Rating Controls: Please split the audio into segments and rate each segment. Double-click on the waveform to split a segment. Drag inside a segment vertically to change its rating. Drag segment boundaries horizontally to move them. Right-click a segment boundary to delete it.</span>
       </div>
 
       <div class="arw-container">
@@ -130,6 +134,7 @@ export class AudioRatingWidget {
         <span class="arw-audio-manual">Audio Controls: Click the buttons below or press the space key to toggle Play/Pause. Click or drag the slider below to seek.</span>
       </div>
     ` : `
+        ${titleHtml}
       <div class="arw-dimension-buttons"></div>
 
       <div class="arw-container">
