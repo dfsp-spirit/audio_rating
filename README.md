@@ -34,6 +34,12 @@ All you need is to have Python installed. Then run the `run.bash` script, which 
 
 If you don't have Python or don't like its web server, use any other web server instead.
 
+## Development Info regarding Caching
+
+Warning: Because the JS is in a different file, you may see outdated versions during development due to browser caching!
+
+Make sure to use devtools and on the `Networks` tab, set the tick at `Disable Cache`, or explicitely tell your browser to not cache when refreshing (e.g., press `CTRL` + `F5` instead of just `F5` under Linux/Firefox, but how to achieve this may differ by browser and OS).
+
 
 ## Author, License and Dependencies
 
