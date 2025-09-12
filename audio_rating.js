@@ -1,4 +1,4 @@
-// audio-rating.js
+// audio-rating.js (modified to add zoom controls & visible-range mapping)
 // Class-based widget that encapsulates all logic and can be instantiated multiple times.
 // Uses WaveSurfer 7 via dynamic import (cached per session) for convenience.
 
@@ -70,9 +70,15 @@ export class AudioRatingWidget {
     this.statusEl = null;
     this.timeSlider = null;
 
-
     // WaveSurfer instance
     this.wavesurfer = null;
+
+    // ZOOM state
+    this._zoomFactor = 1.5; // multiplier per zoom click
+    this._currentPxPerSec = null; // null means default (unzoomed)
+    this._defaultMinPxPerSec = null;
+    this.visibleStart = 0; // seconds - start of currently visible window
+    this.visibleEnd = null; // seconds - end of currently visible window
   }
 
   async _init() {
@@ -133,6 +139,12 @@ export class AudioRatingWidget {
 
     ${this.with_instructions ? '<div class="arw-info"><span class="arw-audio-manual">Audio Controls: Click the buttons below or press the space key to toggle Play/Pause. Click or drag the slider below to seek.</span></div>' : ''}
 
+    <div class="arw-zoom-controls">
+        <button class="arw-zoom-in" type="button">Zoom +</button>
+        <button class="arw-zoom-out" type="button">Zoom −</button>
+        <button class="arw-zoom-reset" type="button">Reset</button>
+    </div>
+
     <div class="arw-slider">
         <input type="range" class="arw-time-slider" min="0" max="1" step="0.001" value="0">
     </div>
@@ -168,6 +180,11 @@ export class AudioRatingWidget {
     this.statusEl = root.querySelector('.arw-status');
     this.timeSlider = root.querySelector('.arw-time-slider');
 
+    // Zoom buttons
+    this.zoomInBtn = root.querySelector('.arw-zoom-in');
+    this.zoomOutBtn = root.querySelector('.arw-zoom-out');
+    this.zoomResetBtn = root.querySelector('.arw-zoom-reset');
+
     // Build dimension buttons
     for (const name of Object.keys(this.dimensionDefinition)) {
       const b = document.createElement('button');
@@ -201,7 +218,11 @@ export class AudioRatingWidget {
       progressColor: this.progressColor,
       height: this.CANVAS_HEIGHT,
       scrollParent: this.scrollParent,
+      // keep default minPxPerSec (used for zoom) if any
     });
+
+    // Store default minPxPerSec for reset purposes
+    this._defaultMinPxPerSec = this.wavesurfer.params?.minPxPerSec ?? null;
 
     // Volume control
     if (this.with_volume_slider) {
@@ -218,6 +239,14 @@ export class AudioRatingWidget {
     if (!this.audioUrl) throw new Error('AudioRatingWidget: audioUrl is required');
     this.wavesurfer.load(this.audioUrl);
 
+    // Keep track of visible window: wavesurfer v7 emits 'scroll' with (visibleStartTime, visibleEndTime, scrollLeft, scrollRight)
+    this.wavesurfer.on('scroll', (visibleStartTime, visibleEndTime) => {
+      // visibleStartTime and visibleEndTime are in seconds (per docs)
+      this.visibleStart = (typeof visibleStartTime === 'number') ? visibleStartTime : 0;
+      this.visibleEnd = (typeof visibleEndTime === 'number') ? visibleEndTime : this._durationOrOne();
+      this._drawAll();
+    });
+
     this.wavesurfer.on('ready', () => {
         const duration = this.wavesurfer.getDuration();
         for (const dim in this.dimensionData) {
@@ -225,11 +254,19 @@ export class AudioRatingWidget {
             if (s.end > duration) s.end = duration;
             });
         }
+
+        // At ready, visible window should be full duration unless zoom changes it
+        this.visibleStart = 0;
+        this.visibleEnd = duration || this._durationOrOne();
+
         this._resizeOverlay();
         this._updateStatus(); // Update status immediately when ready
         this.wavesurfer.isReady = true;
         this._startRenderLoop();
         this.timeSlider.max = duration;
+
+        // Ensure default px/sec captured after decode/draw
+        this._defaultMinPxPerSec = this.wavesurfer.params?.minPxPerSec ?? this._defaultMinPxPerSec;
     });
 
     this.wavesurfer.on('finish', () => {
@@ -243,6 +280,14 @@ export class AudioRatingWidget {
     // Update current time during playback
     this.wavesurfer.on('timeupdate', () => {
       this._updateStatus();
+    });
+
+    // Keep UI when zoom changes
+    this.wavesurfer.on('zoom', (minPxPerSec) => {
+      // update our cached current px/sec
+      this._currentPxPerSec = (minPxPerSec || null);
+      // wavesurfer will usually emit a 'scroll' event after zooming; ensure we redraw
+      this._drawAll();
     });
   }
 
@@ -298,6 +343,11 @@ export class AudioRatingWidget {
       });
     });
 
+    // Zoom buttons
+    this.zoomInBtn.addEventListener('click', () => this._zoomIn());
+    this.zoomOutBtn.addEventListener('click', () => this._zoomOut());
+    this.zoomResetBtn.addEventListener('click', () => this._resetZoom());
+
     // Overlay pointer interactions
     this.overlay.addEventListener('pointerdown', (ev) => this._onPointerDown(ev));
     this.overlay.addEventListener('pointermove', (ev) => this._onPointerMove(ev));
@@ -332,11 +382,25 @@ export class AudioRatingWidget {
     const d = this.wavesurfer.getDuration();
     return (d && isFinite(d)) ? d : 1;
   }
+
+  /* ZOOM: time <-> x mapping now uses the current visible start/end window (in seconds).
+     This ensures segments (which store absolute seconds) remain correct when zoomed or scrolled. */
+
   _timeToX(time) {
-    return Math.max(0, Math.min(this.overlay.width, (time / this._durationOrOne()) * this.overlay.width));
+    // If visible span is not set, fall back to full duration
+    const vs = (typeof this.visibleStart === 'number') ? this.visibleStart : 0;
+    const ve = (typeof this.visibleEnd === 'number' && this.visibleEnd > vs) ? this.visibleEnd : this._durationOrOne();
+    const span = Math.max(1e-6, ve - vs);
+    const rel = (time - vs) / span;
+    return Math.max(0, Math.min(this.overlay.width, rel * this.overlay.width));
   }
+
   _xToTime(x) {
-    return Math.max(0, Math.min(this._durationOrOne(), (x / this.overlay.width) * this._durationOrOne()));
+    const vs = (typeof this.visibleStart === 'number') ? this.visibleStart : 0;
+    const ve = (typeof this.visibleEnd === 'number' && this.visibleEnd > vs) ? this.visibleEnd : this._durationOrOne();
+    const span = Math.max(1e-6, ve - vs);
+    const rel = Math.max(0, Math.min(1, x / this.overlay.width));
+    return vs + rel * span;
   }
 
   _findSegmentIndexAtTime(time) {
@@ -537,6 +601,7 @@ export class AudioRatingWidget {
   // ===== Helpers =====
 
   _seekToTime(t) {
+    // wavesurfer.seekTo expects a percentage of the total duration
     this.wavesurfer.seekTo(t / this._durationOrOne());
   }
 
@@ -554,6 +619,46 @@ export class AudioRatingWidget {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  }
+
+  // ===== ZOOM methods =====
+
+  _zoomIn() {
+    if (!this.wavesurfer?.zoom) return;
+    // compute next px/sec
+    const base = this._currentPxPerSec || this._defaultMinPxPerSec || 100;
+    const next = base * this._zoomFactor;
+    this._currentPxPerSec = next;
+    this.wavesurfer.zoom(next);
+    // wavesurfer will emit 'zoom' and likely 'scroll' after redraw
+  }
+
+  _zoomOut() {
+    if (!this.wavesurfer?.zoom) return;
+    if (!this._currentPxPerSec) {
+      // already at default/unzoomed
+      return;
+    }
+    const next = this._currentPxPerSec / this._zoomFactor;
+    // if next is close to default, reset instead (to keep behavior consistent)
+    const threshold = (this._defaultMinPxPerSec || 0) * 1.05;
+    if (this._defaultMinPxPerSec && next <= threshold) {
+      this._resetZoom();
+      return;
+    }
+    this._currentPxPerSec = next;
+    this.wavesurfer.zoom(next);
+  }
+
+  _resetZoom() {
+    if (!this.wavesurfer?.zoom) return;
+    // Passing a falsy value resets zoom per wavesurfer API.
+    this._currentPxPerSec = null;
+    this.wavesurfer.zoom(null);
+    // Reset visible window to full duration to sync overlay mapping
+    this.visibleStart = 0;
+    this.visibleEnd = this._durationOrOne();
+    this._drawAll();
   }
 
   // ===== Public API =====
@@ -582,4 +687,3 @@ export class AudioRatingWidget {
   }
 }
 // End of audio-rating.js
-
