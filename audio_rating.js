@@ -387,21 +387,38 @@ export class AudioRatingWidget {
      This ensures segments (which store absolute seconds) remain correct when zoomed or scrolled. */
 
   _timeToX(time) {
-    // If visible span is not set, fall back to full duration
-    const vs = (typeof this.visibleStart === 'number') ? this.visibleStart : 0;
-    const ve = (typeof this.visibleEnd === 'number' && this.visibleEnd > vs) ? this.visibleEnd : this._durationOrOne();
-    const span = Math.max(1e-6, ve - vs);
-    const rel = (time - vs) / span;
-    return Math.max(0, Math.min(this.overlay.width, rel * this.overlay.width));
-  }
+  if (!this.wavesurfer) return 0;
 
-  _xToTime(x) {
-    const vs = (typeof this.visibleStart === 'number') ? this.visibleStart : 0;
-    const ve = (typeof this.visibleEnd === 'number' && this.visibleEnd > vs) ? this.visibleEnd : this._durationOrOne();
-    const span = Math.max(1e-6, ve - vs);
-    const rel = Math.max(0, Math.min(1, x / this.overlay.width));
-    return vs + rel * span;
-  }
+  const duration = this._durationOrOne();
+  const wrapper = this.wavesurfer.getWrapper();
+  const scroll = wrapper.scrollLeft;
+  const visibleWidth = wrapper.clientWidth;
+  const totalWidth = wrapper.scrollWidth;
+
+  // Convert time to global pixel position across full waveform
+  const globalX = (time / duration) * totalWidth;
+
+  // Translate into viewport coordinates
+  const x = globalX - scroll;
+
+  return x;
+}
+
+_xToTime(x) {
+  if (!this.wavesurfer) return 0;
+
+  const duration = this._durationOrOne();
+  const wrapper = this.wavesurfer.getWrapper();
+  const scroll = wrapper.scrollLeft;
+  const visibleWidth = wrapper.clientWidth;
+  const totalWidth = wrapper.scrollWidth;
+
+  const globalX = x + scroll;
+  const time = (globalX / totalWidth) * duration;
+
+  return time;
+}
+
 
   _findSegmentIndexAtTime(time) {
     for (let i = 0; i < this.segments.length; i++) {
