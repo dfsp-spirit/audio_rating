@@ -107,48 +107,27 @@ export class AudioRatingWidget {
 
     // Conditionally show instructions based on with_instructions
     const titleHtml = "<div class='arw-title'>" + this.title + "</div>";
-    const instructionsHtml = this.with_instructions ? `
-        ${titleHtml}
-      <div class="arw-info">
-        <span class="arw-dimensions-manual">Select the dimension to rate:</span>
-      </div>
+    const instructionsHtml = `
+    ${titleHtml}
+    ${this.with_instructions ? '<div class="arw-info"><span class="arw-dimensions-manual">Select the dimension to rate:</span></div>' : ''}
 
-      <div class="arw-dimension-buttons"></div>
+    <div class="arw-dimension-buttons"></div>
 
-      <div class="arw-info">
-        <span class="arw-ratings-manual">Rating Controls: Please split the audio into segments and rate each segment. Double-click on the waveform to split a segment. Drag inside a segment vertically to change its rating. Drag segment boundaries horizontally to move them. Right-click a segment boundary to delete it.</span>
-      </div>
+    ${this.with_instructions ? '<div class="arw-info"><span class="arw-ratings-manual">Rating Controls: Please split the audio into segments and rate each segment. Double-click on the waveform to split a segment. Drag inside a segment vertically to change its rating. Drag segment boundaries horizontally to move them. Right-click a segment boundary to delete it.</span></div>' : ''}
 
-      <div class="arw-container">
+    <div class="arw-container">
         <div class="arw-waveform"></div>
         <canvas class="arw-overlay"></canvas>
-      </div>
+    </div>
 
-      <div class="arw-controls">
+    <div class="arw-controls">
         <label>Step levels: <strong class="arw-steps-label"></strong></label>
         <div class="arw-legend"></div>
         <button class="arw-export">Download CSV</button>
-      </div>
+    </div>
 
-      <div class="arw-info">
-        <span class="arw-audio-manual">Audio Controls: Click the buttons below or press the space key to toggle Play/Pause. Click or drag the slider below to seek.</span>
-      </div>
-    ` : `
-        ${titleHtml}
-      <div class="arw-dimension-buttons"></div>
-
-      <div class="arw-container">
-        <div class="arw-waveform"></div>
-        <canvas class="arw-overlay"></canvas>
-      </div>
-
-      <div class="arw-controls">
-        <label>Step levels: <strong class="arw-steps-label"></strong></label>
-        <div class="arw-legend"></div>
-        <button class="arw-export">Download CSV</button>
-      </div>
-    `;
-
+    ${this.with_instructions ? '<div class="arw-info"><span class="arw-audio-manual">Audio Controls: Click the buttons below or press the space key to toggle Play/Pause. Click or drag the slider below to seek.</span></div>' : ''}
+`;
     root.innerHTML = instructionsHtml + `
       <div class="arw-slider">
         <input type="range" class="arw-time-slider" min="0" max="1" step="0.001" value="0">
