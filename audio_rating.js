@@ -41,7 +41,9 @@ export class AudioRatingWidget {
     this.scrollParent = scrollParent;
     this.with_instructions = with_instructions;
     this.with_volume_slider = with_volume_slider;
-    this.title = title;
+    this.title = title + " !111";
+
+    console.log('constructor with_volume_slider:', this.with_volume_slider); // ADD THIS
 
     // State
     this.dimensionData = {};
@@ -104,13 +106,17 @@ export class AudioRatingWidget {
     // Build widget structure inside container
     this.container.classList.add('arw-host');
 
+    console.log('buildDOM with_volume_slider:', this.with_volume_slider); // ADD THIS
+
     const root = document.createElement('div');
     root.className = 'arw';
     root.tabIndex = 0; // allow focus for spacebar handling
 
     // Conditionally show instructions based on with_instructions
     const titleHtml = "<div class='arw-title'>" + this.title + "</div>";
-    const instructionsHtml = `
+
+    // Create the main HTML structure in one go
+    root.innerHTML = `
     ${titleHtml}
     ${this.with_instructions ? '<div class="arw-info"><span class="arw-dimensions-manual">Select the dimension to rate:</span></div>' : ''}
 
@@ -127,30 +133,30 @@ export class AudioRatingWidget {
         <label>Step levels: <strong class="arw-steps-label"></strong></label>
         <div class="arw-legend"></div>
         ${this.with_volume_slider ? `
-    <div class="arw-volume-control">
-        <label>Volume: </label>
-        <input type="range" class="arw-volume-slider" min="0" max="1" step="0.01" value="1">
-    </div>
-    ` : ''}
+        <div class="arw-volume-control">
+            <label>Volume: </label>
+            <input type="range" class="arw-volume-slider" min="0" max="1" step="0.01" value="1">
+        </div>
+        ` : ''}
         <button class="arw-export">Download CSV</button>
     </div>
 
     ${this.with_instructions ? '<div class="arw-info"><span class="arw-audio-manual">Audio Controls: Click the buttons below or press the space key to toggle Play/Pause. Click or drag the slider below to seek.</span></div>' : ''}
-`;
-    root.innerHTML = instructionsHtml + `
-      <div class="arw-slider">
-        <input type="range" class="arw-time-slider" min="0" max="1" step="0.001" value="0">
-      </div>
 
-      <div class="arw-audio-controls">
+    <div class="arw-slider">
+        <input type="range" class="arw-time-slider" min="0" max="1" step="0.001" value="0">
+    </div>
+
+    <div class="arw-audio-controls">
         <button class="arw-play">Play</button>
         <button class="arw-stop">Stop</button>
-      </div>
+    </div>
 
-      <div class="arw-info">
+    <div class="arw-info">
         <span class="arw-status">Loading...</span>
-      </div>
+    </div>
     `;
+
     this.container.appendChild(root);
 
     // Refs
@@ -174,7 +180,8 @@ export class AudioRatingWidget {
       b.dataset.dim = name;
       this.dimButtonsWrap.appendChild(b);
     }
-  }
+}
+
 
   _initData() {
     const segmentsDefault = (num_values) => [{
