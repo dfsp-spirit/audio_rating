@@ -107,6 +107,8 @@
   color: #444;
 }
 
+/* volume controls */
+
 .arw-volume-control {
     margin: 10px 0;
     display: flex;
@@ -139,4 +141,25 @@
     background: #4a5568;
     cursor: pointer;
     border: none;
+}
+
+/* zoom controls */
+
+.arw-zoom-controls {
+    display: flex;
+    gap: 5px;
+    margin: 10px 0;
+}
+
+.arw-zoom-controls button {
+    padding: 4px 8px;
+    font-size: 12px;
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.arw-zoom-controls button:hover {
+    background: #e0e0e0;
 }
