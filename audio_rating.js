@@ -24,7 +24,8 @@ export class AudioRatingWidget {
     waveColor = '#bfc8d6',
     progressColor = '#6b46c1',
     scrollParent = true,
-    with_instructions = true, // New constructor argument
+    with_instructions = true, // whether to show instructions
+    with_volume_slider = true, // whether to show volume slider
     title = "Please rate this song", // Title for widget, displayed at top.
   } = {}) {
     this.container = (typeof container === 'string')
@@ -38,8 +39,9 @@ export class AudioRatingWidget {
     this.waveColor = waveColor;
     this.progressColor = progressColor;
     this.scrollParent = scrollParent;
-    this.with_instructions = with_instructions; // Store the new option
-    this.title = title; // Store the new option
+    this.with_instructions = with_instructions;
+    this.with_volume_slider = with_volume_slider;
+    this.title = title;
 
     // State
     this.dimensionData = {};
@@ -67,6 +69,7 @@ export class AudioRatingWidget {
     this.stopBtn = null;
     this.statusEl = null;
     this.timeSlider = null;
+
 
     // WaveSurfer instance
     this.wavesurfer = null;
@@ -123,6 +126,12 @@ export class AudioRatingWidget {
     <div class="arw-controls">
         <label>Step levels: <strong class="arw-steps-label"></strong></label>
         <div class="arw-legend"></div>
+        ${this.with_volume_slider ? `
+    <div class="arw-volume-control">
+        <label>Volume: </label>
+        <input type="range" class="arw-volume-slider" min="0" max="1" step="0.01" value="1">
+    </div>
+    ` : ''}
         <button class="arw-export">Download CSV</button>
     </div>
 
@@ -190,6 +199,18 @@ export class AudioRatingWidget {
       height: this.CANVAS_HEIGHT,
       scrollParent: this.scrollParent,
     });
+
+    // Volume control
+    if (this.with_volume_slider) {
+        const volumeSlider = this.root.querySelector('.arw-volume-slider');
+        volumeSlider.addEventListener('input', (e) => {
+            const volume = parseFloat(e.target.value);
+            this.wavesurfer.setVolume(volume);
+        });
+
+        // Set initial volume
+        this.wavesurfer.setVolume(1);
+    }
 
     if (!this.audioUrl) throw new Error('AudioRatingWidget: audioUrl is required');
     this.wavesurfer.load(this.audioUrl);

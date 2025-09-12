@@ -106,3 +106,37 @@
   font-size: 13px;
   color: #444;
 }
+
+.arw-volume-control {
+    margin: 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.arw-volume-slider {
+    width: 100px;
+    height: 5px;
+    -webkit-appearance: none;
+    background: #ddd;
+    border-radius: 5px;
+    outline: none;
+}
+
+.arw-volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: #4a5568;
+    cursor: pointer;
+}
+
+.arw-volume-slider::-moz-range-thumb {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: #4a5568;
+    cursor: pointer;
+    border: none;
+}
