@@ -110,9 +110,26 @@
             background-color: #007bff;
             width: auto;
             margin-top: 10px;
+            margin-right: 10px;
         }
         .copy-btn:hover {
             background-color: #0056b3;
+        }
+        .invite-link {
+            display: block;
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #e7f3ff;
+            border-radius: 5px;
+            border: 1px solid #b3d9ff;
+        }
+        .invite-link a {
+            color: #0066cc;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .invite-link a:hover {
+            text-decoration: underline;
         }
         .success-message {
             color: #28a745;
@@ -137,7 +154,13 @@
             <strong>Your unique ID:</strong>
             <div class="user-id" id="userIdDisplay"></div>
             <button class="copy-btn" onclick="copyToClipboard()">Copy ID to Clipboard</button>
+            <button class="copy-btn" onclick="copyLinkToClipboard()">Copy Link to Clipboard</button>
             <div id="copySuccess" class="success-message">✓ Copied to clipboard!</div>
+
+            <div class="invite-link">
+                <strong>Quick access link:</strong><br>
+                <a id="inviteLink" href="#" target="_blank">Click here to go to the audio rating page with your ID</a>
+            </div>
         </div>
 
         <div class="instructions">
@@ -163,19 +186,28 @@
         function generateId() {
             const email = document.getElementById('emailInput').value.trim();
 
+            // Basic email validation
+            if (!isValidEmail(email)) {
+                alert('Please enter a valid email address (format: name@domain.com)');
+                return;
+            }
+
             // Generate the unique ID
             const userId = generateCustomId(email);
 
             // Display the result
             document.getElementById('userIdDisplay').textContent = userId;
+
+            // Create and display the invitation link
+            const inviteLink = `../index.html?uid=${encodeURIComponent(userId)}`;
+            const inviteLinkElement = document.getElementById('inviteLink');
+            inviteLinkElement.href = inviteLink;
+            inviteLinkElement.textContent = 'Submit your audio ratings using this link';
+
             document.getElementById('result').classList.add('show');
             document.getElementById('copySuccess').style.display = 'none';
         }
 
-        //* Basic email validation function
-        // * @param {string} email - The email address to validate
-        // * @returns {boolean} - True if valid, false otherwise
-        // */
         function isValidEmail(email) {
             const normalized = email.toLowerCase().trim();
 
@@ -199,15 +231,8 @@
             return tld.length >= 2;
         }
 
-
         function generateCustomId(email) {
             const normalizedEmail = email.toLowerCase().trim();
-
-            // Basic email validation
-            if (!isValidEmail(email)) {
-                alert('Please enter a valid email address (format: name@domain.com)');
-                return;
-            }
 
             // Create two different hashes for more entropy
             let hash1 = 0, hash2 = 0;
@@ -246,13 +271,21 @@
             return result;
         }
 
-
         function copyToClipboard() {
             const userId = document.getElementById('userIdDisplay').textContent;
+            copyTextToClipboard(userId, 'ID');
+        }
 
+        function copyLinkToClipboard() {
+            const inviteLink = document.getElementById('inviteLink').href;
+            copyTextToClipboard(inviteLink, 'link');
+        }
+
+        function copyTextToClipboard(text, type) {
             // Use the modern Clipboard API
-            navigator.clipboard.writeText(userId).then(() => {
+            navigator.clipboard.writeText(text).then(() => {
                 const successElement = document.getElementById('copySuccess');
+                successElement.textContent = `✓ ${type === 'link' ? 'Link' : 'ID'} copied to clipboard!`;
                 successElement.style.display = 'block';
 
                 // Hide success message after 3 seconds
@@ -262,15 +295,15 @@
             }).catch(err => {
                 // Fallback for older browsers
                 const textArea = document.createElement('textarea');
-                textArea.value = userId;
+                textArea.value = text;
                 document.body.appendChild(textArea);
                 textArea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textArea);
 
                 const successElement = document.getElementById('copySuccess');
+                successElement.textContent = `✓ ${type === 'link' ? 'Link' : 'ID'} copied to clipboard!`;
                 successElement.style.display = 'block';
-                successElement.textContent = '✓ Copied to clipboard!';
 
                 setTimeout(() => {
                     successElement.style.display = 'none';
