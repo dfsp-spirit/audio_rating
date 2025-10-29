@@ -637,47 +637,63 @@ _xToTime(x) {
   // ===== ZOOM methods =====
 
   _zoomIn() {
-    if (!this.wavesurfer?.zoom) return;
-    // compute next px/sec
-    const base = this._currentPxPerSec || this._defaultMinPxPerSec || 100;
-    const next = base * this._zoomFactor;
-    this._currentPxPerSec = next;
-    this.wavesurfer.zoom(next);
-    // wavesurfer will emit 'zoom' and likely 'scroll' after redraw
-      setTimeout(() => this._resizeOverlay(), 50);
-  }
+  if (!this.wavesurfer?.zoom) return;
+
+  // Re-enable zoom out button when zooming in
+  this.zoomOutBtn.disabled = false;
+
+  // compute next px/sec
+  const base = this._currentPxPerSec || this._defaultMinPxPerSec || 100;
+  const next = base * this._zoomFactor;
+  this._currentPxPerSec = next;
+  this.wavesurfer.zoom(next);
+  setTimeout(() => this._resizeOverlay(), 50);
+}
 
   _zoomOut() {
     if (!this.wavesurfer?.zoom) return;
-    if (!this._currentPxPerSec) {
-      // already at default/unzoomed
+
+    // Get current zoom level and default
+    const currentZoom = this._currentPxPerSec || this._defaultMinPxPerSec || 100;
+    const defaultZoom = this._defaultMinPxPerSec || 100;
+
+    // Calculate what the next zoom level would be
+    const nextZoom = currentZoom / this._zoomFactor;
+
+    // If we're already at or below default zoom, or the next zoom would be too small, don't zoom
+    // Add a small threshold to account for floating point precision
+    if (currentZoom <= defaultZoom * 1.05) {
+      // Already at minimum zoom - disable button visually and do nothing
+      this.zoomOutBtn.disabled = true;
       return;
     }
-    const next = this._currentPxPerSec / this._zoomFactor;
-    // if next is close to default, reset instead (to keep behavior consistent)
-    const threshold = (this._defaultMinPxPerSec || 0) * 1.05;
-    if (this._defaultMinPxPerSec && next <= threshold) {
+
+    // If next zoom would be close to or below default, reset to default instead
+    if (nextZoom <= defaultZoom * 1.05) {
       this._resetZoom();
       return;
     }
-    this._currentPxPerSec = next;
-    this.wavesurfer.zoom(next);
+
+    this._currentPxPerSec = nextZoom;
+    this.wavesurfer.zoom(nextZoom);
     setTimeout(() => this._resizeOverlay(), 50);
   }
 
   _resetZoom() {
-    if (!this.wavesurfer?.zoom) return;
-    // Passing a falsy value resets zoom per wavesurfer API.
-    this._currentPxPerSec = null;
-    this.wavesurfer.zoom(null);
-    // Reset visible window to full duration to sync overlay mapping
-    this.visibleStart = 0;
-    this.visibleEnd = this._durationOrOne();
-    this._drawAll();
-    setTimeout(() => this._resizeOverlay(), 50);
-  }
+  if (!this.wavesurfer?.zoom) return;
 
-  // ===== Public API =====
+  // Reset zoom out button to enabled state
+  this.zoomOutBtn.disabled = false;
+
+  // Passing a falsy value resets zoom per wavesurfer API.
+  this._currentPxPerSec = null;
+  this.wavesurfer.zoom(null);
+  // Reset visible window to full duration to sync overlay mapping
+  this.visibleStart = 0;
+  this.visibleEnd = this._durationOrOne();
+  this._drawAll();
+  setTimeout(() => this._resizeOverlay(), 50);
+}  // ===== Public API =====
 
   getData() {
     return JSON.parse(JSON.stringify(this.dimensionData));

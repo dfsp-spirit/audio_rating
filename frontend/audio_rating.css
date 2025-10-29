@@ -172,3 +172,8 @@
 .arw .arw-waveform .progress {
   display: none !important;
 }
+
+.arw-zoom-out:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
