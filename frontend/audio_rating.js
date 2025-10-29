@@ -209,6 +209,16 @@ export class AudioRatingWidget {
     this.segments = this.dimensionData[this.currentDimension];
   }
 
+  _updateZoomButtonStates() {
+    if (!this.wavesurfer) return;
+
+    const currentZoom = this._currentPxPerSec || this._defaultMinPxPerSec || 100;
+    const defaultZoom = this._defaultMinPxPerSec || 100;
+
+    // Disable zoom out if we're at or below default zoom level
+    this.zoomOutBtn.disabled = (currentZoom <= defaultZoom * 1.05);
+  }
+
   async _initWaveSurfer() {
     const WaveSurfer = AudioRatingWidget._WaveSurfer;
 
@@ -267,6 +277,7 @@ export class AudioRatingWidget {
 
         // Ensure default px/sec captured after decode/draw
         this._defaultMinPxPerSec = this.wavesurfer.params?.minPxPerSec ?? this._defaultMinPxPerSec;
+        this._updateZoomButtonStates();
     });
 
     this.wavesurfer.on('finish', () => {
@@ -288,6 +299,7 @@ export class AudioRatingWidget {
       this._currentPxPerSec = (minPxPerSec || null);
       // wavesurfer will usually emit a 'scroll' event after zooming; ensure we redraw
       this._drawAll();
+      this._updateZoomButtonStates();
     });
   }
 
@@ -647,6 +659,7 @@ _xToTime(x) {
   const next = base * this._zoomFactor;
   this._currentPxPerSec = next;
   this.wavesurfer.zoom(next);
+  this._updateZoomButtonStates();
   setTimeout(() => this._resizeOverlay(), 50);
 }
 
@@ -676,6 +689,7 @@ _xToTime(x) {
 
     this._currentPxPerSec = nextZoom;
     this.wavesurfer.zoom(nextZoom);
+    this._updateZoomButtonStates();
     setTimeout(() => this._resizeOverlay(), 50);
   }
 
@@ -692,6 +706,7 @@ _xToTime(x) {
   this.visibleStart = 0;
   this.visibleEnd = this._durationOrOne();
   this._drawAll();
+  this._updateZoomButtonStates();
   setTimeout(() => this._resizeOverlay(), 50);
 }  // ===== Public API =====
 
