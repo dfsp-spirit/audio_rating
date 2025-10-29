@@ -359,14 +359,25 @@ export class AudioRatingWidget {
   // ===== Drawing & layout =====
 
   _resizeOverlay() {
-    const rect = this.waveformEl.getBoundingClientRect();
-    this.overlay.width = Math.max(100, rect.width);
-    this.overlay.height = this.CANVAS_HEIGHT;
-    this.overlay.style.width = `${rect.width}px`;
-    this.overlay.style.height = `${this.CANVAS_HEIGHT}px`;
-    this._drawAll();
-  }
+  const rect = this.waveformEl.getBoundingClientRect();
 
+  // devicePixelRatio handling to keep canvas coordinates aligned with CSS pixels
+  const dpr = window.devicePixelRatio || 1;
+
+  // set CSS size
+  this.overlay.style.width = `${Math.max(100, rect.width)}px`;
+  this.overlay.style.height = `${this.CANVAS_HEIGHT}px`;
+
+  // set internal pixel size scaled by devicePixelRatio
+  this.overlay.width = Math.max(100, Math.round(rect.width * dpr));
+  this.overlay.height = Math.round(this.CANVAS_HEIGHT * dpr);
+
+  // scale drawing so 1 unit in canvas drawing = 1 CSS pixel
+  this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // redraw
+  this._drawAll();
+}
   _startRenderLoop() {
     if (this.renderLoop) cancelAnimationFrame(this.renderLoop);
     const loop = () => { this._drawAll(); this.renderLoop = requestAnimationFrame(loop); };
@@ -386,22 +397,16 @@ export class AudioRatingWidget {
   /* ZOOM: time <-> x mapping now uses the current visible start/end window (in seconds).
      This ensures segments (which store absolute seconds) remain correct when zoomed or scrolled. */
 
-  _timeToX(time) {
+     _timeToX(time) {
   if (!this.wavesurfer) return 0;
-
   const duration = this._durationOrOne();
   const wrapper = this.wavesurfer.getWrapper();
-  const scroll = wrapper.scrollLeft;
-  const visibleWidth = wrapper.clientWidth;
-  const totalWidth = wrapper.scrollWidth;
-
-  // Convert time to global pixel position across full waveform
+  const scroll = wrapper.scrollLeft || 0;
+  const totalWidth = wrapper.scrollWidth || wrapper.clientWidth || this.overlay.width;
   const globalX = (time / duration) * totalWidth;
-
-  // Translate into viewport coordinates
   const x = globalX - scroll;
-
-  return x;
+  // clamp in case of small floating point drift or transient values
+  return Math.max(-10000, Math.min(10000, x));
 }
 
 _xToTime(x) {
@@ -493,18 +498,16 @@ _xToTime(x) {
       }
     });
 
-    // playback cursor
     if (this.wavesurfer?.isReady) {
       const t = this.wavesurfer.getCurrentTime();
       const x = this._timeToX(t);
       ctx.beginPath();
       ctx.moveTo(x + 0.5, 0);
       ctx.lineTo(x + 0.5, h);
-      ctx.strokeStyle = 'rgba(255,0,0,0.8)';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(255,0,0,0.9)'; // strong red
+      ctx.lineWidth = 1;
       ctx.stroke();
     }
-
     // update slider
     if (this.wavesurfer) this.timeSlider.value = this.wavesurfer.getCurrentTime();
   }

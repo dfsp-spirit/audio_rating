@@ -163,3 +163,12 @@
 .arw-zoom-controls button:hover {
     background: #e0e0e0;
 }
+
+/* === Fix for unwanted WaveSurfer cursor / progress line === */
+.arw .arw-waveform .ws-cursor,
+.arw .arw-waveform .wavesurfer-cursor,
+.arw .arw-waveform .wave-cursor,
+.arw .arw-waveform .cursor,
+.arw .arw-waveform .progress {
+  display: none !important;
+}
