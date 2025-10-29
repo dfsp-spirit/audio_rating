@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Audio Rating ID</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 90%; /* Fluid width */
+            max-width: 900px; /* But never too wide */
+            margin: 0 auto;
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                width: 95%;
+                padding: 20px;
+            }
+        }
+
+        /* Prevent excessive width on huge screens */
+        @media (min-width: 1400px) {
+            .container {
+                max-width: 1000px;
+            }
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="email"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input[type="email"]:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+            display: none;
+        }
+        .result.show {
+            display: block;
+        }
+        .user-id {
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        .instructions {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .copy-btn {
+            background-color: #007bff;
+            width: auto;
+            margin-top: 10px;
+        }
+        .copy-btn:hover {
+            background-color: #0056b3;
+        }
+        .success-message {
+            color: #28a745;
+            font-weight: bold;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Generate Your Unique Audio Rating ID</h1>
+
+        <div class="input-group">
+            <label for="emailInput">Enter your email address:</label>
+            <input type="email" id="emailInput" placeholder="your.email@example.com">
+        </div>
+
+        <button onclick="generateId()">Generate My Unique ID</button>
+
+        <div id="result" class="result">
+            <strong>Your unique ID:</strong>
+            <div class="user-id" id="userIdDisplay"></div>
+            <button class="copy-btn" onclick="copyToClipboard()">Copy ID to Clipboard</button>
+            <div id="copySuccess" class="success-message">✓ Copied to clipboard!</div>
+        </div>
+
+        <div class="instructions">
+            <h3>How it works:</h3>
+            <ul>
+                <li>Enter your email address to generate a unique 20-character ID</li>
+                <li>This ID will always be the same for your email address</li>
+                <li>Save this ID - you'll need it to access your content</li>
+                <li>If you forget your ID, just come back and enter your email again</li>
+            </ul>
+            <h3>Data Privacy Information:</h3>
+            <ul>
+                <li><strong>Local generation:</strong> The ID is generated in your browser, not on our servers</li>
+                <li><strong>One-way process:</strong> Your email is converted using a mathematical function that cannot be reversed - it's impossible to recover your email from the ID</li>
+                <li><strong>No email storage:</strong> Your email is never sent to or stored on our servers</li>
+                <li><strong>ID transmission:</strong> Only the generated ID (not your email) is sent to our server when you submit this form or an audio rating</li>
+                <li><strong>Purpose:</strong> The unique ID allows us to limit audio rating submissions to users who generated an ID through this password-protected page</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function generateId() {
+            const email = document.getElementById('emailInput').value.trim();
+
+            // Generate the unique ID
+            const userId = generateCustomId(email);
+
+            // Display the result
+            document.getElementById('userIdDisplay').textContent = userId;
+            document.getElementById('result').classList.add('show');
+            document.getElementById('copySuccess').style.display = 'none';
+        }
+
+        //* Basic email validation function
+        // * @param {string} email - The email address to validate
+        // * @returns {boolean} - True if valid, false otherwise
+        // */
+        function isValidEmail(email) {
+            const normalized = email.toLowerCase().trim();
+
+            // Basic email pattern: something@something.something
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (!emailRegex.test(normalized)) {
+                return false;
+            }
+
+            // Additional check: domain should have at least 2 characters after last dot
+            const parts = normalized.split('@');
+            const domain = parts[1];
+            const domainParts = domain.split('.');
+
+            if (domainParts.length < 2) {
+                return false;
+            }
+
+            const tld = domainParts[domainParts.length - 1];
+            return tld.length >= 2;
+        }
+
+
+        function generateCustomId(email) {
+            const normalizedEmail = email.toLowerCase().trim();
+
+            // Basic email validation
+            if (!isValidEmail(email)) {
+                alert('Please enter a valid email address (format: name@domain.com)');
+                return;
+            }
+
+            // Create two different hashes for more entropy
+            let hash1 = 0, hash2 = 0;
+            for (let i = 0; i < normalizedEmail.length; i++) {
+                const char = normalizedEmail.charCodeAt(i);
+                hash1 = ((hash1 << 7) - hash1) + char;
+                hash2 = ((hash2 << 5) - hash2) + char;
+                hash1 = hash1 & hash1; // Convert to 32-bit integer
+                hash2 = hash2 & hash2; // Convert to 32-bit integer
+            }
+
+            // Combine hashes into a BigInt for more bits
+            const absHash1 = BigInt(Math.abs(hash1 >>> 0)); // Ensure unsigned
+            const absHash2 = BigInt(Math.abs(hash2 >>> 0)); // Ensure unsigned
+            const combined = (absHash1 << 32n) | absHash2;
+
+            // Base62 characters (a-zA-Z0-9)
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            let num = combined;
+
+            // Generate exactly 20 characters by building from left to right
+            for (let i = 0; i < 20; i++) {
+                const remainder = Number(num % 62n);
+                result = chars[remainder] + result; // Build from right to left
+                num = num / 62n;
+
+                // If we run out of bits before 20 chars, use the position as additional entropy
+                if (num === 0n && result.length < 20) {
+                    // Mix in the position and remaining hash bits
+                    const extraEntropy = (hash1 * (i + 1) + hash2) >>> 0;
+                    num = BigInt(extraEntropy);
+                }
+            }
+
+            return result;
+        }
+
+
+        function copyToClipboard() {
+            const userId = document.getElementById('userIdDisplay').textContent;
+
+            // Use the modern Clipboard API
+            navigator.clipboard.writeText(userId).then(() => {
+                const successElement = document.getElementById('copySuccess');
+                successElement.style.display = 'block';
+
+                // Hide success message after 3 seconds
+                setTimeout(() => {
+                    successElement.style.display = 'none';
+                }, 3000);
+            }).catch(err => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = userId;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+
+                const successElement = document.getElementById('copySuccess');
+                successElement.style.display = 'block';
+                successElement.textContent = '✓ Copied to clipboard!';
+
+                setTimeout(() => {
+                    successElement.style.display = 'none';
+                }, 3000);
+            });
+        }
+
+        // Allow generating ID by pressing Enter in the email field
+        document.getElementById('emailInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                generateId();
+            }
+        });
+
+        // Clear result when user starts typing a new email
+        document.getElementById('emailInput').addEventListener('input', function() {
+            document.getElementById('result').classList.remove('show');
+        });
+    </script>
+</body>
+</html>
