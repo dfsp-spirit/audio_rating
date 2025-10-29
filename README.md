@@ -28,17 +28,17 @@ It is intended to be used in psychological research on music perception and base
 You can [try audio_rating live here](https://dfsp-spirit.github.io/audio_rating/) on GitHub pages.
 
 
-## Running locally
+## Running the frontend locally
 
-All you need is to have Python installed. Then run the `run.bash` script, which will serve the root directory of this repo (the [index.html](./index.html) file and the demo.wav file) in Python's built-in web server on port 8000 on your computer. Then connect to [http://localhost:8000](http://localhost:8000).
+All you need is to have Python installed. Then, in the `frontend/` directory, either run the `run.bash` script or type `python -m http.server 8000`, which will serve the frontend in Python's built-in web server on port 8000 on your computer. Then connect to [http://localhost:8000](http://localhost:8000).
 
-If you don't have Python or don't like its web server, use any other web server instead.
+If you don't have Python or don't like its web server, use any other web server instead, e.g., nginx or apache2.
 
 ## Development Info regarding Caching
 
 Warning: Because the JS is in a different file, you may see outdated versions during development due to browser caching!
 
-Make sure to use devtools and on the `Networks` tab, set the tick at `Disable Cache`, or explicitely tell your browser to not cache when refreshing (e.g., press `CTRL` + `F5` instead of just `F5` under Linux/Firefox, but how to achieve this may differ by browser and OS).
+Make sure to use devtools and on the `Networks` tab, set the tick at `Disable Cache`, or explicitely tell your browser to not cache when refreshing (e.g., press `CTRL` + `F5` instead of just `F5` under Linux/Firefox, but how to achieve this may differ by browser and OS). Even better, use a web server with auto-refresh.
 
 
 ## Author, License and Dependencies
