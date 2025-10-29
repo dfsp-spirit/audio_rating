@@ -358,26 +358,24 @@ export class AudioRatingWidget {
 
   // ===== Drawing & layout =====
 
-  _resizeOverlay() {
+_resizeOverlay() {
   const rect = this.waveformEl.getBoundingClientRect();
-
-  // devicePixelRatio handling to keep canvas coordinates aligned with CSS pixels
   const dpr = window.devicePixelRatio || 1;
 
-  // set CSS size
-  this.overlay.style.width = `${Math.max(100, rect.width)}px`;
-  this.overlay.style.height = `${this.CANVAS_HEIGHT}px`;
+  // Adjust height to leave 16px at the bottom for scrollbar
+  const overlayHeight = this.CANVAS_HEIGHT - 16;
 
-  // set internal pixel size scaled by devicePixelRatio
-  this.overlay.width = Math.max(100, Math.round(rect.width * dpr));
-  this.overlay.height = Math.round(this.CANVAS_HEIGHT * dpr);
+  this.overlay.style.width  = `${Math.max(100, rect.width)}px`;
+  this.overlay.style.height = `${overlayHeight}px`;
 
-  // scale drawing so 1 unit in canvas drawing = 1 CSS pixel
+  this.overlay.width  = Math.max(100, Math.round(rect.width * dpr));
+  this.overlay.height = Math.round(overlayHeight * dpr);
+
   this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // redraw
   this._drawAll();
 }
+
   _startRenderLoop() {
     if (this.renderLoop) cancelAnimationFrame(this.renderLoop);
     const loop = () => { this._drawAll(); this.renderLoop = requestAnimationFrame(loop); };
@@ -458,9 +456,10 @@ _xToTime(x) {
 
   _drawAll() {
     const ctx = this.ctx;
-    const h = this.overlay.height;
-    const w = this.overlay.width;
+    const h = this.overlay.height / (window.devicePixelRatio || 1); // CSS pixels
+    const w = this.overlay.width / (window.devicePixelRatio || 1);
     const num_steps = this.dimensionDefinition[this.currentDimension].num_values;
+
 
     ctx.clearRect(0, 0, w, h);
 
@@ -477,9 +476,12 @@ _xToTime(x) {
       ctx.fillText(String(s), 6, Math.max(12, y - 4));
     }
 
+    const marginRight = 0;
+
     // segments
     this.segments.forEach((seg, idx) => {
-      const x1 = this._timeToX(seg.start), x2 = this._timeToX(seg.end);
+      const x1 = this._timeToX(seg.start);
+      const x2 = Math.min(this._timeToX(seg.end), w - marginRight);
       const heightFromTop = (1 - (seg.value / (num_steps - 1))) * h;
       const color = this._colorForRating(seg.value, num_steps);
       ctx.fillStyle = color;
@@ -642,6 +644,7 @@ _xToTime(x) {
     this._currentPxPerSec = next;
     this.wavesurfer.zoom(next);
     // wavesurfer will emit 'zoom' and likely 'scroll' after redraw
+      setTimeout(() => this._resizeOverlay(), 50);
   }
 
   _zoomOut() {
@@ -659,6 +662,7 @@ _xToTime(x) {
     }
     this._currentPxPerSec = next;
     this.wavesurfer.zoom(next);
+    setTimeout(() => this._resizeOverlay(), 50);
   }
 
   _resetZoom() {
@@ -670,6 +674,7 @@ _xToTime(x) {
     this.visibleStart = 0;
     this.visibleEnd = this._durationOrOne();
     this._drawAll();
+    setTimeout(() => this._resizeOverlay(), 50);
   }
 
   // ===== Public API =====
