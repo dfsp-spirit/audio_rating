@@ -142,7 +142,7 @@ export class AudioRatingWidget {
     <div class="arw-zoom-controls">
         <button class="arw-zoom-in" type="button">Zoom +</button>
         <button class="arw-zoom-out" type="button">Zoom −</button>
-        <button class="arw-zoom-reset" type="button">Reset</button>
+        <button class="arw-zoom-reset" type="button">Reset Zoom</button>
     </div>
 
     <div class="arw-slider">
