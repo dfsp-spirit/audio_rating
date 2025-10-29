@@ -498,16 +498,7 @@ _xToTime(x) {
       }
     });
 
-    if (this.wavesurfer?.isReady) {
-      const t = this.wavesurfer.getCurrentTime();
-      const x = this._timeToX(t);
-      ctx.beginPath();
-      ctx.moveTo(x + 0.5, 0);
-      ctx.lineTo(x + 0.5, h);
-      ctx.strokeStyle = 'rgba(255,0,0,0.9)'; // strong red
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
+
     // update slider
     if (this.wavesurfer) this.timeSlider.value = this.wavesurfer.getCurrentTime();
   }
