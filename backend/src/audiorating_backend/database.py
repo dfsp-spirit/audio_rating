@@ -1,7 +1,7 @@
 # database.py
 from sqlmodel import SQLModel, create_engine, Session, select
 from typing import Generator
-from .models import Study, StudyEntryName
+from .models import Study, Song
 
 from .settings import settings
 engine = create_engine(settings.database_url)
@@ -26,12 +26,13 @@ def create_db_and_tables():
             session.refresh(default_study)
 
             # Create single entry name for default study
-            default_entry = StudyEntryName(
+            default_song = Song(
                 study_id=default_study.id,
-                entry_index=0,
-                entry_name="default"
+                song_index=0,
+                song_name="default",
+                song_url="demo.wav"
             )
-            session.add(default_entry)
+            session.add(default_song)
             session.commit()
 
 def get_session() -> Generator[Session, None, None]:
