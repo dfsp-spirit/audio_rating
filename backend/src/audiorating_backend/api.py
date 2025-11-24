@@ -198,7 +198,7 @@ async def submit_rating(
 
         # Get study or throw error if not found
         study = session.exec(
-            select(Study).where(Study.study_name == metadata.study.name_short)
+            select(Study).where(Study.name_short == metadata.study.name_short)
         ).first()
 
         if not study:
@@ -209,7 +209,7 @@ async def submit_rating(
 
         # Get song or throw error if not found
         song = session.exec(
-            select(Song).where(Song.song_url == metadata.study.song_url)
+            select(Song).where(Song.media_url == metadata.study.song_url)
         ).first()
 
         if not song:
@@ -230,7 +230,7 @@ async def submit_rating(
             if not link:
                 raise HTTPException(
                     status_code=403,
-                    detail=f"Participant '{participant.id}' is not allowed to submit ratings for study '{study.study_name}'."
+                    detail=f"Participant '{participant.id}' is not allowed to submit ratings for study '{study.name_short}'."
                 )
 
         existing_link = session.exec(
@@ -243,7 +243,7 @@ async def submit_rating(
         if not existing_link:
             study_link = StudyParticipantLink(study_id=study.id, participant_id=participant.id)
             session.add(study_link)
-            logger.info(f"Linked participant {participant.id} to study {study.study_name}")
+            logger.info(f"Linked participant {participant.id} to study {study.name_short}")
 
         # Link song to study if not already linked (with correct index)
         existing_song_link = session.exec(
@@ -260,7 +260,7 @@ async def submit_rating(
                 song_index=metadata.study.song_index
             )
             session.add(song_link)
-            logger.info(f"Linked song {song.song_url} to study {study.study_name} at index {metadata.study.song_index}")
+            logger.info(f"Linked song {song.media_url} to study {study.name_short} at index {metadata.study.song_index}")
 
         # Save ratings for each dimension
         rating_count = 0
@@ -302,8 +302,8 @@ async def submit_rating(
             "status": "success",
             "message": f"Ratings submitted successfully",
             "participant_id": participant.id,
-            "study_name": study.study_name,
-            "song_url": song.song_url,
+            "study_name": study.name_short,
+            "song_url": song.media_url,
             "ratings_saved": rating_count
         }
 
