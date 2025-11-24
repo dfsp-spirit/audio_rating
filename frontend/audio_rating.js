@@ -2,6 +2,8 @@
 // Class-based widget that encapsulates all logic and can be instantiated multiple times.
 // Uses WaveSurfer 7 via dynamic import (cached per session) for convenience.
 
+import TimelinePlugin from 'https://unpkg.com/wavesurfer.js@7.0.0/dist/plugins/timeline.esm.js';
+
 export class AudioRatingWidget {
   static _WaveSurfer = null;
 
@@ -229,13 +231,25 @@ export class AudioRatingWidget {
   async _initWaveSurfer() {
     const WaveSurfer = AudioRatingWidget._WaveSurfer;
 
+    const topTimeline = TimelinePlugin.create({
+      height: 20,
+      insertPosition: 'beforebegin',
+      timeInterval: 0.2,
+      primaryLabelInterval: 5,
+      secondaryLabelInterval: 1,
+      style: {
+        fontSize: '20px',
+        color: '#2D5B88',
+      },
+    })
+
     this.wavesurfer = WaveSurfer.create({
       container: this.waveformEl,
       waveColor: this.waveColor,
       progressColor: this.progressColor,
       height: this.CANVAS_HEIGHT,
       scrollParent: this.scrollParent,
-      // keep default minPxPerSec (used for zoom) if any
+      plugins: [topTimeline],
     });
 
     // Store default minPxPerSec for reset purposes
@@ -456,6 +470,7 @@ _xToTime(x) {
   }
 
   _updateLegend(num_values) {
+    if(this.legend == null) return;
     this.legend.innerHTML = '';
     for (let r = num_values - 1; r >= 0; r--) {
       const item = document.createElement('div');
