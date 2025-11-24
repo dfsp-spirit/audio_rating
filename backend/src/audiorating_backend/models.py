@@ -41,7 +41,7 @@ class Study(SQLModel, table=True):
 
 class Song(SQLModel, table=True):
     id: str = Field(default_factory=generate_uuid, primary_key=True)
-    display_name: str  # "Demo Song", "My Favorite Track", etc.
+    display_name: str  # "Demo Song", "My Favorite Track by artist XY", etc.
     media_url: str = Field(index=True)  # "demo.wav", "song1.mp3", etc.
 
     # Relationships
