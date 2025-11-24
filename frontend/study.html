@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Music Rating Study</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="./audio_rating.css" />
+  <style>
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial;
+      margin: 16px;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .study-phase { display: none; }
+    .study-phase.active { display: block; }
+    .thank-you { text-align: center; padding: 40px; }
+    .instructions { line-height: 1.6; }
+    button {
+      padding: 10px 20px;
+      margin: 10px 5px;
+      border: 1px solid #bbb;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+    }
+    button.primary { background: #2563eb; color: white; border-color: #1e40af; }
+  </style>
+</head>
+<body>
+  <div id="study-container">
+    <!-- Instructions Phase -->
+    <div id="instructions-phase" class="study-phase active">
+      <h2>Music Rating Study</h2>
+      <div class="instructions">
+        <p>Welcome to our music perception study!</p>
+        <p>You will be asked to rate <span id="song-count">several</span> songs on different dimensions.</p>
+        <p>For each song:</p>
+        <ul>
+          <li>Listen to the audio and rate it as you go</li>
+          <li>Split the song into segments by double-clicking on the waveform</li>
+          <li>Drag vertically within segments to adjust ratings</li>
+          <li>Drag segment boundaries horizontally to adjust timing</li>
+          <li>Right-click boundaries to delete them</li>
+        </ul>
+        <p>Click "Begin Study" when you're ready to start.</p>
+      </div>
+      <button id="begin-study" class="primary">Begin Study</button>
+    </div>
+
+    <!-- Rating Phase -->
+    <div id="rating-phase" class="study-phase">
+      <h3>Song <span id="current-song-number">1</span> of <span id="total-songs">1</span></h3>
+      <div id="rating-widget-container"></div>
+      <div style="margin-top: 20px; text-align: center;">
+        <button id="submit-rating" class="primary">Submit Rating</button>
+      </div>
+    </div>
+
+    <!-- Completion Phase -->
+    <div id="completion-phase" class="study-phase">
+      <div class="thank-you">
+        <h2>Thank You!</h2>
+        <p>You have completed all songs in this study.</p>
+        <p>Your responses have been recorded.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="./ar_settings.js"></script>
+  <script type="module">
+    import { AudioRatingWidget } from './audio_rating.js';
+
+    // Hardcoded study configuration (will later come from backend)
+    const STUDY_CONFIG = {
+      "id": "default",
+      "name_short": "default",
+      "study_participant_ids": [],
+      "allow_unlisted_participants": true,
+      "songs_to_rate": ["demo.wav", "demo2.wav"]
+    };
+
+    class StudyCoordinator {
+      constructor() {
+        this.studyConfig = STUDY_CONFIG;
+        this.currentSongIndex = 0;
+        this.uid = this.getOrCreateUID();
+        this.studyName = this.getStudyName();
+        this.widget = null;
+
+        this.init();
+      }
+
+      getOrCreateUID() {
+        const urlParams = new URLSearchParams(window.location.search);
+        let uid = urlParams.get('uid');
+
+        if (!uid) {
+          // Generate random UID (simple version)
+          uid = 'uid_' + Math.random().toString(36).substr(2, 9);
+          // Update URL without page reload
+          const newUrl = `${window.location.pathname}?uid=${uid}&study_name=${this.getStudyName()}`;
+          window.history.replaceState({}, '', newUrl);
+        }
+
+        return uid;
+      }
+
+      getStudyName() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('study_name') || 'default';
+      }
+
+      init() {
+        // Update UI with study info
+        document.getElementById('song-count').textContent = this.studyConfig.songs_to_rate.length;
+        document.getElementById('total-songs').textContent = this.studyConfig.songs_to_rate.length;
+
+        // Bind event listeners
+        document.getElementById('begin-study').addEventListener('click', () => this.startRating());
+        document.getElementById('submit-rating').addEventListener('click', () => this.submitRating());
+
+        console.log('Study initialized:', {
+          uid: this.uid,
+          studyName: this.studyName,
+          songs: this.studyConfig.songs_to_rate
+        });
+      }
+
+      async startRating() {
+        this.showPhase('rating-phase');
+        await this.loadCurrentSong();
+      }
+
+      async loadCurrentSong() {
+        const songUrl = this.studyConfig.songs_to_rate[this.currentSongIndex];
+
+        // Update progress display
+        document.getElementById('current-song-number').textContent = this.currentSongIndex + 1;
+
+        // Destroy previous widget if exists
+        if (this.widget) {
+          this.widget.destroy();
+        }
+
+        // Create rating widget for current song
+        const rating_dimensions = {
+          valence:   { num_values: 10 },
+          arousal:   { num_values:  5 },
+          enjoyment: { num_values: 10 },
+          is_cool:   { num_values:  2 },
+        };
+
+        this.widget = await AudioRatingWidget.create({
+          container: '#rating-widget-container',
+          audioUrl: songUrl,
+          rating_dimensions,
+          height: 140,
+          waveColor: '#bfc8d6',
+          progressColor: '#6b46c1',
+          with_instructions: false, // We show our own instructions
+          with_volume_slider: true,
+          with_step_labels_legend: true,
+          show_download_button: false,
+          show_timeline: true,
+          title: `Rate this song (${this.currentSongIndex + 1}/${this.studyConfig.songs_to_rate.length})`,
+        });
+      }
+
+      async submitRating() {
+        const ratingData = this.widget.getData();
+
+        // Prepare submission data
+        const submission = {
+          uid: this.uid,
+          study_name: this.studyName,
+          song_index: this.currentSongIndex,
+          song_url: this.studyConfig.songs_to_rate[this.currentSongIndex],
+          ratings: ratingData,
+          timestamp: new Date().toISOString()
+        };
+
+        const backendUrl = AR_SETTINGS.API_BASE_URL + '/submit_rating/';
+
+        console.log('Submitting rating:', submission, 'to', backendUrl);
+
+        try {
+          // Send to backend
+          const response = await fetch(backendUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(submission)
+          });
+
+          if (response.ok) {
+            console.log('Rating submitted successfully');
+            this.nextSong();
+          } else {
+            console.error('Failed to submit rating');
+            alert('Error submitting rating. Please try again.');
+          }
+        } catch (error) {
+          console.error('Error submitting rating:', error);
+          // For now, continue even if submission fails (for development)
+          this.nextSong();
+        }
+      }
+
+      nextSong() {
+        this.currentSongIndex++;
+
+        if (this.currentSongIndex < this.studyConfig.songs_to_rate.length) {
+          // Load next song
+          this.loadCurrentSong();
+        } else {
+          // Study complete
+          this.showPhase('completion-phase');
+        }
+      }
+
+      showPhase(phaseId) {
+        // Hide all phases
+        document.querySelectorAll('.study-phase').forEach(phase => {
+          phase.classList.remove('active');
+        });
+
+        // Show target phase
+        document.getElementById(phaseId).classList.add('active');
+      }
+    }
+
+    // Initialize study when page loads
+    const study = new StudyCoordinator();
+    window.study = study; // For debugging
+  </script>
+</body>
+</html>
