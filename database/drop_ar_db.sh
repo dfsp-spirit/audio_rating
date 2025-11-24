@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Drop (delete) the PostgreSQL database used by the TUD backend web app.
+# Drop (delete) the PostgreSQL database used by the AR backend web app.
 #
 # This is a development setup script and is not intended for production use. It assumes that:
 #  1) you are developing on your local machine, and not using Docker
@@ -10,12 +10,12 @@
 #
 # Usage: in the repo root, as a user with sudo access to the postgres system user, run:
 #
-#    ./database/drop_tud_db.sh .env
+#    ./database/drop_ar_db.sh .env
 #
 
-echo "=== Drop database of the TUD backend web app, deleting all user data ==="
+echo "=== Drop database of the AR backend web app, deleting all user data ==="
 echo "NOTE: This script is for development use only. It is not intended for production use."
-echo "Note that the TUD_DATABASE_NAME and TUD_DATABASE_USER read from the .env file are the ones that will be dropped by this script,"
+echo "Note that the AR_DATABASE_NAME and AR_DATABASE_USER read from the .env file are the ones that will be dropped by this script,"
 echo "not the superuser credentials that will be used by this script to connect to the postgres server."
 echo ""
 
@@ -29,7 +29,7 @@ ENV_PATH="${1:-$DEFAULT_ENV_PATH}"
 if [ ! -f "$ENV_PATH" ]; then
     echo "ERROR: .env file not found at path: '$ENV_PATH'"
     echo "Please create it first or specify a custom path:"
-    echo "  ./create_tud_db.sh /path/to/your/.env"
+    echo "  ./create_ar_db.sh /path/to/your/.env"
     exit 1
 fi
 
@@ -37,31 +37,31 @@ echo "Loading configuration from env file: '$ENV_PATH'"
 source "$ENV_PATH"
 
 
-TUD_DATABASE_HOST=${TUD_DATABASE_HOST:-localhost}
-TUD_DATABASE_PORT=${TUD_DATABASE_PORT:-5432}
+AR_DATABASE_HOST=${AR_DATABASE_HOST:-localhost}
+AR_DATABASE_PORT=${AR_DATABASE_PORT:-5432}
 
 # After sourcing the .env file, validate required variables
-if [ -z "$TUD_DATABASE_NAME" ] || [ -z "$TUD_DATABASE_USER" ]; then
+if [ -z "$AR_DATABASE_NAME" ] || [ -z "$AR_DATABASE_USER" ]; then
     echo "ERROR: Missing required database configuration in '.env' file."
-    echo "Please ensure TUD_DATABASE_NAME and TUD_DATABASE_USER are set."
+    echo "Please ensure AR_DATABASE_NAME and AR_DATABASE_USER are set."
     exit 1
 fi
 
 echo "Loaded env vars from '.env' file or defaults:"
-echo " TUD_DATABASE_HOST='$TUD_DATABASE_HOST'"
-echo " TUD_DATABASE_PORT='$TUD_DATABASE_PORT'"
-echo " TUD_DATABASE_NAME='$TUD_DATABASE_NAME'"
-echo " TUD_DATABASE_USER='$TUD_DATABASE_USER'"
+echo " AR_DATABASE_HOST='$AR_DATABASE_HOST'"
+echo " AR_DATABASE_PORT='$AR_DATABASE_PORT'"
+echo " AR_DATABASE_NAME='$AR_DATABASE_NAME'"
+echo " AR_DATABASE_USER='$AR_DATABASE_USER'"
 ## End of env file handling
 
-if [ "$TUD_DATABASE_HOST" = "localhost" ] || [ "$TUD_DATABASE_HOST" = "127.0.0.1" ]; then
+if [ "$AR_DATABASE_HOST" = "localhost" ] || [ "$AR_DATABASE_HOST" = "127.0.0.1" ]; then
     echo "Dropping database on localhost..."
 else
     echo "ERROR: Remote database hosts are not supported by this drop database script."
     exit 1
 fi
 
-echo "WARNING: This will permanently delete the postgresql database '$TUD_DATABASE_NAME' on localhost and all its data!"
+echo "WARNING: This will permanently delete the postgresql database '$AR_DATABASE_NAME' on localhost and all its data!"
 read -p "Are you sure you want to continue? (y/N): " confirm
 
 if [[ $confirm != [yY] && $confirm != [yY][eE][sS] ]]; then
@@ -69,13 +69,12 @@ if [[ $confirm != [yY] && $confirm != [yY][eE][sS] ]]; then
     exit 0
 fi
 
-echo "Dropping database '$TUD_DATABASE_NAME'..."
-
+echo "Dropping database '$AR_DATABASE_NAME'..."
 sudo -u postgres psql << EOF
-DROP DATABASE IF EXISTS $TUD_DATABASE_NAME;
-DROP USER IF EXISTS $TUD_DATABASE_USER;
-\echo "Database '$TUD_DATABASE_NAME' dropped successfully"
-\echo "User '$TUD_DATABASE_USER' dropped successfully"
+DROP DATABASE IF EXISTS $AR_DATABASE_NAME;
+DROP USER IF EXISTS $AR_DATABASE_USER;
+\echo "Database '$AR_DATABASE_NAME' dropped successfully"
+\echo "User '$AR_DATABASE_USER' dropped successfully"
 EOF
 
 echo "Database drop complete!"
