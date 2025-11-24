@@ -26,6 +26,8 @@ export class AudioRatingWidget {
     scrollParent = true,
     with_instructions = true, // whether to show instructions
     with_volume_slider = true, // whether to show volume slider
+    with_step_labels_legend = true, // whether to show step labels under rating scales
+    show_download_button = true, // whether to show download button
     title = "Please rate this song", // Title for widget, displayed at top.
   } = {}) {
     this.container = (typeof container === 'string')
@@ -41,7 +43,9 @@ export class AudioRatingWidget {
     this.scrollParent = scrollParent;
     this.with_instructions = with_instructions;
     this.with_volume_slider = with_volume_slider;
-    this.title = title + " !111";
+    this.with_step_labels_legend = with_step_labels_legend;
+    this.show_download_button = show_download_button;
+    this.title = title;
 
     // State
     this.dimensionData = {};
@@ -132,8 +136,11 @@ export class AudioRatingWidget {
     </div>
 
     <div class="arw-controls">
-        <label>Step levels: <strong class="arw-steps-label"></strong></label>
-        <div class="arw-legend"></div>
+
+        ${this.show_download_button ? '' : '<style>.arw-export { display: none; }</style>'}
+
+        ${this.with_step_labels_legend ?
+        '<label>Step levels: <strong class="arw-steps-label"></strong></label><div class="arw-legend"></div>' : ''}
         <button class="arw-export">Download CSV</button>
     </div>
 
