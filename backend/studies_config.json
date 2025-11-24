@@ -1,0 +1,20 @@
+{
+  "studies": [
+    {
+      "name": "Default Study",
+      "name_short": "default",
+      "description": "Default study for music aesthetics research",
+      "songs_to_rate": ["demo.wav", "demo2.wav"],
+      "study_participant_ids": [],
+      "allow_unlisted_participants": true
+    },
+    {
+      "name": "Custom study",
+      "name_short": "custom_study1",
+      "description": "Study covering classic songs from the 70s and 80s",
+      "songs_to_rate": ["eyeofthetiger.wav", "bohemianrhapsody.wav", "hotelcalifornia.wav"],
+      "study_participant_ids": ["bernddasbrot", "annasmith", "john_doe"],
+      "allow_unlisted_participants": false
+    }
+  ]
+}

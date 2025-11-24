@@ -1,5 +1,3 @@
-
-
 from sqlmodel import SQLModel, Field, Relationship, Column, JSON
 from typing import List, Optional, Dict, Any
 from sqlalchemy import UniqueConstraint
@@ -33,6 +31,8 @@ class Study(SQLModel, table=True):
     id: str = Field(default_factory=generate_uuid, primary_key=True)
     name_short: str = Field(unique=True, index=True)  # "default", "emotion_study", etc.
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    allow_unlisted_participants: bool = Field(default=True)
+    description: Optional[str] = None
 
     # Relationships
     participants: List[Participant] = Relationship(back_populates="studies", link_model=StudyParticipantLink)
@@ -41,7 +41,8 @@ class Study(SQLModel, table=True):
 
 class Song(SQLModel, table=True):
     id: str = Field(default_factory=generate_uuid, primary_key=True)
-    song_url: str = Field(index=True)  # "demo.wav", "song1.mp3", etc.
+    display_name: str  # "Demo Song", "My Favorite Track", etc.
+    media_url: str = Field(index=True)  # "demo.wav", "song1.mp3", etc.
 
     # Relationships
     studies: List[Study] = Relationship(back_populates="songs", link_model=StudySongLink)
@@ -81,13 +82,26 @@ class RatingSegment(SQLModel):
     end: float
     value: int
 
-class RatingSubmission(SQLModel):
-    uid: str  # participant ID
+# New Pydantic models for the updated JSON structure
+class ParticipantMetadata(SQLModel):
+    pid: str
+
+class StudyMetadata(SQLModel):
     name_short: str
     song_index: int
-    song_url: str
-    ratings: Dict[str, List[RatingSegment]]  # dimension_name -> list of segments
+    song_url: str  # This should match Song.media_url
+
+class SubmissionMetadata(SQLModel):
     timestamp: datetime
+
+class MetadataRating(SQLModel):
+    participant: ParticipantMetadata
+    study: StudyMetadata
+    submission: SubmissionMetadata
+
+class RatingSubmission(SQLModel):
+    metadata_rating: MetadataRating
+    ratings: Dict[str, List[RatingSegment]]  # dimension_name -> list of segments
 
 class StudyConfigResponse(SQLModel):
     id: str
@@ -95,8 +109,3 @@ class StudyConfigResponse(SQLModel):
     study_participant_ids: List[str]
     allow_unlisted_participants: bool
     songs_to_rate: List[str]
-
-# Create all tables
-def create_db_and_tables(engine):
-    SQLModel.metadata.create_all(engine)
-

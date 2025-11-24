@@ -10,6 +10,8 @@ class ARBackendSettings:
     def __init__(self):
         # Backend-specific settings
         self.debug = True if os.getenv("AR_DEBUG", "false").lower() == "true" else False
+        self.studies_config_path: str = os.getenv("AR_STUDIES_CONFIG_PATH", "studies_config.json")
+
 
     # Environment-dependent settings as properties
     @property

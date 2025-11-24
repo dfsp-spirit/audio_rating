@@ -173,12 +173,20 @@
 
         // Prepare submission data
         const submission = {
-          uid: this.uid,
-          study_name: this.studyName,
-          song_index: this.currentSongIndex,
-          song_url: this.studyConfig.songs_to_rate[this.currentSongIndex],
-          ratings: ratingData,
-          timestamp: new Date().toISOString()
+          "metadata_rating" : {
+            "participant": {
+              "pid" : this.uid,
+            },
+            "study": {
+              "name_short": this.studyName,
+              "song_index": this.currentSongIndex,
+              "song_url": this.studyConfig.songs_to_rate[this.currentSongIndex],
+            },
+            "submission" : {
+              "timestamp": new Date().toISOString(),
+            }
+          },
+          "ratings": ratingData,
         };
 
         const backendUrl = AR_SETTINGS.API_BASE_URL + '/submit_rating/';

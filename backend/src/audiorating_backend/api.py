@@ -22,8 +22,8 @@ from .logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-from . settings import settings
-from .models import Participant, Study, Song, Rating, StudyParticipantLink, StudySongLink
+from .settings import settings
+from .models import Participant, Study, Song, Rating, StudyParticipantLink, StudySongLink, RatingSubmission
 from .database import get_session, create_db_and_tables
 
 
@@ -175,4 +175,145 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
 @app.get("/api")
 def root():
     return {"message": "AR API is running"}
+
+@app.post("/api/rating/submit")
+async def submit_rating(
+    submission: RatingSubmission,
+    session: Session = Depends(get_session)
+):
+    try:
+        metadata = submission.metadata_rating
+        ratings_data = submission.ratings
+
+        # Get or create participant
+        participant = session.exec(
+            select(Participant).where(Participant.id == metadata.participant.pid)
+        ).first()
+
+        if not participant:
+            participant = Participant(id=metadata.participant.pid)
+            session.add(participant)
+            session.flush()  # Get the ID without committing
+            logger.info(f"Created new participant: {participant.id}")
+
+        # Get study or throw error if not found
+        study = session.exec(
+            select(Study).where(Study.study_name == metadata.study.name_short)
+        ).first()
+
+        if not study:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Study with name_short '{metadata.study.name_short}' not found."
+            )
+
+        # Get song or throw error if not found
+        song = session.exec(
+            select(Song).where(Song.song_url == metadata.study.song_url)
+        ).first()
+
+        if not song:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Song with URL '{metadata.study.song_url}' not found."
+            )
+
+        # If the study does not have allow_unlisted_participants set, check whether the participant is assigned to the study
+        if not study.allow_unlisted_participants:
+            link = session.exec(
+                select(StudyParticipantLink).where(
+                    StudyParticipantLink.study_id == study.id,
+                    StudyParticipantLink.participant_id == participant.id
+                )
+            ).first()
+
+            if not link:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Participant '{participant.id}' is not allowed to submit ratings for study '{study.study_name}'."
+                )
+
+        existing_link = session.exec(
+            select(StudyParticipantLink).where(
+                StudyParticipantLink.study_id == study.id,
+                StudyParticipantLink.participant_id == participant.id
+            )
+        ).first()
+
+        if not existing_link:
+            study_link = StudyParticipantLink(study_id=study.id, participant_id=participant.id)
+            session.add(study_link)
+            logger.info(f"Linked participant {participant.id} to study {study.study_name}")
+
+        # Link song to study if not already linked (with correct index)
+        existing_song_link = session.exec(
+            select(StudySongLink).where(
+                StudySongLink.study_id == study.id,
+                StudySongLink.song_id == song.id
+            )
+        ).first()
+
+        if not existing_song_link:
+            song_link = StudySongLink(
+                study_id=study.id,
+                song_id=song.id,
+                song_index=metadata.study.song_index
+            )
+            session.add(song_link)
+            logger.info(f"Linked song {song.song_url} to study {study.study_name} at index {metadata.study.song_index}")
+
+        # Save ratings for each dimension
+        rating_count = 0
+        for rating_name, segments in ratings_data.items():
+            # Check if rating already exists (shouldn't, but just in case)
+            existing_rating = session.exec(
+                select(Rating).where(
+                    Rating.participant_id == participant.id,
+                    Rating.study_id == study.id,
+                    Rating.song_id == song.id,
+                    Rating.rating_name == rating_name
+                )
+            ).first()
+
+            if existing_rating:
+                # Update existing rating
+                existing_rating.rating_segments = [seg.dict() for seg in segments]
+                existing_rating.timestamp = metadata.submission.timestamp
+                logger.info(f"Updated existing rating for {rating_name}")
+            else:
+                # Create new rating
+                rating = Rating(
+                    participant_id=participant.id,
+                    study_id=study.id,
+                    song_id=song.id,
+                    rating_name=rating_name,
+                    rating_segments=[seg.dict() for seg in segments],
+                    timestamp=metadata.submission.timestamp
+                )
+                session.add(rating)
+                rating_count += 1
+
+        # Commit all changes
+        session.commit()
+
+        logger.info(f"Successfully saved {rating_count} rating dimensions for participant {participant.id}")
+
+        return {
+            "status": "success",
+            "message": f"Ratings submitted successfully",
+            "participant_id": participant.id,
+            "study_name": study.study_name,
+            "song_url": song.song_url,
+            "ratings_saved": rating_count
+        }
+
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error submitting rating: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to submit rating: {str(e)}"
+        )
+
+
 
