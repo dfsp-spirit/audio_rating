@@ -13,10 +13,33 @@ class StudyParticipantLink(SQLModel, table=True):
     study_id: Optional[str] = Field(default=None, foreign_key="study.id", primary_key=True)
     participant_id: Optional[str] = Field(default=None, foreign_key="participant.id", primary_key=True)
 
+    # Relationships - use strings for forward references
+    study: "Study" = Relationship(back_populates="participant_links")
+    participant: "Participant" = Relationship(back_populates="study_links")
+
 class StudySongLink(SQLModel, table=True):
     study_id: Optional[str] = Field(default=None, foreign_key="study.id", primary_key=True)
     song_id: Optional[str] = Field(default=None, foreign_key="song.id", primary_key=True)
-    song_index: int = Field(default=0)  # Order of songs in the study
+    song_index: int = Field(default=0)
+
+    # Relationships - use strings for forward references
+    study: "Study" = Relationship(back_populates="song_links")
+    song: "Song" = Relationship(back_populates="study_links")
+
+# New table for study rating dimensions
+class StudyRatingDimension(SQLModel, table=True):
+    id: str = Field(default_factory=generate_uuid, primary_key=True)
+    study_id: str = Field(foreign_key="study.id")
+    dimension_title: str
+    num_values: int
+    dimension_order: int = Field(default=0)
+
+    # Relationship
+    study: "Study" = Relationship(back_populates="rating_dimensions")
+
+    __table_args__ = (
+        UniqueConstraint('study_id', 'dimension_title', name='uq_study_dimension_title'),
+    )
 
 # Main tables
 class Participant(SQLModel, table=True):
@@ -24,57 +47,60 @@ class Participant(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
-    studies: List["Study"] = Relationship(back_populates="participants", link_model=StudyParticipantLink)
+    study_links: List["StudyParticipantLink"] = Relationship(back_populates="participant")
     ratings: List["Rating"] = Relationship(back_populates="participant")
 
 class Study(SQLModel, table=True):
     id: str = Field(default_factory=generate_uuid, primary_key=True)
-    name_short: str = Field(unique=True, index=True)  # "default", "emotion_study", etc.
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    allow_unlisted_participants: bool = Field(default=True)
+    name_short: str = Field(unique=True, index=True)
+    name: Optional[str] = None
     description: Optional[str] = None
+    allow_unlisted_participants: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
-    participants: List[Participant] = Relationship(back_populates="studies", link_model=StudyParticipantLink)
-    songs: List["Song"] = Relationship(back_populates="studies", link_model=StudySongLink)
+    participant_links: List["StudyParticipantLink"] = Relationship(back_populates="study")
+    song_links: List["StudySongLink"] = Relationship(back_populates="study")
     ratings: List["Rating"] = Relationship(back_populates="study")
+    rating_dimensions: List["StudyRatingDimension"] = Relationship(back_populates="study")
 
 class Song(SQLModel, table=True):
     id: str = Field(default_factory=generate_uuid, primary_key=True)
-    display_name: str  # "Demo Song", "My Favorite Track by artist XY", etc.
-    media_url: str = Field(index=True)  # "demo.wav", "song1.mp3", etc.
+    display_name: str
+    media_url: str = Field(index=True)
 
     # Relationships
-    studies: List[Study] = Relationship(back_populates="songs", link_model=StudySongLink)
+    study_links: List["StudySongLink"] = Relationship(back_populates="song")
     ratings: List["Rating"] = Relationship(back_populates="song")
 
 class Rating(SQLModel, table=True):
     id: str = Field(default_factory=generate_uuid, primary_key=True)
-
-    # Foreign keys
     participant_id: str = Field(foreign_key="participant.id")
     study_id: str = Field(foreign_key="study.id")
     song_id: str = Field(foreign_key="song.id")
-
-    # Rating dimensions and segments
-    rating_name: str = Field(index=True)  # "valence", "arousal", "enjoyment", "is_cool"
-    rating_segments: Dict[str, Any] = Field(sa_column=Column(JSON))  # List of {start, end, value}
-
-    # Timestamp from frontend
+    rating_name: str = Field(index=True)
+    rating_segments: Dict[str, Any] = Field(sa_column=Column(JSON))
     timestamp: datetime
-
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
-    participant: Participant = Relationship(back_populates="ratings")
-    study: Study = Relationship(back_populates="ratings")
-    song: Song = Relationship(back_populates="ratings")
+    participant: "Participant" = Relationship(back_populates="ratings")
+    study: "Study" = Relationship(back_populates="ratings")
+    song: "Song" = Relationship(back_populates="ratings")
 
-    # Unique constraint: one rating per participant-study-song-dimension combination
     __table_args__ = (
         UniqueConstraint('participant_id', 'study_id', 'song_id', 'rating_name',
                         name='uq_participant_study_song_rating'),
     )
+
+# Update forward references (new syntax)
+StudyParticipantLink.update_forward_refs()
+StudySongLink.update_forward_refs()
+StudyRatingDimension.update_forward_refs()
+Participant.update_forward_refs()
+Study.update_forward_refs()
+Song.update_forward_refs()
+Rating.update_forward_refs()
 
 # Pydantic models for API requests/responses
 class RatingSegment(SQLModel):
@@ -82,14 +108,33 @@ class RatingSegment(SQLModel):
     end: float
     value: int
 
-# New Pydantic models for the updated JSON structure
+class SongConfig(SQLModel):
+    media_url: str
+    display_name: str
+
+class RatingDimensionConfig(SQLModel):
+    dimension_title: str
+    num_values: int
+
+class StudyConfig(SQLModel):
+    name: str
+    name_short: str
+    description: Optional[str] = None
+    songs_to_rate: List[SongConfig]
+    rating_dimensions: List[RatingDimensionConfig]
+    study_participant_ids: List[str] = []
+    allow_unlisted_participants: bool = True
+
+class StudiesConfig(SQLModel):
+    studies: List[StudyConfig]
+
 class ParticipantMetadata(SQLModel):
     pid: str
 
 class StudyMetadata(SQLModel):
     name_short: str
     song_index: int
-    song_url: str  # This should match Song.media_url
+    song_url: str
 
 class SubmissionMetadata(SQLModel):
     timestamp: datetime
@@ -101,7 +146,7 @@ class MetadataRating(SQLModel):
 
 class RatingSubmission(SQLModel):
     metadata_rating: MetadataRating
-    ratings: Dict[str, List[RatingSegment]]  # dimension_name -> list of segments
+    ratings: Dict[str, List[RatingSegment]]
 
 class StudyConfigResponse(SQLModel):
     id: str
@@ -109,3 +154,7 @@ class StudyConfigResponse(SQLModel):
     study_participant_ids: List[str]
     allow_unlisted_participants: bool
     songs_to_rate: List[str]
+    rating_dimensions: List[RatingDimensionConfig]
+
+def create_db_and_tables(engine):
+    SQLModel.metadata.create_all(engine)

@@ -6,22 +6,37 @@ from .studies_config import load_studies_config
 from .settings import settings
 import logging
 
+
+
 logger = logging.getLogger("audiorating_backend.database")
 
 
 engine = create_engine(settings.database_url)
 
 
-def create_default_studies(config_path: str):
+# database.py
+from sqlmodel import SQLModel, create_engine, Session, select
+from typing import Generator
+from .models import Study, Song, StudyRatingDimension, StudySongLink, StudyParticipantLink, Participant
+from .studies_config import load_studies_config
+from .settings import settings
+import logging
+
+logger = logging.getLogger("audiorating_backend.database")
+
+engine = create_engine(settings.database_url)
+
+def create_db_and_tables():
+    """Create all database tables"""
+    SQLModel.metadata.create_all(engine)
+    create_config_file_studies(settings.studies_config_path)
+
+def create_config_file_studies(config_path: str):
     """Create default studies from a configuration file"""
-    try:
-        config = load_studies_config(config_path)
-    except FileNotFoundError:
-        logger.warning("No studies configuration file found. Using default fallback.")
-        config = get_fallback_config()
+
+    config = load_studies_config(config_path) # will raise FileNotFoundError if not found, which is fine. That file is required.
 
     logger.info(f"Checking whether studies need to be created based on config file at '{config_path}'")
-
 
     with Session(engine) as session:
         for study_cfg in config.studies:
@@ -31,71 +46,152 @@ def create_default_studies(config_path: str):
             ).first()
 
             if not existing_study:
+                logger.info(f"Creating new study: {study_cfg.name_short}")
                 new_study = Study(
                     name=study_cfg.name,
                     name_short=study_cfg.name_short,
-                    description=study_cfg.description
+                    description=study_cfg.description,
+                    allow_unlisted_participants=study_cfg.allow_unlisted_participants
                 )
                 session.add(new_study)
                 session.commit()
                 session.refresh(new_study)
 
-                # Add songs to the study
-                for song_name in study_cfg.songs_to_rate:
-                    new_song = Song(
-                        display_name=song_name,
-                        media_url=song_name
+                for participant_id in study_cfg.study_participant_ids:
+                    # Check if participant exists, create if not
+                    existing_participant = session.exec(
+                        select(Participant).where(Participant.id == participant_id)
+                    ).first()
+
+                    if not existing_participant:
+                        participant = Participant(id=participant_id)
+                        session.add(participant)
+                        logger.info(f"Created pre-listed participant: {participant_id}")
+                    else:
+                        participant = existing_participant
+                        logger.info(f"Using existing participant: {participant_id}")
+
+                    # Create the study-participant link
+                    participant_link = StudyParticipantLink(
+                        study_id=new_study.id,
+                        participant_id=participant.id
                     )
-                    session.add(new_song)
-                    session.commit()
-                    session.refresh(new_song)
+                    session.add(participant_link)
+                    logger.info(f"Added pre-listed participant to study: {participant_id}")
 
-def create_db_and_tables():
-    SQLModel.metadata.create_all(engine)
-    create_default_studies(settings.studies_config_path)
+                # Commit all relationships for this study
+                session.commit()
 
+                # Add songs to the study (with proper n:m relationships)
+                for song_index, song_cfg in enumerate(study_cfg.songs_to_rate):
+                    # Check if song already exists by media_url
+                    existing_song = session.exec(
+                        select(Song).where(Song.media_url == song_cfg.media_url)
+                    ).first()
 
-    # Create default study with single entry name if it doesn't exist
-    with Session(engine) as session:
-        default_study = session.exec(
-            select(Study).where(Study.name_short == "default")
-        ).first()
+                    if existing_song:
+                        song = existing_song
+                        logger.info(f"Using existing song: {song_cfg.media_url}")
+                    else:
+                        song = Song(
+                            display_name=song_cfg.display_name,
+                            media_url=song_cfg.media_url,
+                        )
+                        session.add(song)
+                        session.commit()
+                        session.refresh(song)
+                        logger.info(f"Created new song: {song_cfg.media_url}")
 
-        if not default_study:
-            default_study = Study(
-                name="Default Study",
-                name_short="default",
-                description="Default study for music research"
-            )
-            session.add(default_study)
-            session.commit()
-            session.refresh(default_study)
+                    # Create StudySongLink (n:m relationship)
+                    song_link = StudySongLink(
+                        study_id=new_study.id,
+                        song_id=song.id,
+                        song_index=song_index
+                    )
+                    session.add(song_link)
 
-            # Create single entry name for default study
-            default_song = Song(
-                display_name="Demo Song",
-                media_url="demo.wav"
-            )
-            session.add(default_song)
-            session.commit()
+                # Add rating dimensions to the study
+                for dim_index, dimension_cfg in enumerate(study_cfg.rating_dimensions):
+                    new_dimension = StudyRatingDimension(
+                        study_id=new_study.id,
+                        dimension_title=dimension_cfg.dimension_title,
+                        num_values=dimension_cfg.num_values,
+                        dimension_order=dim_index
+                    )
+                    session.add(new_dimension)
+                    logger.info(f"Added rating dimension: {dimension_cfg.dimension_title}")
+
+                # Add pre-listed participants to the study
+                for participant_id in study_cfg.study_participant_ids:
+                    # Note: We don't create Participant records here, just the links
+                    # The Participant records will be created when they first submit ratings
+                    participant_link = StudyParticipantLink(
+                        study_id=new_study.id,
+                        participant_id=participant_id
+                    )
+                    session.add(participant_link)
+                    logger.info(f"Added pre-listed participant: {participant_id}")
+
+                # Commit all relationships for this study
+                session.commit()
+                logger.info(f"Successfully created study '{study_cfg.name_short}' with {len(study_cfg.songs_to_rate)} songs and {len(study_cfg.rating_dimensions)} rating dimensions")
+            else:
+                logger.info(f"Study already exists: {study_cfg.name_short}")
 
 def get_session() -> Generator[Session, None, None]:
     with Session(engine) as session:
         yield session
 
-def get_fallback_config():
-    """Provide fallback configuration if no config file is found"""
-    from .studies_config import StudiesConfig, StudyConfig
+def report_on_db_contents():
+    """Report on the contents of the database for debugging purposes"""
+    with Session(engine) as session:
+        studies = session.exec(select(Study)).all()
+        logger.info(f"Database contains {len(studies)} studies.")
 
-    return StudiesConfig(
-        studies=[
-            StudyConfig(
-                name="Default Study",
-                name_short="default",
-                description="Default study for music aesthetics research",
-                songs_to_rate=["demo.wav"],
-                study_participant_ids=[],
-                allow_unlisted_participants=True
-            )
-        ]
-    )
+        for study in studies:
+            # Get songs through song_links relationship
+            song_links = session.exec(
+                select(StudySongLink)
+                .where(StudySongLink.study_id == study.id)
+                .order_by(StudySongLink.song_index)
+            ).all()
+
+            # Get rating dimensions
+            rating_dims = session.exec(
+                select(StudyRatingDimension)
+                .where(StudyRatingDimension.study_id == study.id)
+                .order_by(StudyRatingDimension.dimension_order)
+            ).all()
+
+            logger.info(f"Study '{study.name_short}' has {len(song_links)} songs and {len(rating_dims)} rating dimensions.")
+
+            # Log songs
+            for song_link in song_links:
+                song = session.exec(select(Song).where(Song.id == song_link.song_id)).first()
+                if song:
+                    logger.info(f" - Song: {song.display_name} ({song.media_url})")
+
+            # Log rating dimensions
+            for dimension in rating_dims:
+                logger.info(f" - Rating Dimension: {dimension.dimension_title} ({dimension.num_values} values)")
+
+            # report whether study allows unlisted participants
+            logger.info(f" - Allows unlisted participants: {study.allow_unlisted_participants}")
+
+            if not study.allow_unlisted_participants:
+                # Get participants through participant_links relationship
+                participant_links = session.exec(
+                    select(StudyParticipantLink)
+                    .where(StudyParticipantLink.study_id == study.id)
+                ).all()
+                participant_ids = [link.participant_id for link in participant_links]
+                logger.info(f" - Study participant IDs: {participant_ids}")
+
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
+    create_config_file_studies(settings.studies_config_path)
+    report_on_db_contents()
+
+def get_session() -> Generator[Session, None, None]:
+    with Session(engine) as session:
+        yield session

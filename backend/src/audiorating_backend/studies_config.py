@@ -1,17 +1,36 @@
-# config/study_config.py
+# config/study_config.py -- Parser for study configuration files in JSON or YAML format
 from typing import List, Optional
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, model_validator
 import yaml
 import json
 from pathlib import Path
 import re
 
+class CfgFileSong(BaseModel):
+    media_url: str
+    display_name: str
 
-class StudyConfig(BaseModel):
+    @model_validator(mode='after')
+    def set_display_name_from_media_url(self):
+        if not self.display_name and self.media_url:
+            # Extract a nice display name from the URL
+            name = self.media_url.split('/')[-1]  # Get filename from path or url
+            name = name.rsplit('.', 1)[0] if '.' in name else name  # Remove extension
+            self.display_name = name
+        return self
+
+
+class CfgFileRatingDimension(BaseModel):
+    dimension_title: str
+    num_values: int
+
+
+class CfgFileStudyConfig(BaseModel):
     name: str
     name_short: str
     description: Optional[str] = None
-    songs_to_rate: List[str]  # Simplified - will be converted to SongConfig that holds more details
+    songs_to_rate: List[CfgFileSong]
+    rating_dimensions: List[CfgFileRatingDimension]
     allow_unlisted_participants: bool = True
     study_participant_ids: List[str] = []
 
@@ -37,10 +56,10 @@ class StudyConfig(BaseModel):
 
 
 
-class StudiesConfig(BaseModel):
-    studies: List[StudyConfig]
+class CfgFileStudiesConfig(BaseModel):
+    studies: List[CfgFileStudyConfig]
 
-def load_studies_config(config_path: str) -> StudiesConfig:
+def load_studies_config(config_path: str) -> CfgFileStudiesConfig:
     """Load studies configuration from YAML or JSON file"""
 
     config_path = Path(config_path)
@@ -57,4 +76,4 @@ def load_studies_config(config_path: str) -> StudiesConfig:
     else:
         raise ValueError(f"Unsupported config file format: {config_path.suffix}")
 
-    return StudiesConfig(**data)
+    return CfgFileStudiesConfig(**data)
