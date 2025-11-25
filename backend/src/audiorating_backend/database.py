@@ -31,6 +31,7 @@ def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
     create_config_file_studies(settings.studies_config_path)
 
+
 def create_config_file_studies(config_path: str):
     """Create default studies from a configuration file"""
 
@@ -57,6 +58,7 @@ def create_config_file_studies(config_path: str):
                 session.commit()
                 session.refresh(new_study)
 
+                # Add pre-listed participants to the study (ONLY ONCE)
                 for participant_id in study_cfg.study_participant_ids:
                     # Check if participant exists, create if not
                     existing_participant = session.exec(
@@ -71,16 +73,22 @@ def create_config_file_studies(config_path: str):
                         participant = existing_participant
                         logger.info(f"Using existing participant: {participant_id}")
 
-                    # Create the study-participant link
-                    participant_link = StudyParticipantLink(
-                        study_id=new_study.id,
-                        participant_id=participant.id
-                    )
-                    session.add(participant_link)
-                    logger.info(f"Added pre-listed participant to study: {participant_id}")
+                    # Check if link already exists before creating
+                    existing_link = session.exec(
+                        select(StudyParticipantLink).where(
+                            StudyParticipantLink.study_id == new_study.id,
+                            StudyParticipantLink.participant_id == participant.id
+                        )
+                    ).first()
 
-                # Commit all relationships for this study
-                session.commit()
+                    if not existing_link:
+                        # Create the study-participant link
+                        participant_link = StudyParticipantLink(
+                            study_id=new_study.id,
+                            participant_id=participant.id
+                        )
+                        session.add(participant_link)
+                        logger.info(f"Added pre-listed participant to study: {participant_id}")
 
                 # Add songs to the study (with proper n:m relationships)
                 for song_index, song_cfg in enumerate(study_cfg.songs_to_rate):
@@ -102,35 +110,42 @@ def create_config_file_studies(config_path: str):
                         session.refresh(song)
                         logger.info(f"Created new song: {song_cfg.media_url}")
 
-                    # Create StudySongLink (n:m relationship)
-                    song_link = StudySongLink(
-                        study_id=new_study.id,
-                        song_id=song.id,
-                        song_index=song_index
-                    )
-                    session.add(song_link)
+                    # Check if song link already exists before creating
+                    existing_song_link = session.exec(
+                        select(StudySongLink).where(
+                            StudySongLink.study_id == new_study.id,
+                            StudySongLink.song_id == song.id
+                        )
+                    ).first()
+
+                    if not existing_song_link:
+                        # Create StudySongLink (n:m relationship)
+                        song_link = StudySongLink(
+                            study_id=new_study.id,
+                            song_id=song.id,
+                            song_index=song_index
+                        )
+                        session.add(song_link)
 
                 # Add rating dimensions to the study
                 for dim_index, dimension_cfg in enumerate(study_cfg.rating_dimensions):
-                    new_dimension = StudyRatingDimension(
-                        study_id=new_study.id,
-                        dimension_title=dimension_cfg.dimension_title,
-                        num_values=dimension_cfg.num_values,
-                        dimension_order=dim_index
-                    )
-                    session.add(new_dimension)
-                    logger.info(f"Added rating dimension: {dimension_cfg.dimension_title}")
+                    # Check if dimension already exists before creating
+                    existing_dimension = session.exec(
+                        select(StudyRatingDimension).where(
+                            StudyRatingDimension.study_id == new_study.id,
+                            StudyRatingDimension.dimension_title == dimension_cfg.dimension_title
+                        )
+                    ).first()
 
-                # Add pre-listed participants to the study
-                for participant_id in study_cfg.study_participant_ids:
-                    # Note: We don't create Participant records here, just the links
-                    # The Participant records will be created when they first submit ratings
-                    participant_link = StudyParticipantLink(
-                        study_id=new_study.id,
-                        participant_id=participant_id
-                    )
-                    session.add(participant_link)
-                    logger.info(f"Added pre-listed participant: {participant_id}")
+                    if not existing_dimension:
+                        new_dimension = StudyRatingDimension(
+                            study_id=new_study.id,
+                            dimension_title=dimension_cfg.dimension_title,
+                            num_values=dimension_cfg.num_values,
+                            dimension_order=dim_index
+                        )
+                        session.add(new_dimension)
+                        logger.info(f"Added rating dimension: {dimension_cfg.dimension_title}")
 
                 # Commit all relationships for this study
                 session.commit()
@@ -138,9 +153,11 @@ def create_config_file_studies(config_path: str):
             else:
                 logger.info(f"Study already exists: {study_cfg.name_short}")
 
+
 def get_session() -> Generator[Session, None, None]:
     with Session(engine) as session:
         yield session
+
 
 def report_on_db_contents():
     """Report on the contents of the database for debugging purposes"""
