@@ -14,7 +14,10 @@ import io
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 from urllib.parse import urlparse
+import secrets
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
+security = HTTPBasic()
 
 
 
@@ -53,6 +56,28 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Operation"] # custom header to tell frontend on submit if the entry was created or updated.
 )
+
+def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(
+        credentials.username,
+        settings.admin_username
+    )
+    correct_password = secrets.compare_digest(
+        credentials.password,
+        settings.admin_password
+    )
+
+    if not (correct_username and correct_password):
+        logger.info(f"Failed admin authentication attempt for user '{credentials.username}'")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid admin credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+    logger.info(f"Admin '{credentials.username}' authenticated successfully.")
+
+    return credentials.username
 
 
 
@@ -316,4 +341,135 @@ async def submit_rating(
         )
 
 
+@app.get("/api/admin/datasets/download")
+async def admin_download(
+    study_name: str = Query(..., description="Name of the study to download ratings for"),
+    format: str = Query("json", description="Output format: json or csv"),
+    session: Session = Depends(get_session),
+    current_admin: str = Depends(verify_admin)
+):
+    """
+    Download all ratings for a specific study in JSON or CSV format.
+    Requires admin authentication. Try something like:
+    curl -u "audiorating_api_admin:audiorating_api_admin_password" "http://localhost:8000/api/admin/datasets/download?study_name=default"
+    """
+    try:
+        # Get the study
+        study = session.exec(
+            select(Study).where(Study.name_short == study_name)
+        ).first()
 
+        if not study:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Study '{study_name}' not found"
+            )
+
+        # Get all ratings for this study with related data
+        # Using your actual relationship paths from the models
+        statement = (
+            select(Rating, Participant, Song)
+            .join(Participant, Rating.participant_id == Participant.id)
+            .join(Song, Rating.song_id == Song.id)
+            .where(Rating.study_id == study.id)
+        )
+
+        results = session.exec(statement)
+        ratings = results.all()
+
+        if not ratings:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No ratings found for study '{study_name}'"
+            )
+
+        logger.info(f"Admin '{current_admin}' downloading {len(ratings)} ratings for study '{study_name}'")
+
+        # Transform data for output
+        ratings_data = []
+        for rating, participant, song in ratings:
+            rating_data = {
+                "study_name": study.name_short,
+                "study_description": study.name or study.description,
+                "participant_id": participant.id,
+                "song_id": song.id,
+                "song_url": song.media_url,
+                "song_title": song.display_name,
+                "song_artist": "Unknown",  # Your model doesn't have artist field
+                "rating_name": rating.rating_name,
+                "rating_segments": rating.rating_segments,
+                "timestamp": rating.timestamp.isoformat() if rating.timestamp else None,
+                "created_at": rating.created_at.isoformat() if rating.created_at else None,
+                "rating_id": rating.id
+            }
+            ratings_data.append(rating_data)
+
+        # Return in requested format
+        if format.lower() == "csv":
+            return _generate_csv_response(ratings_data, study_name)
+        else:
+            return {
+                "study": {
+                    "name_short": study.name_short,
+                    "name": study.name,
+                    "description": study.description,
+                    "allow_unlisted_participants": study.allow_unlisted_participants
+                },
+                "total_ratings": len(ratings_data),
+                "ratings": ratings_data
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error downloading dataset for study '{study_name}': {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to download dataset: {str(e)}"
+        )
+
+
+def _generate_csv_response(ratings_data: List[dict], study_name: str) -> StreamingResponse:
+    """Generate CSV response from ratings data."""
+    if not ratings_data:
+        raise HTTPException(status_code=404, detail="No data to export")
+
+    # Create CSV output
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Write header - adjusted for your model fields
+    headers = [
+        "study_name", "study_description", "participant_id", "song_id",
+        "song_url", "song_title", "rating_name",
+        "timestamp", "created_at", "rating_id", "segments_count"
+    ]
+    writer.writerow(headers)
+
+    # Write data rows
+    for rating in ratings_data:
+        segments_count = len(rating["rating_segments"]) if rating["rating_segments"] else 0
+        writer.writerow([
+            rating["study_name"],
+            rating["study_description"],
+            rating["participant_id"],
+            rating["song_id"],
+            rating["song_url"],
+            rating["song_title"],
+            rating["rating_name"],
+            rating["timestamp"],
+            rating["created_at"],
+            rating["rating_id"],
+            segments_count
+        ])
+
+    # Prepare response
+    output.seek(0)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{study_name}_ratings_{timestamp}.csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
