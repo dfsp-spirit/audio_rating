@@ -72,6 +72,15 @@
   <script type="module">
     import { AudioRatingWidget } from './audio_rating.js';
 
+
+    window.addEventListener('error', function(event) {
+        console.error('Global error:', event.error);
+    });
+
+    window.addEventListener('unhandledrejection', function(event) {
+        console.error('Unhandled promise rejection:', event.reason);
+    });
+
     // Hardcoded study configuration (will later come from backend)
     const STUDY_CONFIG = {
       "id": "default",
@@ -204,16 +213,18 @@
           });
 
           if (response.ok) {
-            console.log('Rating submitted successfully');
+            console.log('Rating submitted successfully, backend response OK.');
             this.nextSong();
           } else {
-            console.error('Failed to submit rating');
-            alert('Error submitting rating. Please try again.');
+            console.log('Failed to submit rating, received backend response but not OK: response: ', response);
           }
         } catch (error) {
-          console.error('Error submitting rating:', error);
-          // For now, continue even if submission fails (for development)
-          this.nextSong();
+            console.log("Failed to submit rating, did not receive a backend response:", String(error));
+            if(error instanceof Error) {
+              if(error.name === 'TypeError') {
+                console.log("Error hint: Is the backend running at " + AR_SETTINGS.API_BASE_URL + "? (This may also be due to a network error or CORS issue.)");
+              }
+            }
         }
       }
 
