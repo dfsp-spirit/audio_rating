@@ -26,7 +26,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 from .settings import settings
-from .models import Participant, Study, Song, Rating, StudyParticipantLink, StudySongLink, RatingSubmission
+from .models import Participant, Study, Song, Rating, StudyParticipantLink, StudySongLink, RatingSubmission, RatingSegment
 from .database import get_session, create_db_and_tables
 
 
@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
     logger.info("TUD Backend shutting down")
 
 
-app = FastAPI(title="Timeusediary (TUD) API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Audiorating (AR) API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -201,6 +201,7 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
 def root():
     return {"message": "AR API is running"}
 
+
 @app.post("/api/rating/submit")
 async def submit_rating(
     submission: RatingSubmission,
@@ -245,30 +246,18 @@ async def submit_rating(
 
         # If the study does not have allow_unlisted_participants set, check whether the participant is assigned to the study
         if not study.allow_unlisted_participants:
-            link = session.exec(
+            participiant_link = session.exec(
                 select(StudyParticipantLink).where(
                     StudyParticipantLink.study_id == study.id,
                     StudyParticipantLink.participant_id == participant.id
                 )
             ).first()
 
-            if not link:
+            if not participiant_link:
                 raise HTTPException(
                     status_code=403,
                     detail=f"Participant '{participant.id}' is not allowed to submit ratings for study '{study.name_short}'."
                 )
-
-        existing_link = session.exec(
-            select(StudyParticipantLink).where(
-                StudyParticipantLink.study_id == study.id,
-                StudyParticipantLink.participant_id == participant.id
-            )
-        ).first()
-
-        if not existing_link:
-            study_link = StudyParticipantLink(study_id=study.id, participant_id=participant.id)
-            session.add(study_link)
-            logger.info(f"Linked participant {participant.id} to study {study.name_short}")
 
         # Link song to study if not already linked (with correct index)
         existing_song_link = session.exec(
@@ -279,18 +268,17 @@ async def submit_rating(
         ).first()
 
         if not existing_song_link:
-            song_link = StudySongLink(
-                study_id=study.id,
-                song_id=song.id,
-                song_index=metadata.study.song_index
+            raise HTTPException(
+                status_code=403,
+                detail=f"Song '{song.media_url}' is not linked to study '{study.name_short}', no rating allowed."
             )
-            session.add(song_link)
-            logger.info(f"Linked song {song.media_url} to study {study.name_short} at index {metadata.study.song_index}")
 
         # Save ratings for each dimension
         rating_count = 0
+        segment_count = 0
+
         for rating_name, segments in ratings_data.items():
-            # Check if rating already exists (shouldn't, but just in case)
+            # Check if rating already exists
             existing_rating = session.exec(
                 select(Rating).where(
                     Rating.participant_id == participant.id,
@@ -301,10 +289,20 @@ async def submit_rating(
             ).first()
 
             if existing_rating:
-                # Update existing rating
-                existing_rating.rating_segments = [seg.dict() for seg in segments]
+                # Delete existing segments first
+                existing_segments = session.exec(
+                    select(RatingSegment).where(
+                        RatingSegment.rating_id == existing_rating.id
+                    )
+                ).all()
+
+                for seg in existing_segments:
+                    session.delete(seg)
+
+                # Update existing rating timestamp
                 existing_rating.timestamp = metadata.submission.timestamp
-                logger.info(f"Updated existing rating for {rating_name}")
+                rating = existing_rating
+                logger.info(f"Updated existing rating for {rating_name} and deleted {len(existing_segments)} segments")
             else:
                 # Create new rating
                 rating = Rating(
@@ -312,16 +310,30 @@ async def submit_rating(
                     study_id=study.id,
                     song_id=song.id,
                     rating_name=rating_name,
-                    rating_segments=[seg.dict() for seg in segments],
                     timestamp=metadata.submission.timestamp
                 )
                 session.add(rating)
+                session.flush()  # Get the rating ID for segments
                 rating_count += 1
+
+            # Save all segments for this rating
+            for segment_order, segment_data in enumerate(segments):
+                segment = RatingSegment(
+                    rating_id=rating.id,
+                    start_time=segment_data.start,
+                    end_time=segment_data.end,
+                    value=segment_data.value,
+                    segment_order=segment_order
+                )
+                session.add(segment)
+                segment_count += 1
+
+            logger.info(f"Saved {len(segments)} segments for rating {rating_name}")
 
         # Commit all changes
         session.commit()
 
-        logger.info(f"Successfully saved {rating_count} rating dimensions for participant {participant.id}")
+        logger.info(f"Successfully saved {rating_count} ratings with {segment_count} total segments for participant {participant.id}")
 
         return {
             "status": "success",
@@ -329,7 +341,8 @@ async def submit_rating(
             "participant_id": participant.id,
             "study_name": study.name_short,
             "song_url": song.media_url,
-            "ratings_saved": rating_count
+            "ratings_saved": rating_count,
+            "segments_saved": segment_count
         }
 
     except Exception as e:
@@ -345,13 +358,13 @@ async def submit_rating(
 async def admin_download(
     study_name: str = Query(..., description="Name of the study to download ratings for"),
     format: str = Query("json", description="Output format: json or csv"),
+    with_ids: bool = Query(False, description="Include database IDs in the output"),
     session: Session = Depends(get_session),
     current_admin: str = Depends(verify_admin)
 ):
     """
     Download all ratings for a specific study in JSON or CSV format.
-    Requires admin authentication. Try something like:
-    curl -u "audiorating_api_admin:audiorating_api_admin_password" "http://localhost:8000/api/admin/datasets/download?study_name=default"
+    Requires admin authentication.
     """
     try:
         # Get the study
@@ -365,48 +378,55 @@ async def admin_download(
                 detail=f"Study '{study_name}' not found"
             )
 
-        # Get all ratings for this study with related data
-        # Using your actual relationship paths from the models
+        # Get all ratings for this study with related data including segments
         statement = (
-            select(Rating, Participant, Song)
+            select(Rating, Participant, Song, RatingSegment)
             .join(Participant, Rating.participant_id == Participant.id)
             .join(Song, Rating.song_id == Song.id)
+            .join(RatingSegment, RatingSegment.rating_id == Rating.id)
             .where(Rating.study_id == study.id)
+            .order_by(Rating.participant_id, Rating.song_id, Rating.rating_name, RatingSegment.segment_order)
         )
 
         results = session.exec(statement)
-        ratings = results.all()
+        rating_data = results.all()
 
-        if not ratings:
+        if not rating_data:
             raise HTTPException(
                 status_code=404,
                 detail=f"No ratings found for study '{study_name}'"
             )
 
-        logger.info(f"Admin '{current_admin}' downloading {len(ratings)} ratings for study '{study_name}'")
+        logger.info(f"Admin '{current_admin}' downloading {len(rating_data)} rating segments for study '{study_name}'")
 
-        # Transform data for output
-        ratings_data = []
-        for rating, participant, song in ratings:
-            rating_data = {
+        # Transform data for output - now each row is a segment
+        segments_data = []
+        for rating, participant, song, segment in rating_data:
+            segment_data = {
                 "study_name": study.name_short,
                 "study_description": study.name or study.description,
-                "participant_id": participant.id,
-                "song_id": song.id,
+                "participant_id": participant.id, # This is always included, even if with_ids is False, as it is required context.
                 "song_url": song.media_url,
                 "song_title": song.display_name,
-                "song_artist": "Unknown",  # Your model doesn't have artist field
                 "rating_name": rating.rating_name,
-                "rating_segments": rating.rating_segments,
-                "timestamp": rating.timestamp.isoformat() if rating.timestamp else None,
-                "created_at": rating.created_at.isoformat() if rating.created_at else None,
-                "rating_id": rating.id
+                "start_time": segment.start_time,
+                "end_time": segment.end_time,
+                "value": segment.value,
+                "segment_order": segment.segment_order,
+                "rating_created_at": rating.created_at.isoformat() if rating.created_at else None
             }
-            ratings_data.append(rating_data)
+            if with_ids:
+                segment_data["song_id"] = song.id
+                segment_data["rating_id"] = rating.id
+                segment_data["segment_id"] = segment.id
+
+
+
+            segments_data.append(segment_data)
 
         # Return in requested format
         if format.lower() == "csv":
-            return _generate_csv_response(ratings_data, study_name)
+            return _generate_csv_response(segments_data, study_name, with_ids)
         else:
             return {
                 "study": {
@@ -415,8 +435,8 @@ async def admin_download(
                     "description": study.description,
                     "allow_unlisted_participants": study.allow_unlisted_participants
                 },
-                "total_ratings": len(ratings_data),
-                "ratings": ratings_data
+                "total_segments": len(segments_data),
+                "segments": segments_data
             }
 
     except HTTPException:
@@ -429,44 +449,56 @@ async def admin_download(
         )
 
 
-def _generate_csv_response(ratings_data: List[dict], study_name: str) -> StreamingResponse:
-    """Generate CSV response from ratings data."""
-    if not ratings_data:
+def _generate_csv_response(segments_data: List[dict], study_name: str, with_ids: bool) -> StreamingResponse:
+    """Generate CSV response with all segment data."""
+    if not segments_data:
         raise HTTPException(status_code=404, detail="No data to export")
 
     # Create CSV output
     output = io.StringIO()
     writer = csv.writer(output)
 
-    # Write header - adjusted for your model fields
+    # Write header - now includes all segment details
     headers = [
-        "study_name", "study_description", "participant_id", "song_id",
+        "study_name", "study_description", "participant_id",
         "song_url", "song_title", "rating_name",
-        "timestamp", "created_at", "rating_id", "segments_count"
+        "start_time", "end_time", "value", "segment_order",
+        "rating_created_at"
     ]
+
+    if with_ids:
+        headers.extend(["song_id", "rating_id", "segment_id"])
+
     writer.writerow(headers)
 
-    # Write data rows
-    for rating in ratings_data:
-        segments_count = len(rating["rating_segments"]) if rating["rating_segments"] else 0
-        writer.writerow([
-            rating["study_name"],
-            rating["study_description"],
-            rating["participant_id"],
-            rating["song_id"],
-            rating["song_url"],
-            rating["song_title"],
-            rating["rating_name"],
-            rating["timestamp"],
-            rating["created_at"],
-            rating["rating_id"],
-            segments_count
-        ])
+    # Write data rows - each row is one segment
+    for segment in segments_data:
+
+        row = [
+            segment["study_name"],
+            segment["study_description"],
+            segment["participant_id"],
+            segment["song_url"],
+            segment["song_title"],
+            segment["rating_name"],
+            segment["start_time"],
+            segment["end_time"],
+            segment["value"],
+            segment["segment_order"],
+            segment["rating_created_at"]
+        ]
+
+        if with_ids:
+            row.append(segment["song_id"])
+            row.append(segment["rating_id"])
+            row.append(segment["segment_id"])
+
+        writer.writerow(row)
 
     # Prepare response
     output.seek(0)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{study_name}_ratings_{timestamp}.csv"
+    filename = f"{study_name}_rating_segments_{timestamp}.csv"
 
     return StreamingResponse(
         iter([output.getvalue()]),

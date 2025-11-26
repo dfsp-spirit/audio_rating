@@ -41,6 +41,23 @@ class StudyRatingDimension(SQLModel, table=True):
         UniqueConstraint('study_id', 'dimension_title', name='uq_study_dimension_title'),
     )
 
+# NEW: Proper table for rating segments
+class RatingSegment(SQLModel, table=True):
+    id: str = Field(default_factory=generate_uuid, primary_key=True)
+    rating_id: str = Field(foreign_key="rating.id")
+    start_time: float = Field(description="Segment start time in seconds")
+    end_time: float = Field(description="Segment end time in seconds")
+    value: int = Field(description="Rating value for this segment")
+    segment_order: int = Field(default=0, description="Order of segment in the rating")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # Relationship
+    rating: "Rating" = Relationship(back_populates="segments")
+
+    __table_args__ = (
+        UniqueConstraint('rating_id', 'segment_order', name='uq_rating_segment_order'),
+    )
+
 # Main tables
 class Participant(SQLModel, table=True):
     id: str = Field(default_factory=generate_uuid, primary_key=True)
@@ -79,7 +96,7 @@ class Rating(SQLModel, table=True):
     study_id: str = Field(foreign_key="study.id")
     song_id: str = Field(foreign_key="song.id")
     rating_name: str = Field(index=True)
-    rating_segments: Dict[str, Any] = Field(sa_column=Column(JSON))
+    # REMOVED: rating_segments: Dict[str, Any] = Field(sa_column=Column(JSON))
     timestamp: datetime
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -87,6 +104,8 @@ class Rating(SQLModel, table=True):
     participant: "Participant" = Relationship(back_populates="ratings")
     study: "Study" = Relationship(back_populates="ratings")
     song: "Song" = Relationship(back_populates="ratings")
+    # NEW: Relationship to segments
+    segments: List["RatingSegment"] = Relationship(back_populates="rating")
 
     __table_args__ = (
         UniqueConstraint('participant_id', 'study_id', 'song_id', 'rating_name',
@@ -97,13 +116,14 @@ class Rating(SQLModel, table=True):
 StudyParticipantLink.update_forward_refs()
 StudySongLink.update_forward_refs()
 StudyRatingDimension.update_forward_refs()
+RatingSegment.update_forward_refs()  # NEW
 Participant.update_forward_refs()
 Study.update_forward_refs()
 Song.update_forward_refs()
 Rating.update_forward_refs()
 
-# Pydantic models for API requests/responses
-class RatingSegment(SQLModel):
+# Pydantic models for API requests/responses - KEEP THESE FOR API
+class RatingSegmentBase(SQLModel):
     start: float
     end: float
     value: int
@@ -146,7 +166,7 @@ class MetadataRating(SQLModel):
 
 class RatingSubmission(SQLModel):
     metadata_rating: MetadataRating
-    ratings: Dict[str, List[RatingSegment]]
+    ratings: Dict[str, List[RatingSegmentBase]]
 
 class StudyConfigResponse(SQLModel):
     id: str
