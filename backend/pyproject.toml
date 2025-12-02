@@ -13,6 +13,7 @@ dependencies = [
     "psycopg2-binary>=2.9.0", # PostgreSQL driver
     "python-dotenv>=1.0.0", # For environment variable management
     "gunicorn>=23.0.0", # Production WSGI server
+    "jinja2>=3.1.6",
 ]
 requires-python = ">=3.11"
 

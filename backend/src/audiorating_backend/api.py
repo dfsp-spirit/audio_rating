@@ -16,8 +16,19 @@ from sqlmodel import Session, select
 from urllib.parse import urlparse
 import secrets
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
+from sqlalchemy.sql import func
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+
 
 security = HTTPBasic()
+
+# Initialize templates with absolute path
+current_dir = Path(__file__).parent
+templates = Jinja2Templates(directory=str(current_dir / "templates"))
+static_dir = Path(__file__).parent / "static"
 
 
 
@@ -56,6 +67,15 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Operation"] # custom header to tell frontend on submit if the entry was created or updated.
 )
+
+from fastapi.responses import FileResponse
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    favicon_path = static_dir / "favicon.ico"
+    if favicon_path.exists():
+        return FileResponse(favicon_path)
+    return Response(status_code=204)
 
 def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
     correct_username = secrets.compare_digest(
@@ -505,3 +525,197 @@ def _generate_csv_response(segments_data: List[dict], study_name: str, with_ids:
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_dashboard(
+    request: Request,
+    session: Session = Depends(get_session),
+    current_admin: str = Depends(verify_admin)
+):
+    """
+    Main admin dashboard showing all studies and participation statistics.
+    Access via: /admin with HTTP Basic Auth
+    """
+    try:
+        # Get all studies with basic info
+        studies = session.exec(select(Study).order_by(Study.created_at)).all()
+
+        study_stats = []
+
+        for study in studies:
+            # Get total songs in this study
+            song_links = session.exec(
+                select(StudySongLink).where(StudySongLink.study_id == study.id)
+            ).all()
+            total_songs = len(song_links)
+
+            # Get all participants linked to this study (pre-listed)
+            participant_links = session.exec(
+                select(StudyParticipantLink).where(StudyParticipantLink.study_id == study.id)
+            ).all()
+            pre_listed_participants = [link.participant_id for link in participant_links]
+
+            # Get all participants who have actually submitted ratings for this study
+            participants_with_ratings = session.exec(
+                select(Rating.participant_id)
+                .where(Rating.study_id == study.id)
+                .distinct()
+            ).all()
+
+            # Get all ratings for this study to analyze participation
+            ratings = session.exec(
+                select(Rating, Participant, Song, func.count(RatingSegment.id).label("segment_count"))
+                .join(Participant, Rating.participant_id == Participant.id)
+                .join(Song, Rating.song_id == Song.id)
+                .join(RatingSegment, RatingSegment.rating_id == Rating.id, isouter=True)
+                .where(Rating.study_id == study.id)
+                .group_by(Rating.id, Participant.id, Song.id)
+                .order_by(Participant.id, Song.display_name, Rating.rating_name)
+            ).all()
+
+            # Organize data by participant
+            participants_data = {}
+            for rating, participant, song, segment_count in ratings:
+                if participant.id not in participants_data:
+                    participants_data[participant.id] = {
+                        "id": participant.id,
+                        "created_at": participant.created_at,
+                        "is_pre_listed": participant.id in pre_listed_participants,
+                        "songs_rated": set(),
+                        "ratings": [],
+                        "total_segments": 0,
+                        "last_activity": rating.timestamp if rating.timestamp else rating.created_at
+                    }
+
+                participants_data[participant.id]["songs_rated"].add(song.display_name)
+                participants_data[participant.id]["ratings"].append({
+                    "song": song.display_name,
+                    "song_url": song.media_url,
+                    "rating_name": rating.rating_name,
+                    "segment_count": segment_count,
+                    "timestamp": rating.timestamp,
+                    "created_at": rating.created_at
+                })
+                participants_data[participant.id]["total_segments"] += segment_count
+
+                # Update last activity if this rating is newer
+                if rating.timestamp and rating.timestamp > participants_data[participant.id]["last_activity"]:
+                    participants_data[participant.id]["last_activity"] = rating.timestamp
+
+            # Convert sets to lists for template
+            for participant_id in participants_data:
+                participants_data[participant_id]["songs_rated"] = list(
+                    participants_data[participant_id]["songs_rated"]
+                )
+                participants_data[participant_id]["songs_rated_count"] = len(
+                    participants_data[participant_id]["songs_rated"]
+                )
+
+            # Get unique participants who submitted ratings
+            active_participants = list(participants_data.values())
+
+            # Calculate coverage percentage safely
+            total_participants = len(set(pre_listed_participants + [p["id"] for p in active_participants]))
+            if total_songs > 0 and total_participants > 0:
+                # Simplified: percentage of total possible ratings (participants × songs) that have been completed
+                total_possible_ratings = total_participants * total_songs
+                coverage_percentage = 0  # Default
+            else:
+                coverage_percentage = 0
+
+            study_stats.append({
+                "id": study.id,
+                "name_short": study.name_short,
+                "name": study.name,
+                "description": study.description,
+                "total_songs": total_songs,
+                "allow_unlisted_participants": study.allow_unlisted_participants,
+                "pre_listed_participants": pre_listed_participants,
+                "pre_listed_count": len(pre_listed_participants),
+                "active_participants": active_participants,
+                "active_participants_count": len(active_participants),
+                "total_participants": total_participants,
+                "coverage_percentage": coverage_percentage
+            })
+
+        return templates.TemplateResponse(
+            "admin_dashboard.html",
+            {
+                "request": request,
+                "studies": study_stats,
+                "admin_user": current_admin,
+                "current_time": datetime.now()
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error loading admin dashboard: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load admin dashboard: {str(e)}"
+        )
+
+
+@app.get("/admin/api/stats")
+async def admin_api_stats(
+    study_id: Optional[str] = Query(None, description="Filter by study ID"),
+    session: Session = Depends(get_session),
+    current_admin: str = Depends(verify_admin)
+):
+    """
+    API endpoint for admin dashboard stats (can be used for AJAX updates).
+    """
+    try:
+        # Similar logic as above but returns JSON
+        if study_id:
+            studies = session.exec(
+                select(Study).where(Study.id == study_id)
+            ).all()
+        else:
+            studies = session.exec(select(Study).order_by(Study.created_at)).all()
+
+        study_stats = []
+
+        for study in studies:
+            # Simplified stats for API
+            total_ratings = session.exec(
+                select(func.count(Rating.id)).where(Rating.study_id == study.id)
+            ).first() or 0
+
+            unique_participants = session.exec(
+                select(func.count(func.distinct(Rating.participant_id)))
+                .where(Rating.study_id == study.id)
+            ).first() or 0
+
+            total_segments = session.exec(
+                select(func.count(RatingSegment.id))
+                .join(Rating, Rating.id == RatingSegment.rating_id)
+                .where(Rating.study_id == study.id)
+            ).first() or 0
+
+            study_stats.append({
+                "id": study.id,
+                "name_short": study.name_short,
+                "name": study.name,
+                "total_ratings": total_ratings,
+                "unique_participants": unique_participants,
+                "total_segments": total_segments,
+                "last_activity": session.exec(
+                    select(func.max(Rating.timestamp))
+                    .where(Rating.study_id == study.id)
+                ).first()
+            })
+
+        return {
+            "studies": study_stats,
+            "total_studies": len(study_stats),
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Error in admin API stats: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get stats: {str(e)}"
+        )
