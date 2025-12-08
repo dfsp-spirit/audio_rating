@@ -7,16 +7,20 @@
       "songs_to_rate": [ { "media_url": "demo.wav", "display_name": "Demo Song" }, { "media_url": "demo2.wav", "display_name": "Demo Song 2" }],
       "rating_dimensions": [ { "dimension_title" : "valence", "num_values": 8 }, { "dimension_title" : "arousal", "num_values": 5 }, { "dimension_title" : "enjoyment", "num_values": 10 }, { "dimension_title" : "is_cool", "num_values": 2 } ],
       "study_participant_ids": [],
-      "allow_unlisted_participants": true
+      "allow_unlisted_participants": true,
+      "data_collection_start": "2024-01-01T00:00:00Z",
+      "data_collection_end": "2026-12-31T23:59:59Z"
     },
     {
       "name": "Custom study",
       "name_short": "custom_study1",
       "description": "Study covering classic songs from the 70s and 80s",
-      "songs_to_rate": [ { "media_url": "eyeofthetiger.wav", "display_name": "Eye of the Tiger" }, { "media_url": "bohemianrhapsody.wav", "display_name": "Bohemian Rhapsody" }, { "media_url": "hotelcalifornia.wav", "display_name": "Hotel California" }],
+      "songs_to_rate": [ { "media_url": "eyeofthetiger.wav", "display_name": "Eye of the Tiger" }, { "media_url": "jet_generation.wav", "display_name": "Jet Generation by Guitar Wolf" }, { "media_url": "bohemianrhapsody.wav", "display_name": "Bohemian Rhapsody" }, { "media_url": "hotelcalifornia.wav", "display_name": "Hotel California" }],
       "rating_dimensions": [ { "dimension_title" : "valence", "num_values": 8 }, { "dimension_title" : "arousal", "num_values": 5 }, { "dimension_title" : "enjoyment", "num_values": 10 }, { "dimension_title" : "is_cool", "num_values": 2 } ],
       "study_participant_ids": ["bernddasbrot", "annasmith", "john_doe"],
-      "allow_unlisted_participants": false
+      "allow_unlisted_participants": false,
+      "data_collection_start": "2024-01-01T00:00:00Z",
+      "data_collection_end": "2026-12-31T23:59:59Z"
     }
   ]
 }
