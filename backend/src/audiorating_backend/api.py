@@ -253,6 +253,21 @@ async def submit_rating(
                 detail=f"Study with name_short '{metadata.study.name_short}' not found."
             )
 
+        now = datetime.utcnow()
+        if now < study.data_collection_start:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Study '{study.name_short}' has not started yet. "
+                       f"Data collection starts on {study.data_collection_start.isoformat()}."
+            )
+
+        if now > study.data_collection_end:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Study '{study.name_short}' has ended. "
+                       f"Data collection ended on {study.data_collection_end.isoformat()}."
+            )
+
         # Get song or throw error if not found
         song = session.exec(
             select(Song).where(Song.media_url == metadata.study.song_url)
