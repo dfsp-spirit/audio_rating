@@ -3,6 +3,7 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy import UniqueConstraint
 import uuid
 from datetime import datetime
+from .utils import utc_now
 
 # Generate UUID as default
 def generate_uuid():
@@ -49,7 +50,7 @@ class RatingSegment(SQLModel, table=True):
     end_time: float = Field(description="Segment end time in seconds")
     value: int = Field(description="Rating value for this segment")
     segment_order: int = Field(default=0, description="Order of segment in the rating")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
     # Relationship
     rating: "Rating" = Relationship(back_populates="segments")
@@ -61,7 +62,7 @@ class RatingSegment(SQLModel, table=True):
 # Main tables
 class Participant(SQLModel, table=True):
     id: str = Field(default_factory=generate_uuid, primary_key=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
     # Relationships
     study_links: List["StudyParticipantLink"] = Relationship(back_populates="participant")
@@ -75,7 +76,7 @@ class Study(SQLModel, table=True):
     allow_unlisted_participants: bool = Field(default=True)
     data_collection_start: datetime
     data_collection_end: datetime
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
     # Relationships
     participant_links: List["StudyParticipantLink"] = Relationship(back_populates="study")
@@ -100,7 +101,7 @@ class Rating(SQLModel, table=True):
     rating_name: str = Field(index=True)
     # REMOVED: rating_segments: Dict[str, Any] = Field(sa_column=Column(JSON))
     timestamp: datetime
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
     # Relationships
     participant: "Participant" = Relationship(back_populates="ratings")

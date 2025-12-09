@@ -17,11 +17,11 @@ from urllib.parse import urlparse
 import secrets
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from sqlalchemy.sql import func
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
-
+from .utils import utc_now
 
 security = HTTPBasic()
 
@@ -68,7 +68,7 @@ app.add_middleware(
     expose_headers=["X-Operation"] # custom header to tell frontend on submit if the entry was created or updated.
 )
 
-from fastapi.responses import FileResponse
+
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
@@ -253,7 +253,7 @@ async def submit_rating(
                 detail=f"Study with name_short '{metadata.study.name_short}' not found."
             )
 
-        now = datetime.utcnow()
+        now = utc_now()
         if now < study.data_collection_start:
             raise HTTPException(
                 status_code=403,
