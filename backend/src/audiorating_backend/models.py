@@ -73,6 +73,8 @@ class Study(SQLModel, table=True):
     name: Optional[str] = None
     description: Optional[str] = None
     allow_unlisted_participants: bool = Field(default=True)
+    data_collection_start: datetime
+    data_collection_end: datetime
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships

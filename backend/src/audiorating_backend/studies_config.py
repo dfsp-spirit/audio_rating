@@ -31,8 +31,10 @@ class CfgFileStudyConfig(BaseModel):
     description: Optional[str] = None
     songs_to_rate: List[CfgFileSong]
     rating_dimensions: List[CfgFileRatingDimension]
-    allow_unlisted_participants: bool = True
     study_participant_ids: List[str] = []
+    allow_unlisted_participants: bool = True
+    data_collection_start: str  # ISO 8601 date string
+    data_collection_end: str    # ISO 8601 date string
 
     @validator('name_short')
     def validate_name_short(cls, v):
@@ -52,6 +54,15 @@ class CfgFileStudyConfig(BaseModel):
         if len(v) > 50:
             raise ValueError(f'name_short "{v}" cannot exceed 50 characters')
 
+        return v
+
+    @validator('data_collection_start', 'data_collection_end')
+    def validate_iso8601_date(cls, v):
+        if v is not None:
+            # Simple regex check for ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ)
+            iso8601_regex = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$'
+            if not re.match(iso8601_regex, v):
+                raise ValueError(f'Date "{v}" is not in valid ISO 8601 format (e.g., 2024-01-01T00:00:00Z)')
         return v
 
 

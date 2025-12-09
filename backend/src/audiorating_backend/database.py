@@ -1,18 +1,3 @@
-# database.py
-from sqlmodel import SQLModel, create_engine, Session, select
-from typing import Generator
-from .models import Study, Song
-from .studies_config import load_studies_config
-from .settings import settings
-import logging
-
-
-
-logger = logging.getLogger("audiorating_backend.database")
-
-
-engine = create_engine(settings.database_url)
-
 
 # database.py
 from sqlmodel import SQLModel, create_engine, Session, select
@@ -21,6 +6,8 @@ from .models import Study, Song, StudyRatingDimension, StudySongLink, StudyParti
 from .studies_config import load_studies_config
 from .settings import settings
 import logging
+from datetime import datetime
+
 
 logger = logging.getLogger("audiorating_backend.database")
 
@@ -48,11 +35,17 @@ def create_config_file_studies(config_path: str):
 
             if not existing_study:
                 logger.info(f"Creating new study: {study_cfg.name_short}")
+
+                start_dt = datetime.fromisoformat(study_cfg.data_collection_start.replace('Z', '+00:00'))
+                end_dt = datetime.fromisoformat(study_cfg.data_collection_end.replace('Z', '+00:00'))
+
                 new_study = Study(
                     name=study_cfg.name,
                     name_short=study_cfg.name_short,
                     description=study_cfg.description,
-                    allow_unlisted_participants=study_cfg.allow_unlisted_participants
+                    allow_unlisted_participants=study_cfg.allow_unlisted_participants,
+                    data_collection_start=start_dt,
+                    data_collection_end=end_dt
                 )
                 session.add(new_study)
                 session.commit()
