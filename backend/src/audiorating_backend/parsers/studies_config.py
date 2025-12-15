@@ -143,3 +143,26 @@ class CfgFileStudyConfig(BaseModel):
                     f'must be before data_collection_end ({self.data_collection_end})'
                 )
         return self
+
+
+class CfgFileStudiesConfig(BaseModel):
+    studies: List[CfgFileStudyConfig]
+
+def load_studies_config(config_path: str) -> CfgFileStudiesConfig:
+    """Load studies configuration from YAML or JSON file"""
+
+    config_path = Path(config_path)
+
+    if not config_path.exists():
+        raise FileNotFoundError(f"Studies configuration file not found at '{config_path}'")
+
+    if config_path.suffix in ['.yaml', '.yml']:
+        with open(config_path, 'r') as f:
+            data = yaml.safe_load(f)
+    elif config_path.suffix == '.json':
+        with open(config_path, 'r') as f:
+            data = json.load(f)
+    else:
+        raise ValueError(f"Unsupported config file format: {config_path.suffix}")
+
+    return CfgFileStudiesConfig(**data)

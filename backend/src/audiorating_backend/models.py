@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship, Column, JSON
 from typing import List, Optional, Dict, Any
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, DateTime
 import uuid
 from datetime import datetime
 from .utils import utc_now
@@ -42,7 +42,7 @@ class StudyRatingDimension(SQLModel, table=True):
         UniqueConstraint('study_id', 'dimension_title', name='uq_study_dimension_title'),
     )
 
-# NEW: Proper table for rating segments
+
 class RatingSegment(SQLModel, table=True):
     id: str = Field(default_factory=generate_uuid, primary_key=True)
     rating_id: str = Field(foreign_key="rating.id")
@@ -74,9 +74,9 @@ class Study(SQLModel, table=True):
     name: Optional[str] = None
     description: Optional[str] = None
     allow_unlisted_participants: bool = Field(default=True)
-    data_collection_start: datetime
-    data_collection_end: datetime
-    created_at: datetime = Field(default_factory=utc_now)
+    data_collection_start : datetime = Field(sa_type=DateTime(timezone=True))
+    data_collection_end: datetime = Field(sa_type=DateTime(timezone=True))
+    created_at: datetime = Field(default_factory=utc_now, sa_type=DateTime(timezone=True))
 
     # Relationships
     participant_links: List["StudyParticipantLink"] = Relationship(back_populates="study")
@@ -101,7 +101,7 @@ class Rating(SQLModel, table=True):
     rating_name: str = Field(index=True)
     # REMOVED: rating_segments: Dict[str, Any] = Field(sa_column=Column(JSON))
     timestamp: datetime
-    created_at: datetime = Field(default_factory=utc_now)
+    created_at: datetime = Field(default_factory=utc_now, sa_type=DateTime(timezone=True))
 
     # Relationships
     participant: "Participant" = Relationship(back_populates="ratings")

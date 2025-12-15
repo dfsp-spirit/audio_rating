@@ -36,16 +36,13 @@ def create_config_file_studies(config_path: str):
             if not existing_study:
                 logger.info(f"Creating new study: {study_cfg.name_short}")
 
-                start_dt = datetime.fromisoformat(study_cfg.data_collection_start.replace('Z', '+00:00'))
-                end_dt = datetime.fromisoformat(study_cfg.data_collection_end.replace('Z', '+00:00'))
-
                 new_study = Study(
                     name=study_cfg.name,
                     name_short=study_cfg.name_short,
                     description=study_cfg.description,
                     allow_unlisted_participants=study_cfg.allow_unlisted_participants,
-                    data_collection_start=start_dt,
-                    data_collection_end=end_dt
+                    data_collection_start=study_cfg.data_collection_start,
+                    data_collection_end=study_cfg.data_collection_end
                 )
                 session.add(new_study)
                 session.commit()
