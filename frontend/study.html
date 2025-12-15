@@ -291,6 +291,11 @@
         this.init();
       }
 
+      getDefaultValueForDimension(dimensionName) {
+        const dimConfig = this.studyConfig.rating_dimensions[dimensionName];
+        return Math.floor(dimConfig.num_values / 2);
+      }
+
       getOrCreateUID() {
         const urlParams = new URLSearchParams(window.location.search);
         let uid = urlParams.get('uid');
@@ -305,25 +310,157 @@
         return uid;
       }
 
-      // Determine if a song has been completely rated by user
-      isSongCompletelyRated(songIndex) {
-        const songKey = `${this.studyName}_song_${songIndex}`;
 
-        // Check localStorage first
+      isSongCompletelyRated(songIndex = this.currentSongIndex) {
+        // If we're checking the current song and have widget data, use that
+        if (songIndex === this.currentSongIndex && this.widget) {
+          const ratingData = this.widget.getData();
+          const result = this.checkRatingDataComplete(ratingData);
+          return result.isComplete;
+        }
+
+        // Otherwise check localStorage
+        const songKey = `${this.studyName}_song_${songIndex}`;
         if (this.localRatings[songKey] && this.localRatings[songKey].data) {
           const songData = this.localRatings[songKey].data;
-          const requiredDimensions = Object.keys(this.studyConfig.rating_dimensions);
-
-          // Check if all required dimensions have ratings with at least one segment
-          return requiredDimensions.every(dim =>
-            songData[dim] &&
-            Array.isArray(songData[dim]) &&
-            songData[dim].length > 0
-          );
+          const result = this.checkRatingDataComplete(songData);
+          return result.isComplete;
         }
 
         return false;
       }
+
+      // Replace checkRatingDataComplete with this:
+      checkRatingDataComplete(ratingData) {
+        if (!ratingData || Object.keys(ratingData).length === 0) {
+          return { isComplete: false, missingDimensions: Object.keys(this.studyConfig.rating_dimensions) };
+        }
+
+        const requiredDimensions = Object.keys(this.studyConfig.rating_dimensions);
+        const missingDimensions = [];
+
+        requiredDimensions.forEach(dim => {
+          if (!ratingData[dim] || !Array.isArray(ratingData[dim]) || ratingData[dim].length === 0) {
+            missingDimensions.push(dim);
+            return;
+          }
+
+          const defaultValue = this.getDefaultValueForDimension(dim);
+          const segments = ratingData[dim];
+
+          // If user added segments (more than 1), it's modified
+          if (segments.length > 1) {
+            return; // This dimension is OK
+          }
+
+          // Check the single segment
+          const segment = segments[0];
+          if (!segment || segment.value === undefined || segment.value === null) {
+            missingDimensions.push(dim);
+            return;
+          }
+
+          // If value differs from default, it's modified
+          if (segment.value !== defaultValue) {
+            return; // This dimension is OK
+          }
+
+          // Check if timing differs from default (0 to song duration)
+          const duration = this.widget?.wavesurfer?.getDuration?.();
+          let isDefaultTiming = false;
+
+          if (duration && !isNaN(duration)) {
+            // We have a valid duration
+            isDefaultTiming = segment.start === 0 && Math.abs(segment.end - duration) < 0.1;
+          } else {
+            // No duration yet, check against 1e9
+            isDefaultTiming = segment.start === 0 && segment.end === 1e9;
+          }
+
+          // If timing is NOT default (user moved boundaries), it's modified
+          if (!isDefaultTiming) {
+            return; // This dimension is OK
+          }
+
+          // If we get here, dimension still has default values
+          missingDimensions.push(dim);
+        });
+
+        const isComplete = missingDimensions.length === 0;
+
+        if(!isComplete) {
+          console.log('Incomplete rating data, missing dimensions:', missingDimensions);
+        }
+
+        return {
+          isComplete: isComplete,
+          missingDimensions: missingDimensions
+        };
+      }
+
+      // Add this method after the checkRatingDataComplete method:
+      async autoSaveCurrentSong() {
+        if (!this.widget) return;
+
+        const ratingData = this.widget.getData();
+        if (Object.keys(ratingData).length === 0) {
+          return;
+        }
+
+        const songKey = this.getSongKey();
+        const song = this.studyConfig.songs_to_rate[this.currentSongIndex];
+        const timestamp = new Date().toISOString();
+
+        this.localRatings[songKey] = {
+          data: ratingData,
+          timestamp: timestamp,
+          study: this.studyName,
+          songIndex: this.currentSongIndex,
+          songName: song.display_name,
+          songUrl: song.media_url,
+          source: 'local'
+        };
+
+        try {
+          this.saveLocalRatings();
+          console.log('Auto-saved song', this.currentSongIndex, 'to localStorage');
+        } catch (error) {
+          console.error('Auto-save failed:', error);
+        }
+      }
+
+      updateSubmitButtonState() {
+        const submitBtn = document.getElementById('submit-rating');
+        if (!submitBtn) return;
+
+        if (!this.backendAvailable) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Server Unavailable';
+          return;
+        }
+
+        if (!this.widget) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Loading...';
+          return;
+        }
+
+        const ratingData = this.widget.getData();
+        const result = this.checkRatingDataComplete(ratingData);
+
+        if (result.isComplete) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Save to Server';
+        } else {
+          submitBtn.disabled = true;
+          if (result.missingDimensions.length > 0) {
+            submitBtn.textContent = `Rate: ${result.missingDimensions.join(', ')}`;
+          } else {
+            submitBtn.textContent = 'Complete all ratings to save';
+          }
+        }
+      }
+
 
       // Update song completion status
       updateSongCompletionStatus() {
@@ -613,6 +750,7 @@
 
 
       async loadSong(songIndex) {
+        await this.autoSaveCurrentSong();
         console.log(`=== loadSong(${songIndex}) called ===`);
 
         if (songIndex < 0 || songIndex >= this.studyConfig.songs_to_rate.length) {
@@ -693,6 +831,8 @@
           } else {
             console.log('No existing ratings found for this song');
           }
+
+          this.updateSubmitButtonState();
 
           console.log(`=== loadSong(${songIndex}) completed successfully ===`);
 
@@ -794,6 +934,13 @@
 
       async submitRating() {
         if (this.isLoading || !this.widget) return;
+
+
+        if(!this.isSongCompletelyRated()) {
+          const num_dimensions = Object.keys(this.studyConfig.rating_dimensions).length;
+          this.showStatusMessage('Please complete ratings for all ' + num_dimensions + ' dimensions before submitting.', 'error');
+          return;
+        }
 
         const ratingData = this.widget.getData();
 
