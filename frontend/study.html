@@ -13,8 +13,15 @@
       margin-left: auto;
       margin-right: auto;
     }
-    .study-phase { display: none; }
-    .study-phase.active { display: block; }
+    .study-phase {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .study-phase.active {
+      display: block;
+      opacity: 1;
+    }
     .thank-you { text-align: center; padding: 40px; }
     .instructions { line-height: 1.6; }
     button {
@@ -26,15 +33,135 @@
       cursor: pointer;
     }
     button.primary { background: #2563eb; color: white; border-color: #1e40af; }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    button.song-nav {
+      padding: 6px 12px;
+      margin: 2px;
+      font-size: 0.9em;
+    }
+    button.song-nav.active {
+      background: #2563eb;
+      color: white;
+      border-color: #1e40af;
+    }
+
+    /* Backend status indicator */
+    .backend-status {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.9em;
+      z-index: 1000;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .backend-status.online {
+      background: #dcfce7;
+      border: 1px solid #bbf7d0;
+      color: #059669;
+    }
+    .backend-status.offline {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+    }
+    .backend-status.connecting {
+      background: #fef9c3;
+      border: 1px solid #fde047;
+      color: #ca8a04;
+    }
+
+    /* Song navigation */
+    .song-navigation {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 15px 0;
+      padding: 15px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+    .song-navigation h4 {
+      margin: 0 0 10px 0;
+      width: 100%;
+      color: #475569;
+    }
+
+    /* Status messages */
+    .error-message {
+      color: #dc2626;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      padding: 10px;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+    .success-message {
+      color: #059669;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      padding: 10px;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+    .warning-message {
+      color: #ca8a04;
+      background: #fef9c3;
+      border: 1px solid #fde047;
+      padding: 10px;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+
+    .loading-shade {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    .loading-shade.active {
+      display: flex;
+    }
+
+    /* Hide elements that should be hidden */
+    #backend-notice,
+    #download-section {
+      display: none;
+    }
+
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e2e8f0;
+    }
   </style>
 </head>
 <body>
+  <div id="backend-status" class="backend-status connecting">Checking backend...</div>
+
   <div id="study-container">
     <!-- Instructions Phase -->
     <div id="instructions-phase" class="study-phase active">
       <h2>Music Rating Study</h2>
       <div class="instructions">
         <p>Welcome to our music perception study!</p>
+        <div id="backend-notice">
+          <strong>⚠️ Offline Mode:</strong> Backend server not available. Ratings will be saved locally only.
+        </div>
         <p>You will be asked to rate <span id="song-count">several</span> songs on different dimensions.</p>
         <p>For each song:</p>
         <ul>
@@ -51,19 +178,35 @@
 
     <!-- Rating Phase -->
     <div id="rating-phase" class="study-phase">
-      <h3>Song <span id="current-song-number">1</span> of <span id="total-songs">1</span></h3>
-      <div id="rating-widget-container"></div>
-      <div style="margin-top: 20px; text-align: center;">
-        <button id="submit-rating" class="primary">Submit Rating</button>
+      <div class="progress-info">
+        <h3 style="margin: 0;">Song <span id="current-song-number">1</span> of <span id="total-songs">1</span></h3>
+        <div id="song-status" style="font-size: 0.9em; color: #666;"></div>
       </div>
+
+      <div class="song-navigation">
+        <h4>Select a song:</h4>
+        <div id="song-list"></div>
+      </div>
+
+      <div id="rating-widget-container"></div>
+      <div id="status-messages" style="margin-top: 10px;"></div>
+      <div class="loading-shade" id="loading-overlay">Loading...</div>
+
+      <div style="margin-top: 20px; text-align: center;">
+        <button id="submit-rating" class="primary">Save Rating</button>
+      </div>
+      <div id="storage-status" style="margin-top: 10px; font-size: 0.9em; color: #666;"></div>
     </div>
 
     <!-- Completion Phase -->
     <div id="completion-phase" class="study-phase">
       <div class="thank-you">
         <h2>Thank You!</h2>
-        <p>You have completed all songs in this study.</p>
-        <p>Your responses have been recorded.</p>
+        <p id="completion-message">You have completed all songs in this study.</p>
+        <div id="download-section">
+          <button id="download-data" class="primary">Download All Ratings</button>
+          <p style="font-size: 0.9em; margin-top: 10px;">Save this file to preserve your ratings.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -72,31 +215,40 @@
   <script type="module">
     import { AudioRatingWidget } from './audio_rating.js';
 
-
-    window.addEventListener('error', function(event) {
-        console.error('Global error:', event.error);
-    });
-
-    window.addEventListener('unhandledrejection', function(event) {
-        console.error('Unhandled promise rejection:', event.reason);
-    });
-
-    // Hardcoded study configuration (will later come from backend)
-    const STUDY_CONFIG = {
-      "id": "default",
-      "name_short": "default",
-      "study_participant_ids": [],
-      "allow_unlisted_participants": true,
-      "songs_to_rate": ["demo.wav", "demo2.wav"]
+    // DEFAULT CONFIG - Updated to match backend format
+    const DEFAULT_STUDY_CONFIG = {
+      name: "Default Study",
+      name_short: "default",
+      description: "Default study for music aesthetics research",
+      songs_to_rate: [
+        { media_url: "demo.wav", display_name: "Demo Song" },
+        { media_url: "demo2.wav", display_name: "Demo Song 2" }
+      ],
+      rating_dimensions: [
+        { dimension_title: "valence", num_values: 8 },
+        { dimension_title: "arousal", num_values: 5 },
+        { dimension_title: "enjoyment", num_values: 10 },
+        { dimension_title: "is_cool", num_values: 2 }
+      ],
+      study_participant_ids: [],
+      allow_unlisted_participants: true,
+      data_collection_start: "2024-01-01T00:00:00Z",
+      data_collection_end: "2026-12-31T23:59:59Z"
     };
 
     class StudyCoordinator {
       constructor() {
-        this.studyConfig = STUDY_CONFIG;
+        this.studyConfig = DEFAULT_STUDY_CONFIG;
         this.currentSongIndex = 0;
         this.uid = this.getOrCreateUID();
         this.studyName = this.getStudyName();
         this.widget = null;
+        this.isLoading = false;
+        this.backendAvailable = false;
+        this.backendChecked = false;
+
+        this.localStorageKey = `audio_rating_study_${this.studyName}_${this.uid}`;
+        this.localRatings = this.loadLocalRatings();
 
         this.init();
       }
@@ -106,9 +258,8 @@
         let uid = urlParams.get('uid');
 
         if (!uid) {
-          // Generate random UID (simple version)
+          // Generate random UID
           uid = 'uid_' + Math.random().toString(36).substr(2, 9);
-          // Update URL without page reload
           const newUrl = `${window.location.pathname}?uid=${uid}&study_name=${this.getStudyName()}`;
           window.history.replaceState({}, '', newUrl);
         }
@@ -121,123 +272,474 @@
         return urlParams.get('study_name') || 'default';
       }
 
-      init() {
-        // Update UI with study info
-        document.getElementById('song-count').textContent = this.studyConfig.songs_to_rate.length;
-        document.getElementById('total-songs').textContent = this.studyConfig.songs_to_rate.length;
+      // Helper to convert backend format to widget format
+      convertToWidgetFormat(backendConfig) {
+        // Convert rating_dimensions array to object format
+        const ratingDimensions = {};
+        backendConfig.rating_dimensions.forEach(dim => {
+          ratingDimensions[dim.dimension_title] = { num_values: dim.num_values };
+        });
+
+        return {
+          ...backendConfig,
+          rating_dimensions: ratingDimensions
+        };
+      }
+
+      async init() {
+        // First, check backend availability
+        await this.checkBackendAvailability();
+
+        // If backend is available, try to load study config from it
+        if (this.backendAvailable) {
+          const configLoaded = await this.loadStudyConfigFromBackend();
+
+          // If config failed to load (e.g., 403/404), we already showed error messages
+          if (!configLoaded) {
+            // Config loading failed, we're using defaults
+            // The error was already shown by loadStudyConfigFromBackend()
+          }
+        } else {
+          this.showOfflineNotice();
+          // Convert default config to widget format
+          this.studyConfig = this.convertToWidgetFormat(DEFAULT_STUDY_CONFIG);
+
+          // Update UI with study info
+          document.getElementById('song-count').textContent = this.studyConfig.songs_to_rate.length;
+          document.getElementById('total-songs').textContent = this.studyConfig.songs_to_rate.length;
+        }
+
+        // Build song navigation (using whatever config we have)
+        this.buildSongNavigation();
 
         // Bind event listeners
         document.getElementById('begin-study').addEventListener('click', () => this.startRating());
         document.getElementById('submit-rating').addEventListener('click', () => this.submitRating());
+        document.getElementById('download-data').addEventListener('click', () => this.downloadAllRatings());
 
-        console.log('Study initialized:', {
-          uid: this.uid,
-          studyName: this.studyName,
-          songs: this.studyConfig.songs_to_rate
+        // Update backend status display
+        this.updateBackendStatus();
+      }
+
+      async checkBackendAvailability() {
+        try {
+          // Note: AR_SETTINGS.API_BASE_URL already includes /api
+          const response = await fetch(`${AR_SETTINGS.API_BASE_URL}`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+          });
+
+          this.backendAvailable = response.ok;
+          this.backendChecked = true;
+
+          if (this.backendAvailable) {
+            console.log('Backend is available at:', AR_SETTINGS.API_BASE_URL);
+          } else {
+            console.log('Backend returned error:', response.status);
+          }
+        } catch (error) {
+          console.log('Backend is not available:', error.message);
+          this.backendAvailable = false;
+          this.backendChecked = true;
+        }
+      }
+
+      async loadStudyConfigFromBackend() {
+        try {
+          // Try to load study config from backend with participant authorization
+          const response = await fetch(
+            `${AR_SETTINGS.API_BASE_URL}/participants/${this.uid}/studies/${this.studyName}/config`
+          );
+
+          if (response.ok) {
+            const studyConfig = await response.json();
+            console.log('Loaded study config from backend:', studyConfig.name_short);
+
+            // Convert to widget format and update
+            this.studyConfig = this.convertToWidgetFormat(studyConfig);
+
+            // Update study info display
+            document.getElementById('song-count').textContent = studyConfig.songs_to_rate.length;
+            document.getElementById('total-songs').textContent = studyConfig.songs_to_rate.length;
+
+            // Update instructions with study description if available
+            if (studyConfig.description && studyConfig.description !== "Default study for music aesthetics research") {
+              const instructionsDiv = document.querySelector('.instructions');
+              if (instructionsDiv) {
+                const studyDesc = document.createElement('p');
+                studyDesc.textContent = studyConfig.description;
+                studyDesc.style.fontStyle = 'italic';
+                studyDesc.style.margin = '10px 0';
+                instructionsDiv.insertBefore(studyDesc, instructionsDiv.firstChild);
+              }
+            }
+
+            return true;
+
+          } else if (response.status === 403) {
+            // Participant not authorized for this study
+            const errorData = await response.json().catch(() => ({}));
+            const errorMessage = errorData.detail || "You are not authorized to participate in this study.";
+
+            this.showOfflineNotice();
+            this.showStatusMessage(errorMessage, 'error');
+
+            // Disable the begin study button
+            const beginBtn = document.getElementById('begin-study');
+            if (beginBtn) {
+              beginBtn.disabled = true;
+              beginBtn.textContent = 'Not Authorized';
+            }
+
+            console.warn(`Participant '${this.uid}' not authorized for study '${this.studyName}'`);
+            this.studyConfig = this.convertToWidgetFormat(DEFAULT_STUDY_CONFIG);
+            return false;
+
+          } else if (response.status === 404) {
+            // Study not found
+            console.warn(`Study '${this.studyName}' not found in backend, using default`);
+            this.showStatusMessage(`Study '${this.studyName}' not found. Using demo configuration.`, 'warning');
+            this.studyConfig = this.convertToWidgetFormat(DEFAULT_STUDY_CONFIG);
+            return false;
+
+          } else {
+            // Other error
+            console.warn('Failed to load config from backend, using defaults. Status:', response.status);
+            this.showOfflineNotice();
+            this.studyConfig = this.convertToWidgetFormat(DEFAULT_STUDY_CONFIG);
+            return false;
+          }
+
+        } catch (error) {
+          console.warn('Failed to load config from backend, using defaults:', error);
+          this.showOfflineNotice();
+          this.studyConfig = this.convertToWidgetFormat(DEFAULT_STUDY_CONFIG);
+          return false;
+        }
+      }
+
+
+      buildSongNavigation() {
+        const songListDiv = document.getElementById('song-list');
+        songListDiv.innerHTML = '';
+
+        this.studyConfig.songs_to_rate.forEach((song, index) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'song-nav';
+          button.textContent = `${index + 1}. ${song.display_name}`;
+          button.dataset.index = index;
+
+          if (index === this.currentSongIndex) {
+            button.classList.add('active');
+          }
+
+          button.addEventListener('click', () => {
+            this.loadSong(index);
+          });
+
+          songListDiv.appendChild(button);
         });
+      }
+
+      updateSongNavigation() {
+        document.querySelectorAll('.song-nav').forEach((button, index) => {
+          if (index === this.currentSongIndex) {
+            button.classList.add('active');
+          } else {
+            button.classList.remove('active');
+          }
+        });
+      }
+
+      showOfflineNotice() {
+        document.getElementById('backend-notice').style.display = 'block';
+
+        // Also update the submit button text
+        const submitBtn = document.getElementById('submit-rating');
+        if (submitBtn) {
+          submitBtn.textContent = 'Save Locally';
+        }
+      }
+
+      updateBackendStatus() {
+        const statusEl = document.getElementById('backend-status');
+        const storageEl = document.getElementById('storage-status');
+
+        if (!this.backendChecked) {
+          statusEl.className = 'backend-status connecting';
+          statusEl.textContent = 'Checking backend...';
+          if (storageEl) storageEl.textContent = 'Checking connection...';
+          return;
+        }
+
+        if (this.backendAvailable) {
+          statusEl.className = 'backend-status online';
+          statusEl.textContent = '✓ Backend connected';
+          if (storageEl) storageEl.textContent = 'Ratings will be saved to server';
+        } else {
+          statusEl.className = 'backend-status offline';
+          statusEl.textContent = '⚠ Backend offline';
+          if (storageEl) storageEl.textContent = 'Ratings saved locally only';
+        }
       }
 
       async startRating() {
         this.showPhase('rating-phase');
-        await this.loadCurrentSong();
+        await this.loadSong(this.currentSongIndex);
       }
 
-      async loadCurrentSong() {
-        const songUrl = this.studyConfig.songs_to_rate[this.currentSongIndex];
-
-        // Update progress display
-        document.getElementById('current-song-number').textContent = this.currentSongIndex + 1;
-
-        // Destroy previous widget if exists
-        if (this.widget) {
-          this.widget.destroy();
+      async loadSong(songIndex) {
+        if (songIndex < 0 || songIndex >= this.studyConfig.songs_to_rate.length) {
+          console.error('Invalid song index:', songIndex);
+          return;
         }
 
-        // Create rating widget for current song
-        const rating_dimensions = {
-          valence:   { num_values: 10 },
-          arousal:   { num_values:  5 },
-          enjoyment: { num_values: 10 },
-          is_cool:   { num_values:  2 },
-        };
+        this.currentSongIndex = songIndex;
+        const song = this.studyConfig.songs_to_rate[songIndex];
 
-        this.widget = await AudioRatingWidget.create({
-          container: '#rating-widget-container',
-          audioUrl: songUrl,
-          rating_dimensions,
-          height: 140,
-          waveColor: '#bfc8d6',
-          progressColor: '#6b46c1',
-          with_instructions: false, // We show our own instructions
-          with_volume_slider: true,
-          with_step_labels_legend: true,
-          show_download_button: false,
-          show_timeline: true,
-          title: `Rate this song (${this.currentSongIndex + 1}/${this.studyConfig.songs_to_rate.length})`,
-        });
+        // Update progress display
+        document.getElementById('current-song-number').textContent = songIndex + 1;
+        document.getElementById('song-status').textContent = `Currently rating: ${song.display_name}`;
+
+        // Update navigation
+        this.updateSongNavigation();
+
+        // Clear status messages
+        this.clearStatusMessages();
+
+        // Show loading
+        this.setLoading(true, true);
+
+        try {
+          // Destroy previous widget if exists
+          if (this.widget) {
+            try {
+              this.widget.destroy();
+            } catch (e) {
+              console.warn('Error destroying widget:', e);
+            }
+            this.widget = null;
+          }
+
+          // Clear widget container
+          const widgetContainer = document.getElementById('rating-widget-container');
+          widgetContainer.innerHTML = '';
+
+          // Load existing ratings (from backend if available, otherwise from localStorage)
+          const existingRatings = await this.loadExistingRatings();
+
+          // Create rating widget
+          this.widget = await AudioRatingWidget.create({
+            container: '#rating-widget-container',
+            audioUrl: song.media_url,
+            rating_dimensions: this.studyConfig.rating_dimensions,
+            height: 140,
+            waveColor: '#bfc8d6',
+            progressColor: '#6b46c1',
+            with_instructions: false,
+            with_volume_slider: true,
+            with_step_labels_legend: true,
+            show_download_button: false,
+            show_timeline: true,
+            title: song.display_name
+          });
+
+          // Set existing data if available
+          const songKey = this.getSongKey();
+          if (existingRatings[songKey]) {
+            this.widget.setData(existingRatings[songKey].data || existingRatings[songKey]);
+            this.showStatusMessage('Loaded previously saved ratings', 'success');
+          }
+
+        } catch (error) {
+          console.error('Error loading song:', error);
+          this.showStatusMessage(`Error loading song "${song.display_name}". Please try again.`, 'error');
+        } finally {
+          this.setLoading(false, true);
+        }
+      }
+
+      getSongKey() {
+        return `${this.studyName}_song_${this.currentSongIndex}`;
+      }
+
+      async loadExistingRatings() {
+        const songKey = this.getSongKey();
+
+        if (this.backendAvailable) {
+          try {
+            // CHANGED: New URL structure with participant in path
+            const backendUrl = `${AR_SETTINGS.API_BASE_URL}/participants/${this.uid}/studies/${this.studyName}/songs/${this.currentSongIndex}/ratings`;
+
+            const response = await fetch(backendUrl, {
+              method: 'GET'
+              // REMOVED: No more X-Participant-ID header needed
+            });
+
+            if (response.status === 404) {
+              // No ratings exist yet on backend, check localStorage
+              return this.localRatings;
+            }
+
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            // Extract segments from backend response
+            const backendRatings = {};
+            if (data.ratings) {
+              Object.keys(data.ratings).forEach(ratingName => {
+                backendRatings[ratingName] = data.ratings[ratingName].segments || [];
+              });
+            }
+
+            return { [songKey]: { data: backendRatings, source: 'backend' } };
+
+          } catch (error) {
+            console.warn('Could not load from backend, falling back to localStorage:', error);
+            return this.localRatings;
+          }
+        } else {
+          // Backend not available, use localStorage
+          return this.localRatings;
+        }
+      }
+
+      loadLocalRatings() {
+        try {
+          const stored = localStorage.getItem(this.localStorageKey);
+          return stored ? JSON.parse(stored) : {};
+        } catch (error) {
+          console.error('Error loading local ratings:', error);
+          return {};
+        }
+      }
+
+      saveLocalRatings() {
+        try {
+          localStorage.setItem(this.localStorageKey, JSON.stringify(this.localRatings));
+          return true;
+        } catch (error) {
+          console.error('Error saving local ratings:', error);
+          return false;
+        }
       }
 
       async submitRating() {
+        if (this.isLoading || !this.widget) return;
+
         const ratingData = this.widget.getData();
 
-        // Prepare submission data
-        const submission = {
-          "metadata_rating" : {
-            "participant": {
-              "pid" : this.uid,
-            },
-            "study": {
-              "name_short": this.studyName,
-              "song_index": this.currentSongIndex,
-              "song_url": this.studyConfig.songs_to_rate[this.currentSongIndex],
-            },
-            "submission" : {
-              "timestamp": new Date().toISOString(),
-            }
-          },
-          "ratings": ratingData,
+        if (Object.keys(ratingData).length === 0) {
+          this.showStatusMessage('No ratings to save. Please rate the song first.', 'error');
+          return;
+        }
+
+        this.setLoading(true, false);
+        this.clearStatusMessages();
+
+        const songKey = this.getSongKey();
+        const song = this.studyConfig.songs_to_rate[this.currentSongIndex];
+        const submissionTimestamp = new Date().toISOString();
+
+        // Always save locally first
+        this.localRatings[songKey] = {
+          data: ratingData,
+          timestamp: submissionTimestamp,
+          study: this.studyName,
+          songIndex: this.currentSongIndex,
+          songName: song.display_name,
+          songUrl: song.media_url,
+          source: 'local'
         };
 
-        const backendUrl = AR_SETTINGS.API_BASE_URL + '/rating/submit';
+        const localSaved = this.saveLocalRatings();
 
-        console.log('Submitting rating:', submission, 'to', backendUrl);
-
-        try {
-          // Send to backend
-          const response = await fetch(backendUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(submission)
-          });
-
-          if (response.ok) {
-            console.log('Rating submitted successfully, backend response OK.');
-            this.nextSong();
-          } else {
-            console.log('Failed to submit rating, received backend response but not OK: response: ', response);
-          }
-        } catch (error) {
-            console.log("Failed to submit rating, did not receive a backend response:", String(error));
-            if(error instanceof Error) {
-              if(error.name === 'TypeError') {
-                console.log("Error hint: Is the backend running at " + AR_SETTINGS.API_BASE_URL + "? (This may also be due to a network error or CORS issue.)");
-              }
-            }
+        if (localSaved) {
+          this.showStatusMessage('Rating saved locally', 'success');
         }
+
+        // Try to submit to backend if available
+        if (this.backendAvailable) {
+          console.log('Submitting rating data to backend: ', ratingData);
+          try {
+            // CHANGED: New URL structure with participant in path
+            const backendUrl = `${AR_SETTINGS.API_BASE_URL}/participants/${this.uid}/studies/${this.studyName}/songs/${this.currentSongIndex}/ratings`;
+
+            console.log('Submitting to backend URL:', backendUrl);
+
+            const response = await fetch(backendUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+                // REMOVED: No more X-Participant-ID header needed
+              },
+              body: JSON.stringify({
+                timestamp: submissionTimestamp,
+                ratings: ratingData
+              })
+            });
+
+            if (response.ok) {
+              const result = await response.json();
+              const operation = response.headers.get('X-Operation') || 'created';
+
+              this.showStatusMessage(
+                `Rating ${operation === 'created' ? 'saved' : 'updated'} on server!`,
+                'success'
+              );
+
+            } else {
+              this.showStatusMessage(
+                'Saved locally, but server submission failed. Working offline.',
+                'warning'
+              );
+            }
+
+          } catch (error) {
+            console.error('Backend submission failed:', error);
+            this.showStatusMessage(
+              'Saved locally. Backend temporarily unavailable.',
+              'warning'
+            );
+          }
+        }
+
+        this.setLoading(false, false);
       }
 
-      nextSong() {
-        this.currentSongIndex++;
 
-        if (this.currentSongIndex < this.studyConfig.songs_to_rate.length) {
-          // Load next song
-          this.loadCurrentSong();
-        } else {
-          // Study complete
-          this.showPhase('completion-phase');
+
+      completeStudy() {
+        const hasLocalData = Object.keys(this.localRatings).length > 0;
+
+        if (!this.backendAvailable && hasLocalData) {
+          document.getElementById('completion-message').innerHTML = `
+            You have completed all songs in this study.<br>
+            <strong>Important:</strong> Your ratings are saved locally only.
+          `;
+          document.getElementById('download-section').style.display = 'block';
         }
+
+        this.showPhase('completion-phase');
+      }
+
+      downloadAllRatings() {
+        const dataStr = JSON.stringify(this.localRatings, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `audio_ratings_${this.studyName}_${this.uid}_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setTimeout(() => URL.revokeObjectURL(url), 100);
       }
 
       showPhase(phaseId) {
@@ -249,11 +751,60 @@
         // Show target phase
         document.getElementById(phaseId).classList.add('active');
       }
+
+      showStatusMessage(message, type = 'info') {
+        const statusDiv = document.getElementById('status-messages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `${type}-message`;
+        messageDiv.textContent = message;
+        statusDiv.appendChild(messageDiv);
+
+        // Auto-remove success/warning messages after 5 seconds
+        if (type === 'success' || type === 'warning') {
+          setTimeout(() => {
+            if (messageDiv.parentNode) messageDiv.remove();
+          }, 5000);
+        }
+      }
+
+      clearStatusMessages() {
+        const statusDiv = document.getElementById('status-messages');
+        statusDiv.innerHTML = '';
+      }
+
+      setLoading(loading, isSongLoading = false) {
+        this.isLoading = loading;
+        const submitBtn = document.getElementById('submit-rating');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        if (submitBtn) {
+          submitBtn.disabled = loading;
+          submitBtn.textContent = loading ? 'Saving...' :
+            (this.backendAvailable ? 'Save to Server' : 'Save Locally');
+        }
+
+        if (loadingOverlay) {
+          if (loading && isSongLoading) {
+            loadingOverlay.classList.add('active');
+          } else {
+            loadingOverlay.classList.remove('active');
+          }
+        }
+      }
     }
 
     // Initialize study when page loads
     const study = new StudyCoordinator();
     window.study = study; // For debugging
+
+    // Global error handling
+    window.addEventListener('error', function(event) {
+      console.error('Global error:', event.error);
+    });
+
+    window.addEventListener('unhandledrejection', function(event) {
+      console.error('Unhandled promise rejection:', event.reason);
+    });
   </script>
 </body>
 </html>

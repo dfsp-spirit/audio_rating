@@ -2,12 +2,12 @@ from fastapi import FastAPI, HTTPException, Request, status, Response, Depends, 
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
-from pydantic import ValidationError
+from pydantic import ValidationError, BaseModel
 from fastapi.exceptions import RequestValidationError
 import logging
 import uuid
 from typing import List, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import csv
 import json
 import io
@@ -21,7 +21,14 @@ from fastapi.responses import HTMLResponse, FileResponse
 from sqlalchemy.sql import func
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
+from fastapi import Header, Query
+from typing import Dict, List
+from sqlalchemy import delete
 from .utils import utc_now
+from fastapi import Header, Query
+from typing import Dict, List
+from sqlalchemy import delete
+
 
 security = HTTPBasic()
 
@@ -37,9 +44,22 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 from .settings import settings
-from .models import Participant, Study, Song, Rating, StudyParticipantLink, StudySongLink, RatingSubmission, RatingSegment
+from .models import Participant, Study, Song, Rating, StudyParticipantLink, StudySongLink, StudyRatingDimension, RatingSegment, RatingSegmentBase
 from .database import get_session, create_db_and_tables
+from pydantic import field_validator
 
+class RatingSubmitRequest(BaseModel):
+    """Request body for submitting ratings - Pure API schema, not a database model"""
+    timestamp: datetime
+    ratings: Dict[str, List[RatingSegmentBase]]
+
+    @field_validator('timestamp')
+    @classmethod
+    def validate_timestamp(cls, v: datetime) -> datetime:
+        """Ensure timestamp is timezone-aware and in UTC"""
+        if v.tzinfo is None:
+            raise ValueError("Timestamp must include timezone information")
+        return v.astimezone(timezone.utc)
 
 
 @asynccontextmanager
@@ -222,99 +242,97 @@ def root():
     return {"message": "AR API is running"}
 
 
-@app.post("/api/rating/submit")
-async def submit_rating(
-    submission: RatingSubmission,
+@app.post("/api/participants/{participant_id}/studies/{study_name_short}/songs/{song_index}/ratings")
+async def submit_rating_restful(
+    participant_id: str,  # Now a path parameter
+    study_name_short: str,
+    song_index: int,
+    rating_request: RatingSubmitRequest,
     session: Session = Depends(get_session)
 ):
+    """
+    Submit ratings for a specific study, song, and participant.
+    - participant_id: Participant ID from X-Participant-ID header
+    - study_name_short: Short name of the study (from URL)
+    - song_index: Index of the song in the study (from URL)
+    - rating_request: Contains timestamp and ratings data
+    - session: Database session dependency
+    Returns success message with details.
+    """
     try:
-        metadata = submission.metadata_rating
-        ratings_data = submission.ratings
-
-        # Get or create participant
-        participant = session.exec(
-            select(Participant).where(Participant.id == metadata.participant.pid)
-        ).first()
-
-        if not participant:
-            participant = Participant(id=metadata.participant.pid)
-            session.add(participant)
-            session.flush()  # Get the ID without committing
-            logger.info(f"Created new participant: {participant.id}")
-
-        # Get study or throw error if not found
+        # Get study
         study = session.exec(
-            select(Study).where(Study.name_short == metadata.study.name_short)
+            select(Study).where(Study.name_short == study_name_short)
         ).first()
 
         if not study:
             raise HTTPException(
                 status_code=404,
-                detail=f"Study with name_short '{metadata.study.name_short}' not found."
+                detail=f"Study '{study_name_short}' not found"
             )
 
+        # Validate study dates
         now = utc_now()
         if now < study.data_collection_start:
             raise HTTPException(
                 status_code=403,
-                detail=f"Study '{study.name_short}' has not started yet. "
-                       f"Data collection starts on {study.data_collection_start.isoformat()}."
+                detail=f"Study hasn't started yet (starts {study.data_collection_start.isoformat()})"
             )
-
         if now > study.data_collection_end:
             raise HTTPException(
                 status_code=403,
-                detail=f"Study '{study.name_short}' has ended. "
-                       f"Data collection ended on {study.data_collection_end.isoformat()}."
+                detail=f"Study has ended (ended {study.data_collection_end.isoformat()})"
             )
 
-        # Get song or throw error if not found
-        song = session.exec(
-            select(Song).where(Song.media_url == metadata.study.song_url)
+        # Get or create participant
+        participant = session.exec(
+            select(Participant).where(Participant.id == participant_id)
         ).first()
 
-        if not song:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Song with URL '{metadata.study.song_url}' not found."
-            )
+        if not participant:
+            participant = Participant(id=participant_id)
+            session.add(participant)
+            logger.info(f"Created new participant: {participant.id}")
 
-        # If the study does not have allow_unlisted_participants set, check whether the participant is assigned to the study
+        # Check participant authorization if needed
         if not study.allow_unlisted_participants:
-            participiant_link = session.exec(
+            link_exists = session.exec(
                 select(StudyParticipantLink).where(
                     StudyParticipantLink.study_id == study.id,
                     StudyParticipantLink.participant_id == participant.id
                 )
             ).first()
-
-            if not participiant_link:
+            if not link_exists:
                 raise HTTPException(
                     status_code=403,
-                    detail=f"Participant '{participant.id}' is not allowed to submit ratings for study '{study.name_short}'."
+                    detail="Participant not authorized for this study"
                 )
 
-        # Link song to study if not already linked (with correct index)
-        existing_song_link = session.exec(
-            select(StudySongLink).where(
+        # Get song by index in study
+        song_link = session.exec(
+            select(StudySongLink, Song)
+            .join(Song, StudySongLink.song_id == Song.id)
+            .where(
                 StudySongLink.study_id == study.id,
-                StudySongLink.song_id == song.id
+                StudySongLink.song_index == song_index
             )
         ).first()
 
-        if not existing_song_link:
+        if not song_link:
             raise HTTPException(
-                status_code=403,
-                detail=f"Song '{song.media_url}' is not linked to study '{study.name_short}', no rating allowed."
+                status_code=404,
+                detail=f"Song with index {song_index} not found in study '{study_name_short}'"
             )
 
-        # Save ratings for each dimension
+        song = song_link[1]  # Get the Song object
+
+        # Process all ratings in a single batch
         rating_count = 0
         segment_count = 0
 
-        for rating_name, segments in ratings_data.items():
-            # Check if rating already exists
-            existing_rating = session.exec(
+        for rating_name, segments in rating_request.ratings.items():
+            # Find or create rating
+            rating = session.exec(
                 select(Rating).where(
                     Rating.participant_id == participant.id,
                     Rating.study_id == study.id,
@@ -323,35 +341,29 @@ async def submit_rating(
                 )
             ).first()
 
-            if existing_rating:
-                # Delete existing segments first
-                existing_segments = session.exec(
-                    select(RatingSegment).where(
-                        RatingSegment.rating_id == existing_rating.id
-                    )
-                ).all()
-
-                for seg in existing_segments:
-                    session.delete(seg)
-
-                # Update existing rating timestamp
-                existing_rating.timestamp = metadata.submission.timestamp
-                rating = existing_rating
-                logger.info(f"Updated existing rating for {rating_name} and deleted {len(existing_segments)} segments")
+            if rating:
+                # Delete existing segments
+                session.exec(
+                    delete(RatingSegment).where(RatingSegment.rating_id == rating.id)
+                )
+                rating.timestamp = rating_request.timestamp
+                operation = "updated"
             else:
-                # Create new rating
                 rating = Rating(
                     participant_id=participant.id,
                     study_id=study.id,
                     song_id=song.id,
                     rating_name=rating_name,
-                    timestamp=metadata.submission.timestamp
+                    timestamp=rating_request.timestamp
                 )
                 session.add(rating)
-                session.flush()  # Get the rating ID for segments
                 rating_count += 1
+                operation = "created"
 
-            # Save all segments for this rating
+            # Flush to get rating ID for segments
+            session.flush()
+
+            # Add all segments for this rating
             for segment_order, segment_data in enumerate(segments):
                 segment = RatingSegment(
                     rating_id=rating.id,
@@ -363,30 +375,166 @@ async def submit_rating(
                 session.add(segment)
                 segment_count += 1
 
-            logger.info(f"Saved {len(segments)} segments for rating {rating_name}")
+            logger.info(f"{operation.capitalize()} rating '{rating_name}' with {len(segments)} segments")
 
-        # Commit all changes
         session.commit()
 
-        logger.info(f"Successfully saved {rating_count} ratings with {segment_count} total segments for participant {participant.id}")
-
-        return {
-            "status": "success",
-            "message": f"Ratings submitted successfully",
-            "participant_id": participant.id,
-            "study_name": study.name_short,
-            "song_url": song.media_url,
-            "ratings_saved": rating_count,
-            "segments_saved": segment_count
+        # Set operation header for frontend
+        response_headers = {
+            "X-Operation": "updated" if rating_count == 0 else "created"
         }
 
+        return JSONResponse(
+            content={
+                "status": "success",
+                "message": f"Submitted {len(rating_request.ratings)} ratings with {segment_count} segments",
+                "study": study_name_short,
+                "song_index": song_index,
+                "song_url": song.media_url,
+                "participant_id": participant.id,
+                "ratings_created": rating_count,
+                "ratings_updated": len(rating_request.ratings) - rating_count,
+                "segments_saved": segment_count,
+                "timestamp": rating_request.timestamp.isoformat()
+            },
+            headers=response_headers
+        )
+
+    except HTTPException:
+        raise
     except Exception as e:
         session.rollback()
-        logger.error(f"Error submitting rating: {str(e)}")
+        logger.error(f"Rating submission error: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to submit rating: {str(e)}"
+            detail="Internal server error"
         )
+
+
+
+@app.get("/api/participants/{participant_id}/studies/{study_name_short}/songs/{song_index}/ratings")
+async def get_rating(
+    participant_id: str,  # Now a path parameter
+    study_name_short: str,
+    song_index: int,
+    session: Session = Depends(get_session)
+):
+    """
+    Get existing ratings for a participant, study, and song.
+
+    Returns all rating segments organized by rating name.
+    """
+    try:
+        # Get study
+        study = session.exec(
+            select(Study).where(Study.name_short == study_name_short)
+        ).first()
+
+        if not study:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Study '{study_name_short}' not found"
+            )
+
+        # Get participant
+        participant = session.exec(
+            select(Participant).where(Participant.id == participant_id)
+        ).first()
+
+        if not participant:
+            # Participant doesn't exist yet, return empty response
+            return {
+                "study_name_short": study_name_short,
+                "song_index": song_index,
+                "participant_id": participant_id,
+                "ratings": {},
+                "message": "No ratings found for this participant",
+                "retrieved_at": utc_now().isoformat()
+            }
+
+        # Get song by index in study
+        song_link = session.exec(
+            select(StudySongLink, Song)
+            .join(Song, StudySongLink.song_id == Song.id)
+            .where(
+                StudySongLink.study_id == study.id,
+                StudySongLink.song_index == song_index
+            )
+        ).first()
+
+        if not song_link:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Song with index {song_index} not found in study '{study_name_short}'"
+            )
+
+        song = song_link[1]  # Get the Song object
+
+        # Get all ratings with their segments
+        ratings = session.exec(
+            select(Rating, RatingSegment)
+            .join(RatingSegment, Rating.id == RatingSegment.rating_id, isouter=True)
+            .where(
+                Rating.participant_id == participant.id,
+                Rating.study_id == study.id,
+                Rating.song_id == song.id
+            )
+            .order_by(Rating.rating_name, RatingSegment.segment_order)
+        ).all()
+
+        # Organize by rating name
+        organized_ratings = {}
+        for rating, segment in ratings:
+            if segment is None:
+                # Rating exists but has no segments (shouldn't happen, but handle gracefully)
+                continue
+
+            if rating.rating_name not in organized_ratings:
+                organized_ratings[rating.rating_name] = {
+                    "rating_id": rating.id,
+                    "timestamp": rating.timestamp.isoformat() if rating.timestamp else None,
+                    "created_at": rating.created_at.isoformat() if rating.created_at else None,
+                    "segments": []
+                }
+
+            organized_ratings[rating.rating_name]["segments"].append({
+                "start": segment.start_time,
+                "end": segment.end_time,
+                "value": segment.value,
+                "segment_order": segment.segment_order
+            })
+
+        # Check if we found any ratings
+        if not organized_ratings:
+            return {
+                "study_name_short": study_name_short,
+                "song_index": song_index,
+                "song_url": song.media_url,
+                "participant_id": participant.id,
+                "ratings": {},
+                "message": "No ratings found",
+                "retrieved_at": utc_now().isoformat()
+            }
+
+        return {
+            "study_name_short": study_name_short,
+            "song_index": song_index,
+            "song_url": song.media_url,
+            "participant_id": participant.id,
+            "ratings": organized_ratings,
+            "retrieved_at": utc_now().isoformat()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving ratings: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
+
+
 
 
 @app.get("/api/admin/datasets/download")
@@ -733,4 +881,118 @@ async def admin_api_stats(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get stats: {str(e)}"
+        )
+
+@app.get("/api/participants/{participant_id}/studies/{study_name}/config")
+async def get_study_config(
+    participant_id: str,
+    study_name: str,
+    session: Session = Depends(get_session)
+):
+    """
+    Get configuration for a specific study, with participant authorization check.
+
+    Returns study configuration without sensitive information (no study_participant_ids).
+    Checks if participant is authorized to access this study.
+    """
+    try:
+        # Get study from database
+        study = session.exec(
+            select(Study).where(Study.name_short == study_name)
+        ).first()
+
+        if not study:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Study '{study_name}' not found"
+            )
+
+        # Check if study is active (within data collection period)
+        now = utc_now()
+        if now < study.data_collection_start:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Study '{study_name}' has not started yet. "
+                       f"Data collection starts on {study.data_collection_start.isoformat()}"
+            )
+
+        if now > study.data_collection_end:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Study '{study_name}' has ended. "
+                       f"Data collection ended on {study.data_collection_end.isoformat()}"
+            )
+
+        # Check participant authorization if study doesn't allow unlisted participants
+        if not study.allow_unlisted_participants:
+            # Check if participant is pre-listed for this study
+            participant_link = session.exec(
+                select(StudyParticipantLink).where(
+                    StudyParticipantLink.study_id == study.id,
+                    StudyParticipantLink.participant_id == participant_id
+                )
+            ).first()
+
+            if not participant_link:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Participant '{participant_id}' is not authorized to access study '{study_name}'"
+                )
+
+        # Get all songs linked to this study (ordered by song_index)
+        song_links = session.exec(
+            select(StudySongLink, Song)
+            .join(Song, StudySongLink.song_id == Song.id)
+            .where(StudySongLink.study_id == study.id)
+            .order_by(StudySongLink.song_index)
+        ).all()
+
+        # Get all rating dimensions for this study (ordered by dimension_order)
+        rating_dims = session.exec(
+            select(StudyRatingDimension)
+            .where(StudyRatingDimension.study_id == study.id)
+            .order_by(StudyRatingDimension.dimension_order)
+        ).all()
+
+        # Build the response - FILTERED (no sensitive information)
+        study_config = {
+            "name": study.name,
+            "name_short": study.name_short,
+            "description": study.description,
+            "songs_to_rate": [
+                {
+                    "media_url": song.media_url,
+                    "display_name": song.display_name
+                }
+                for _, song in song_links  # song_links is tuple of (StudySongLink, Song)
+            ],
+            "rating_dimensions": [
+                {
+                    "dimension_title": dim.dimension_title,
+                    "num_values": dim.num_values
+                }
+                for dim in rating_dims
+            ],
+            "allow_unlisted_participants": study.allow_unlisted_participants,
+            "data_collection_start": study.data_collection_start.isoformat(),
+            "data_collection_end": study.data_collection_end.isoformat()
+        }
+
+        logger.info(
+            f"Returning config for study '{study_name}' to participant '{participant_id}' "
+            f"with {len(song_links)} songs and {len(rating_dims)} dimensions"
+        )
+
+        return study_config
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            f"Error loading study config for '{study_name}' (participant '{participant_id}'): {e}",
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to load study configuration"
         )

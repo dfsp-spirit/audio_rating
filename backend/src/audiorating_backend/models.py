@@ -2,7 +2,7 @@ from sqlmodel import SQLModel, Field, Relationship, Column, JSON
 from typing import List, Optional, Dict, Any
 from sqlalchemy import UniqueConstraint, DateTime
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from .utils import utc_now
 
 # Generate UUID as default
@@ -181,3 +181,4 @@ class StudyConfigResponse(SQLModel):
 
 def create_db_and_tables(engine):
     SQLModel.metadata.create_all(engine)
+
