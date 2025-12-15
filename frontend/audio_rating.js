@@ -737,10 +737,24 @@ _xToTime(x) {
   }
 
   setData(data) {
-    this.dimensionData = JSON.parse(JSON.stringify(data));
-    this.segments = this.dimensionData[this.currentDimension];
-    this._drawAll();
+  // Start with defaults
+  const defaults = {};
+  for (const dim of Object.keys(this.dimensionDefinition)) {
+    defaults[dim] = [{
+      start: 0,
+      end: 1e9,
+      value: Math.floor(this.dimensionDefinition[dim].num_values / 2),
+    }];
   }
+
+  // Merge with provided data (data overrides defaults)
+  this.dimensionData = JSON.parse(JSON.stringify({ ...defaults, ...data }));
+
+  // Ensure segments is set
+  this.segments = this.dimensionData[this.currentDimension];
+  this._updateActiveButton();
+  this._drawAll();
+}
 
   destroy() {
     // Clean up listeners and RAF

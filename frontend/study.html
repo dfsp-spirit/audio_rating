@@ -437,6 +437,7 @@
           }
 
           button.addEventListener('click', () => {
+            console.log("Navigating to song index:", index);
             this.loadSong(index);
           });
 
@@ -491,14 +492,19 @@
         await this.loadSong(this.currentSongIndex);
       }
 
+
       async loadSong(songIndex) {
+        console.log(`=== loadSong(${songIndex}) called ===`);
+
         if (songIndex < 0 || songIndex >= this.studyConfig.songs_to_rate.length) {
-          console.error('Invalid song index:', songIndex);
+          console.error(`Invalid song index: ${songIndex}, valid range: 0-${this.studyConfig.songs_to_rate.length - 1}`);
           return;
         }
 
         this.currentSongIndex = songIndex;
         const song = this.studyConfig.songs_to_rate[songIndex];
+
+        console.log(`Loading song ${songIndex}:`, song);
 
         // Update progress display
         document.getElementById('current-song-number').textContent = songIndex + 1;
@@ -516,8 +522,10 @@
         try {
           // Destroy previous widget if exists
           if (this.widget) {
+            console.log('Destroying previous widget...');
             try {
               this.widget.destroy();
+              console.log('Widget destroyed successfully');
             } catch (e) {
               console.warn('Error destroying widget:', e);
             }
@@ -526,11 +534,16 @@
 
           // Clear widget container
           const widgetContainer = document.getElementById('rating-widget-container');
+          console.log('Clearing widget container, current innerHTML length:', widgetContainer.innerHTML.length);
           widgetContainer.innerHTML = '';
+          console.log('Widget container cleared');
 
           // Load existing ratings (from backend if available, otherwise from localStorage)
+          console.log('Loading existing ratings...');
           const existingRatings = await this.loadExistingRatings();
+          console.log('Existing ratings loaded:', existingRatings);
 
+          console.log('Creating AudioRatingWidget...');
           // Create rating widget
           this.widget = await AudioRatingWidget.create({
             container: '#rating-widget-container',
@@ -546,49 +559,77 @@
             show_timeline: true,
             title: song.display_name
           });
+          console.log('AudioRatingWidget created successfully');
 
           // Set existing data if available
           const songKey = this.getSongKey();
+          console.log('Song key:', songKey);
+          console.log('Existing ratings for this song:', existingRatings[songKey]);
+
           if (existingRatings[songKey]) {
+            console.log('Setting existing data on widget...');
             this.widget.setData(existingRatings[songKey].data || existingRatings[songKey]);
             this.showStatusMessage('Loaded previously saved ratings', 'success');
+          } else {
+            console.log('No existing ratings found for this song');
           }
+
+          console.log(`=== loadSong(${songIndex}) completed successfully ===`);
 
         } catch (error) {
           console.error('Error loading song:', error);
+          console.error('Error stack:', error.stack);
+          console.error('Error details:', {
+            songIndex,
+            song,
+            widgetExists: !!this.widget,
+            studyConfig: this.studyConfig,
+            ratingDimensions: this.studyConfig.rating_dimensions
+          });
+
           this.showStatusMessage(`Error loading song "${song.display_name}". Please try again.`, 'error');
         } finally {
           this.setLoading(false, true);
+          console.log(`=== loadSong(${songIndex}) finished (success or error) ===`);
         }
       }
 
+
       getSongKey() {
-        return `${this.studyName}_song_${this.currentSongIndex}`;
+        const key = `${this.studyName}_song_${this.currentSongIndex}`;
+        console.log(`getSongKey() returning: ${key}`);
+        return key;
       }
+
 
       async loadExistingRatings() {
         const songKey = this.getSongKey();
+        console.log(`loadExistingRatings() - Song key: ${songKey}, backend available: ${this.backendAvailable}`);
 
         if (this.backendAvailable) {
           try {
-            // CHANGED: New URL structure with participant in path
             const backendUrl = `${AR_SETTINGS.API_BASE_URL}/participants/${this.uid}/studies/${this.studyName}/songs/${this.currentSongIndex}/ratings`;
+            console.log(`Fetching from backend: ${backendUrl}`);
 
             const response = await fetch(backendUrl, {
               method: 'GET'
-              // REMOVED: No more X-Participant-ID header needed
             });
 
+            console.log(`Backend response status: ${response.status}`);
+
             if (response.status === 404) {
-              // No ratings exist yet on backend, check localStorage
+              console.log('No ratings exist yet on backend');
               return this.localRatings;
             }
 
             if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`Backend error ${response.status}: ${errorText}`);
               throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
             const data = await response.json();
+            console.log('Backend response data:', data);
 
             // Extract segments from backend response
             const backendRatings = {};
@@ -598,6 +639,7 @@
               });
             }
 
+            console.log('Extracted backend ratings:', backendRatings);
             return { [songKey]: { data: backendRatings, source: 'backend' } };
 
           } catch (error) {
@@ -605,7 +647,7 @@
             return this.localRatings;
           }
         } else {
-          // Backend not available, use localStorage
+          console.log('Backend not available, using localStorage');
           return this.localRatings;
         }
       }
