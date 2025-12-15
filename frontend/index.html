@@ -2,51 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Audio Rating Widget - Demo</title>
+  <title>Music Research - Please use your invitation</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="./audio_rating.css" />
   <style>
-    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial; margin: 16px; }
   </style>
 </head>
-<body>
-  <h2>Audio Rating Widget - Demo</h2>
 
-  <div id="widget"></div>
+<body padding ="20px" style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+  <h2>Music Research - Please use your invitation</h2>
 
-  <script type="module">
-    import { AudioRatingWidget } from './audio_rating.js';
+  <p>This server is not intended for public access.</p>
+  <p>Please use your invitation link to access the audio rating interface if you are a participant in one of our studies.</p>
 
-    // Example custom dimensions (name: { num_values })
-    const rating_dimensions = {
-      valence:   { num_values: 10 },
-      arousal:   { num_values:  5 },
-      enjoyment: { num_values: 10 },
-      is_cool:   { num_values:  2 },
-    };
-
-    // Top-level await is supported in module scripts in modern browsers
-    const widget = await AudioRatingWidget.create({
-      container: '#widget',
-      audioUrl: './demo.wav',       // URL or filename in same directory
-      rating_dimensions,                    // pass your own mapping here
-      height: 140,                   // canvas height (waveform height)
-      waveColor: '#bfc8d6',
-      progressColor: '#6b46c1',
-      with_instructions: true,      // show instructions text
-      with_volume_slider: true,     // show volume slider
-      with_step_labels_legend: false,       // show step labels under rating scales
-      show_download_button: false, // show download button
-      show_timeline: true,
-      title: "Please rate this song!", // Title for widget, displayed at top.
-    });
-
-    // Expose helpers if you like
-    window.widget = widget;
-    // Examples:
-    // console.log(widget.getData());
-    // widget.setData({...});
-    // widget.destroy();
-  </script>
 </body>
 </html>
