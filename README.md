@@ -1,4 +1,7 @@
 # audio_rating
+
+[![Backend Tests](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend-tests.yml/badge.svg)](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend-tests.yml)
+
 Web-based tool for continuous, multi-dimensional rating of audio content with interactive waveform visualization.
 
 
