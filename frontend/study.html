@@ -148,6 +148,43 @@
       padding-bottom: 10px;
       border-bottom: 1px solid #e2e8f0;
     }
+
+    /* Song navigation with completion indicators */
+    .song-nav-container {
+      position: relative;
+      display: inline-block;
+      margin: 2px;
+    }
+
+    .song-nav {
+      padding: 6px 12px;
+      margin: 0;
+      font-size: 0.9em;
+      position: relative;
+    }
+
+    .song-nav.active {
+      background: #2563eb;
+      color: white;
+      border-color: #1e40af;
+    }
+
+    /* Completion status tooltip */
+    .song-nav-container:hover .completion-indicator::after {
+      content: attr(title);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      white-space: nowrap;
+      z-index: 100;
+      margin-bottom: 5px;
+    }
   </style>
 </head>
 <body>
@@ -246,6 +283,7 @@
         this.isLoading = false;
         this.backendAvailable = false;
         this.backendChecked = false;
+        this.songCompletionStatus = {}; // Track which songs are fully rated
 
         this.localStorageKey = `audio_rating_study_${this.studyName}_${this.uid}`;
         this.localRatings = this.loadLocalRatings();
@@ -265,6 +303,53 @@
         }
 
         return uid;
+      }
+
+      // Determine if a song has been completely rated by user
+      isSongCompletelyRated(songIndex) {
+        const songKey = `${this.studyName}_song_${songIndex}`;
+
+        // Check localStorage first
+        if (this.localRatings[songKey] && this.localRatings[songKey].data) {
+          const songData = this.localRatings[songKey].data;
+          const requiredDimensions = Object.keys(this.studyConfig.rating_dimensions);
+
+          // Check if all required dimensions have ratings with at least one segment
+          return requiredDimensions.every(dim =>
+            songData[dim] &&
+            Array.isArray(songData[dim]) &&
+            songData[dim].length > 0
+          );
+        }
+
+        return false;
+      }
+
+      // Update song completion status
+      updateSongCompletionStatus() {
+        for (let i = 0; i < this.studyConfig.songs_to_rate.length; i++) {
+          this.songCompletionStatus[i] = this.isSongCompletelyRated(i);
+        }
+      }
+
+      // Called after loading ratings or submitting ratings
+      async refreshSongCompletionStatus() {
+        this.updateSongCompletionStatus();
+        this.updateSongNavigationUI();
+      }
+
+      updateSongNavigationUI() {
+        const containers = document.querySelectorAll('.song-nav-container');
+        containers.forEach((container, index) => {
+          const indicator = container.querySelector('.completion-indicator');
+          const isComplete = this.songCompletionStatus[index];
+
+          if (indicator) {
+            indicator.textContent = isComplete ? '✓' : '○';
+            indicator.style.background = isComplete ? '#10b981' : '#ef4444';
+            indicator.title = isComplete ? 'Fully rated' : 'Not fully rated';
+          }
+        });
       }
 
       getStudyName() {
@@ -420,12 +505,20 @@
         }
       }
 
-
       buildSongNavigation() {
         const songListDiv = document.getElementById('song-list');
         songListDiv.innerHTML = '';
 
+        // Update completion status first
+        this.updateSongCompletionStatus();
+
         this.studyConfig.songs_to_rate.forEach((song, index) => {
+          const buttonContainer = document.createElement('div');
+          buttonContainer.className = 'song-nav-container';
+          buttonContainer.style.display = 'inline-block';
+          buttonContainer.style.position = 'relative';
+          buttonContainer.style.margin = '2px';
+
           const button = document.createElement('button');
           button.type = 'button';
           button.className = 'song-nav';
@@ -437,13 +530,39 @@
           }
 
           button.addEventListener('click', () => {
-            console.log("Navigating to song index:", index);
             this.loadSong(index);
           });
 
-          songListDiv.appendChild(button);
+          // Add completion indicator
+          const isComplete = this.songCompletionStatus[index];
+          const indicator = document.createElement('span');
+          indicator.className = 'completion-indicator';
+          indicator.title = isComplete ? 'Fully rated' : 'Not fully rated';
+          indicator.textContent = isComplete ? '✓' : '○';
+          indicator.style.cssText = `
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: ${isComplete ? '#10b981' : '#ef4444'};
+            color: white;
+            border: 1px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            pointer-events: none;
+          `;
+
+          buttonContainer.appendChild(button);
+          buttonContainer.appendChild(indicator);
+          songListDiv.appendChild(buttonContainer);
         });
       }
+
 
       updateSongNavigation() {
         document.querySelectorAll('.song-nav').forEach((button, index) => {
@@ -570,6 +689,7 @@
             console.log('Setting existing data on widget...');
             this.widget.setData(existingRatings[songKey].data || existingRatings[songKey]);
             this.showStatusMessage('Loaded previously saved ratings', 'success');
+            await this.refreshSongCompletionStatus();
           } else {
             console.log('No existing ratings found for this song');
           }
@@ -704,6 +824,7 @@
 
         if (localSaved) {
           this.showStatusMessage('Rating saved locally', 'success');
+          await this.refreshSongCompletionStatus();
         }
 
         // Try to submit to backend if available
@@ -735,6 +856,7 @@
                 `Rating ${operation === 'created' ? 'saved' : 'updated'} on server!`,
                 'success'
               );
+              await this.refreshSongCompletionStatus();
 
             } else {
               this.showStatusMessage(
