@@ -85,6 +85,11 @@ export class AudioRatingWidget {
     this._defaultMinPxPerSec = null;
     this.visibleStart = 0; // seconds - start of currently visible window
     this.visibleEnd = null; // seconds - end of currently visible window
+
+    // Event system
+    this._listeners = {
+      'change': []  // Single 'change' event for any modification
+    };
   }
 
   async _init() {
@@ -373,6 +378,7 @@ export class AudioRatingWidget {
         this._updateLegend(this.dimensionDefinition[this.currentDimension].num_values);
         this._updateActiveButton();
         this._drawAll();
+        this._emitChange('dimension_changed');
       });
     });
 
@@ -591,6 +597,7 @@ _xToTime(x) {
       leftSeg.end = newBoundary;
       rightSeg.start = newBoundary;
       this._drawAll();
+      this._emitChange('boundary_moved');
       return;
     }
 
@@ -602,6 +609,7 @@ _xToTime(x) {
       raw = Math.max(0, Math.min(this.dimensionDefinition[this.currentDimension].num_values - 1, raw));
       seg.value = raw;
       this._drawAll();
+      this._emitChange('rating_changed');
       return;
     }
   }
@@ -628,6 +636,7 @@ _xToTime(x) {
     seg.end = time;
     this.segments.splice(si + 1, 0, right);
     this._drawAll();
+    this._emitChange('segment_added');
   }
 
   _onContextMenu(ev) {
@@ -642,6 +651,7 @@ _xToTime(x) {
       left.end = right.end;
       this.segments.splice(i, 1);
       this._drawAll();
+      this._emitChange('segment_deleted');
     }
   }
 
@@ -731,6 +741,44 @@ _xToTime(x) {
   this._updateZoomButtonStates();
   setTimeout(() => this._resizeOverlay(), 50);
 }  // ===== Public API =====
+
+  // event system
+  on(event, callback) {
+    if (this._listeners[event]) {
+      this._listeners[event].push(callback);
+    }
+  }
+
+  // event system
+  off(event, callback) {
+    if (this._listeners[event]) {
+      this._listeners[event] = this._listeners[event].filter(cb => cb !== callback);
+    }
+  }
+
+  // event system
+  _emit(event, data) {
+    if (this._listeners[event]) {
+      this._listeners[event].forEach(callback => {
+        try {
+          callback(data);
+        } catch (e) {
+          console.error('Error in event listener:', e);
+        }
+      });
+    }
+  }
+
+  // Helper method to emit change events for event system
+  _emitChange(reason) {
+    this._emit('change', {
+      reason: reason,
+      dimension: this.currentDimension,
+      data: this.getData()
+    });
+  }
+
+
 
   getData() {
     return JSON.parse(JSON.stringify(this.dimensionData));

@@ -291,6 +291,13 @@
         this.init();
       }
 
+      destroy() {
+        if (this.widget) {
+          this.widget.destroy();
+          this.widget = null;
+        }
+      }
+
       getDefaultValueForDimension(dimensionName) {
         const dimConfig = this.studyConfig.rating_dimensions[dimensionName];
         return Math.floor(dimConfig.num_values / 2);
@@ -365,24 +372,7 @@
             return; // This dimension is OK
           }
 
-          // Check if timing differs from default (0 to song duration)
-          const duration = this.widget?.wavesurfer?.getDuration?.();
-          let isDefaultTiming = false;
-
-          if (duration && !isNaN(duration)) {
-            // We have a valid duration
-            isDefaultTiming = segment.start === 0 && Math.abs(segment.end - duration) < 0.1;
-          } else {
-            // No duration yet, check against 1e9
-            isDefaultTiming = segment.start === 0 && segment.end === 1e9;
-          }
-
-          // If timing is NOT default (user moved boundaries), it's modified
-          if (!isDefaultTiming) {
-            return; // This dimension is OK
-          }
-
-          // If we get here, dimension still has default values
+          // If we get here, dimension still has default value
           missingDimensions.push(dim);
         });
 
@@ -817,6 +807,19 @@
             title: song.display_name
           });
           console.log('AudioRatingWidget created successfully');
+
+          // Listen to changes from the widget
+          this.widget.on('change', () => {
+            console.log('Widget changed, updating submit button state');
+            this.updateSubmitButtonState();
+          });
+
+          // Optional: Clean up listeners when widget is destroyed
+          const originalDestroy = this.widget.destroy.bind(this.widget);
+          this.widget.destroy = () => {
+            this.widget.off('change');
+            return originalDestroy();
+          };
 
           // Set existing data if available
           const songKey = this.getSongKey();
