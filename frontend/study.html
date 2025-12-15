@@ -358,6 +358,8 @@
             // Convert to widget format and update
             this.studyConfig = this.convertToWidgetFormat(studyConfig);
 
+            console.log('Study config loaded from backend and converted to widget format: ', this.studyConfig);
+
             // Update study info display
             document.getElementById('song-count').textContent = studyConfig.songs_to_rate.length;
             document.getElementById('total-songs').textContent = studyConfig.songs_to_rate.length;
