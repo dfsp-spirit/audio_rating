@@ -14,6 +14,8 @@ dependencies = [
     "python-dotenv>=1.0.0", # For environment variable management
     "gunicorn>=23.0.0", # Production WSGI server
     "jinja2>=3.1.6",
+    "pydantic-core>=2.41.5",
+    "pytest>=9.0.0",
 ]
 requires-python = ">=3.11"
 
@@ -33,3 +35,7 @@ packages = ["src/audiorating_backend"]
 
 [tool.hatch.version]
 path = "src/audiorating_backend/__init__.py"  # reads __version__ variable from this file
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

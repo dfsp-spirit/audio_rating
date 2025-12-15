@@ -3,7 +3,7 @@
 from sqlmodel import SQLModel, create_engine, Session, select
 from typing import Generator
 from .models import Study, Song, StudyRatingDimension, StudySongLink, StudyParticipantLink, Participant
-from .studies_config import load_studies_config
+from .parsers.studies_config import load_studies_config
 from .settings import settings
 import logging
 from datetime import datetime
