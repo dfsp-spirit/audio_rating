@@ -226,13 +226,15 @@
       </div>
 
       <div id="rating-widget-container"></div>
-      <div id="status-messages" style="margin-top: 10px;"></div>
-      <div class="loading-shade" id="loading-overlay">Loading...</div>
+
 
       <div style="margin-top: 20px; text-align: center;">
         <button id="submit-rating" class="primary">Save Rating</button>
       </div>
       <div id="storage-status" style="margin-top: 10px; font-size: 0.9em; color: #666;"></div>
+
+      <div id="status-messages" style="margin-top: 10px;"></div>
+      <div class="loading-shade" id="loading-overlay">Loading...</div>
     </div>
 
     <!-- Completion Phase -->
@@ -812,6 +814,8 @@
           this.widget.on('change', () => {
             console.log('Widget changed, updating submit button state');
             this.updateSubmitButtonState();
+            this.updateSongCompletionStatus();
+            this.updateSongNavigationUI();
           });
 
           // Optional: Clean up listeners when widget is destroyed
@@ -1003,7 +1007,7 @@
               const operation = response.headers.get('X-Operation') || 'created';
 
               this.showStatusMessage(
-                `Rating ${operation === 'created' ? 'saved' : 'updated'} on server!`,
+                `Ratings ${operation === 'created' ? 'saved' : 'updated'} on server!`,
                 'success'
               );
               await this.refreshSongCompletionStatus();
