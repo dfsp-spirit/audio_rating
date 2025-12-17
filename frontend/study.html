@@ -169,6 +169,17 @@
       border-color: #1e40af;
     }
 
+    /* Updated Completion Status Styles */
+    .completion-indicator.not-rated { background: #ef4444; } /* Red */
+    .completion-indicator.ready { background: #facc15; }     /* Yellow */
+    .completion-indicator.saved { background: #10b981; }     /* Green */
+
+    /* Tooltip text update via JS attribute */
+    .song-nav-container:hover .completion-indicator::after {
+      content: attr(data-tooltip);
+      /* ... rest of your existing tooltip CSS ... */
+    }
+
     /* Completion status tooltip */
     .song-nav-container:hover .completion-indicator::after {
       content: attr(title);
@@ -286,6 +297,7 @@
         this.backendAvailable = false;
         this.backendChecked = false;
         this.songCompletionStatus = {}; // Track which songs are fully rated
+        this.songSavedToServer = {}; // Track server sync status
 
         this.localStorageKey = `audio_rating_study_${this.studyName}_${this.uid}`;
         this.localRatings = this.loadLocalRatings();
@@ -441,9 +453,14 @@
         const result = this.checkRatingDataComplete(ratingData);
 
         if (result.isComplete) {
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Save to Server';
-        } else {
+          if (this.songSavedToServer[this.currentSongIndex]) {
+              submitBtn.disabled = true; // Optional: disable if already saved
+              submitBtn.textContent = 'Already Saved to Server';
+          } else {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Save to Server';
+          }
+      } else {
           submitBtn.disabled = true;
           if (result.missingDimensions.length > 0) {
             submitBtn.textContent = `Rate: ${result.missingDimensions.join(', ')}`;
@@ -457,7 +474,18 @@
       // Update song completion status
       updateSongCompletionStatus() {
         for (let i = 0; i < this.studyConfig.songs_to_rate.length; i++) {
-          this.songCompletionStatus[i] = this.isSongCompletelyRated(i);
+          const isComplete = this.isSongCompletelyRated(i);
+          const songKey = `${this.studyName}_song_${i}`;
+
+          // Logic:
+          // 1. Not complete -> Red
+          // 2. Complete but not synced -> Yellow
+          // 3. Complete and synced -> Green
+          let status = 'incomplete';
+          if (isComplete) {
+            status = this.songSavedToServer[i] ? 'saved' : 'ready';
+          }
+          this.songCompletionStatus[i] = status;
         }
       }
 
@@ -467,19 +495,37 @@
         this.updateSongNavigationUI();
       }
 
+
       updateSongNavigationUI() {
         const containers = document.querySelectorAll('.song-nav-container');
         containers.forEach((container, index) => {
           const indicator = container.querySelector('.completion-indicator');
-          const isComplete = this.songCompletionStatus[index];
+          const status = this.songCompletionStatus[index];
 
           if (indicator) {
-            indicator.textContent = isComplete ? '✓' : '○';
-            indicator.style.background = isComplete ? '#10b981' : '#ef4444';
-            indicator.title = isComplete ? 'Fully rated' : 'Not fully rated';
+            // Remove old classes
+            indicator.classList.remove('not-rated', 'ready', 'saved');
+
+            if (status === 'saved') {
+              indicator.textContent = '✓';
+              indicator.className = 'completion-indicator saved';
+              indicator.setAttribute('data-tooltip', 'Saved to server');
+              indicator.style.background = '#10b981';
+            } else if (status === 'ready') {
+              indicator.textContent = '!';
+              indicator.className = 'completion-indicator ready';
+              indicator.setAttribute('data-tooltip', 'Fully rated and ready to submit');
+              indicator.style.background = '#facc15';
+            } else {
+              indicator.textContent = '○';
+              indicator.className = 'completion-indicator not-rated';
+              indicator.setAttribute('data-tooltip', 'Incomplete ratings');
+              indicator.style.background = '#ef4444';
+            }
           }
         });
       }
+
 
       getStudyName() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -813,6 +859,8 @@
           // Listen to changes from the widget
           this.widget.on('change', () => {
             console.log('Widget changed, updating submit button state');
+            // If they change anything, it's no longer "identical" to what's on the server
+            this.songSavedToServer[this.currentSongIndex] = false;
             this.updateSubmitButtonState();
             this.updateSongCompletionStatus();
             this.updateSongNavigationUI();
@@ -831,6 +879,9 @@
           console.log('Existing ratings for this song:', existingRatings[songKey]);
 
           if (existingRatings[songKey]) {
+            if (existingRatings[songKey].source === 'backend') {
+                this.songSavedToServer[songIndex] = true;
+            }
             console.log('Setting existing data on widget...');
             this.widget.setData(existingRatings[songKey].data || existingRatings[songKey]);
             this.showStatusMessage('Loaded previously saved ratings', 'success');
@@ -1005,6 +1056,7 @@
             if (response.ok) {
               const result = await response.json();
               const operation = response.headers.get('X-Operation') || 'created';
+              this.songSavedToServer[this.currentSongIndex] = true;
 
               this.showStatusMessage(
                 `Ratings ${operation === 'created' ? 'saved' : 'updated'} on server!`,
