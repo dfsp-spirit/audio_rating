@@ -781,7 +781,9 @@ _xToTime(x) {
 
 
   getData() {
-    return JSON.parse(JSON.stringify(this.dimensionData));
+    const data = JSON.parse(JSON.stringify(this.dimensionData));
+    console.log('getData returning', data);
+    return data;
   }
 
   setData(data) {
