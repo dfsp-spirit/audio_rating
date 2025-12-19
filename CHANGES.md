@@ -4,7 +4,13 @@
 
 Current WIP
 -----------
-* Work on zoom feature
+
+
+Version 0.4.0 -- Backend operational, study interface ready
+-------------------------------------------------------------
+* Added backend and database with declarative multi-study config, admin interface, etc
+* Created study.html with a StudyController class in frontend that manages a study
+
 
 
 Version 0.3.0 -- Cleanups, add optional volume slider
