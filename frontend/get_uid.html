@@ -46,7 +46,7 @@
         }
 
         .input-group {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             position: relative;
         }
 
@@ -57,16 +57,17 @@
             color: #555;
         }
 
-        input[type="text"] {
+        input[type="text"], select {
             width: 100%;
             padding: 12px;
             border: 2px solid #ddd;
             border-radius: 5px;
             font-size: 16px;
             box-sizing: border-box;
+            margin-bottom: 5px;
         }
 
-        input[type="text"]:focus {
+        input[type="text"]:focus, select:focus {
             border-color: #4CAF50;
             outline: none;
         }
@@ -99,8 +100,13 @@
             margin-top: 10px;
         }
 
-        button:hover {
+        button:hover:not(:disabled) {
             background-color: #45a049;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
         }
 
         .result {
@@ -185,60 +191,169 @@
             margin-top: 5px;
             font-style: italic;
         }
+
+        .warning {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #f5c6cb;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .warning.show {
+            display: block;
+        }
+
+        .study-select-info {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Generate Your Unique Audio Rating ID</h1>
+        <h1>Generate Audio Rating ID</h1>
 
-        <div class="text-block">
-            <p>To participate in the audio rating study, you can use a unique ID that links your submissions without storing personal data. Follow the instructions below to generate your ID.</p>
+        <div class="input-group">
+            <label for="userInput">
+                Enter any unique text you can remember well until your next study participation, e.g., your email address:<br>
+                <small style="font-weight: normal; color: #666;">It is best not to use generic text that other participants will also use.</small>
+            </label>
+            <input type="text" id="userInput" placeholder="e.g., your.email@example.com or other memorable unique text" />
+            <div id="inputHint" class="input-hint"></div>
         </div>
 
         <div class="input-group">
-            <label for="userInput">Enter any unique text you can remember well until your next study participation, e.g., your email address:</label>
-            <input type="text" id="userInput" placeholder="e.g., your.email@example.com or any memorable text" />
-            <div id="inputHint" class="input-hint">It is best <b>not</b> to use generic text that other participants will also use.</div>
+            <label for="studySelect">Select Study (optional):</label>
+            <select id="studySelect">
+                <option value="" selected>Loading available studies...</option>
+            </select>
+            <div class="study-select-info">
+                This will be included in your invitation link. If no study is selected, a default study will be used.
+            </div>
+        </div>
+
+        <div id="backendWarning" class="warning">
+            ⚠️ Backend not available, assuming study 'default'. Your link will still work but study selection is disabled.
         </div>
 
         <button onclick="generateId()" id="generateBtn">Generate My Unique ID</button>
 
         <div id="result" class="result">
-            <div class="invite-link">
-                <strong>You study access link:</strong><br>
-                <a id="inviteLink" href="#" target="_blank">Click here to participate with your ID</a>
-                <div id="linkUpdated" class="link-updated">(Updates automatically as you type)</div>
-            </div>
-
-            <strong>Your unique ID if you want to store it:</strong>
+            <strong>Your unique ID:</strong>
             <div class="user-id" id="userIdDisplay"></div>
             <button class="copy-btn" onclick="copyToClipboard()">Copy ID to Clipboard</button>
             <button class="copy-btn" onclick="copyLinkToClipboard()">Copy Link to Clipboard</button>
             <div id="copySuccess" class="success-message">✓ Copied to clipboard!</div>
+
+            <div class="invite-link">
+                <strong>Quick access link:</strong><br>
+                <a id="inviteLink" href="#" target="_blank">Click here to go to the audio rating page with your ID</a>
+                <div id="linkUpdated" class="link-updated">(Updates automatically as you type)</div>
+            </div>
         </div>
 
         <div class="instructions">
             <h3>How it works:</h3>
             <ul>
-                <li>Enter any memorable text to generate a unique 20-character ID</li>
+                <li>Enter any <strong>unique</strong> memorable text to generate a unique 20-character ID</li>
                 <li>This ID will always be the same for your input text</li>
-                <li>The next time you participate, just come back and enter the same text again to get your link including the ID</li>
-                <li>Optionally, you can save the ID or link yourself. Do not pass the link to others.</li>
-                <li>If you want to invite friends to join, just send them a link to this page.</li>
+                <li>Save this ID - you'll need it to access your content</li>
+                <li>If you forget your ID, just come back and enter the same unique text again</li>
+                <li><strong>Note:</strong> This is not a password or authentication method, just a way to optionally link your submissions together if you want to</li>
             </ul>
             <h3>Privacy Information:</h3>
             <ul>
                 <li><strong>Local generation:</strong> The ID is generated in your browser only</li>
                 <li><strong>One-way process:</strong> Your input is converted using a mathematical function that cannot be reversed - it's impossible to recover your original text from the ID</li>
                 <li><strong>No data storage:</strong> Your input text is never sent to or stored anywhere</li>
-                <li><strong>Purpose:</strong> The unique ID allows us to link multiple submissions from the same person without storing personal data like email addresses, usernames and passwords for open studies</li>
+                <li><strong>Anonymous ID:</strong> Only the generated ID is used for audio rating submissions</li>
+                <li><strong>Purpose:</strong> The unique ID allows us to link multiple submissions from the same person while maintaining anonymity</li>
+                <li><strong>Not for identification:</strong> The ID cannot be used to identify you personally</li>
             </ul>
         </div>
     </div>
 
+    <script src="./ar_settings.js"></script>
     <script>
         let currentUserId = '';
         let updateTimeout = null;
+        let availableStudies = [];
+        let backendAvailable = false;
+        const DEFAULT_STUDY = 'default';
+
+        // Fetch available studies from backend
+        async function fetchStudies() {
+            console.log('Fetching studies from backend at URL ' + AR_SETTINGS.API_BASE_URL);
+            try {
+
+                const response = await fetch(AR_SETTINGS.API_BASE_URL + '/active_open_study_names');
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const studies = await response.json();
+                return studies;
+            } catch (error) {
+                console.warn('Could not fetch studies from backend:', error);
+                return null; // Indicates backend is offline
+            }
+        }
+
+        // Populate study dropdown
+        async function populateStudyDropdown() {
+            const studySelect = document.getElementById('studySelect');
+            const warningElement = document.getElementById('backendWarning');
+
+            // Show loading state
+            studySelect.innerHTML = '<option value="">Loading available studies...</option>';
+            studySelect.disabled = true;
+
+            const studies = await fetchStudies();
+
+            if (studies === null) {
+                // Backend is offline
+                backendAvailable = false;
+                warningElement.classList.add('show');
+                studySelect.innerHTML = '<option value="' + DEFAULT_STUDY + '" selected>default (backend offline)</option>';
+                studySelect.disabled = true;
+                availableStudies = [DEFAULT_STUDY];
+                return;
+            }
+
+            // Backend is online
+            backendAvailable = true;
+            warningElement.classList.remove('show');
+            availableStudies = studies;
+
+            if (studies.length === 0) {
+                // Backend online but no active studies - keep default option
+                studySelect.innerHTML = '<option value="' + DEFAULT_STUDY + '" selected>default (no active studies)</option>';
+                studySelect.disabled = false;
+            } else {
+                // Clear and add default option as first choice
+                studySelect.innerHTML = '<option value="">-- Select a study (optional) --</option>';
+
+                // Add each study as an option
+                studies.forEach(study => {
+                    const option = document.createElement('option');
+                    // Use name_short for the value (for the URL parameter)
+                    option.value = study.name_short;
+                    // Display format: "<name_short> (<name>)"
+                    option.textContent = study.name_short + ' (' + study.name + ')';
+                    // Store the full study object as a data attribute for future use if needed
+                    option.dataset.study = JSON.stringify(study);
+                    studySelect.appendChild(option);
+                });
+
+                studySelect.disabled = false;
+            }
+        }
 
         function updateLiveLink() {
             const input = document.getElementById('userInput').value.trim();
@@ -291,18 +406,36 @@
         }
 
         function generateAndDisplayId(input, isLiveUpdate) {
+            console.log('generateAndDisplayId called with input:', input);
+
             // Generate the unique ID
             const userId = generateCustomId(input);
+            console.log('Generated userId:', userId);
             currentUserId = userId;
 
-            // Display the result
-            document.getElementById('userIdDisplay').textContent = userId;
+            // Get selected study
+            const studySelect = document.getElementById('studySelect');
+            const selectedStudy = studySelect.value || DEFAULT_STUDY;
+            console.log('Selected study:', selectedStudy);
 
             // Create and display the invitation link
-            const inviteLink = `./study.html?uid=${encodeURIComponent(userId)}`;
+            let inviteLink = `../index.html?uid=${encodeURIComponent(userId)}`;
+
+            // Add study parameter if not empty
+            if (selectedStudy && selectedStudy !== '') {
+                inviteLink += `&study_name=${encodeURIComponent(selectedStudy)}`;
+            }
+
+            console.log('Invite link:', inviteLink);
+
             const inviteLinkElement = document.getElementById('inviteLink');
             inviteLinkElement.href = inviteLink;
-            inviteLinkElement.textContent = 'Click here to participate with your ID';
+            inviteLinkElement.textContent = 'Submit your audio ratings using this link';
+
+            // Display the userId
+            const userIdDisplay = document.getElementById('userIdDisplay');
+            console.log('userIdDisplay element:', userIdDisplay);
+            userIdDisplay.textContent = userId;
 
             const resultElement = document.getElementById('result');
             resultElement.classList.add('show');
@@ -312,6 +445,7 @@
                 document.getElementById('linkUpdated').style.display = 'block';
             }
         }
+
 
         function generateCustomId(input) {
             const normalizedInput = input.toLowerCase().trim();
@@ -394,9 +528,21 @@
         // Initialize event listeners
         document.addEventListener('DOMContentLoaded', function() {
             const userInput = document.getElementById('userInput');
+            const studySelect = document.getElementById('studySelect');
+
+            // Fetch and populate studies when page loads
+            populateStudyDropdown();
 
             // Update live as user types
             userInput.addEventListener('input', updateLiveLink);
+
+            // Update link when study selection changes
+            studySelect.addEventListener('change', function() {
+                const input = userInput.value.trim();
+                if (input.length >= 6) {
+                    generateAndDisplayId(input, true);
+                }
+            });
 
             // Allow generating ID by pressing Enter
             userInput.addEventListener('keypress', function(event) {

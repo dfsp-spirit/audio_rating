@@ -535,16 +535,26 @@ async def get_rating(
         )
 
 
-@app.get("/api/active_open_study_names", response_model=List[str])
+from pydantic import BaseModel
+from typing import List, Optional
+
+# Add this Pydantic model for the response
+class ActiveOpenStudyResponse(BaseModel):
+    name_short: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+@app.get("/api/active_open_study_names", response_model=List[ActiveOpenStudyResponse])
 async def get_active_open_study_names(
     session: Session = Depends(get_session)
 ):
     """
-    Public endpoint (no authentication required) that returns a list of all study_short_name strings
-    of studies that:
+    Public endpoint (no authentication required) that returns a list of all studies
+    that:
     1. Have allow_unlisted_participants set to True
     2. Are currently active (current date is between data_collection_start and data_collection_end)
 
+    Each study object includes name_short, name, and description fields.
     Returns empty list if no studies match criteria.
     """
     try:
@@ -560,12 +570,19 @@ async def get_active_open_study_names(
             ).order_by(Study.name_short)  # Optional: order alphabetically
         ).all()
 
-        # Extract just the short names
-        study_names = [study.name_short for study in studies]
+        # Create response objects with the required fields
+        study_responses = [
+            ActiveOpenStudyResponse(
+                name_short=study.name_short,
+                name=study.name,
+                description=study.description
+            )
+            for study in studies
+        ]
 
-        logger.info(f"Found {len(study_names)} active open studies: {study_names}")
+        logger.info(f"Found {len(study_responses)} active open studies")
 
-        return study_names
+        return study_responses
 
     except Exception as e:
         logger.error(f"Error fetching active open study names: {e}", exc_info=True)
