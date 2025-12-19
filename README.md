@@ -28,7 +28,7 @@ It is intended to be used in psychological research on music perception and base
 
 ## Online Live Demo
 
-You can [try audio_rating live here](https://dfsp-spirit.github.io/audio_rating/) on GitHub pages.
+You can [try audio_rating live here](https://dfsp-spirit.github.io/audio_rating/study.html) on GitHub pages.
 
 
 ## Running the frontend locally
