@@ -127,18 +127,15 @@
             display: block;
         }
 
-        .user-id {
-            font-family: 'Courier New', monospace;
-            font-size: 18px;
-            font-weight: bold;
-            color: #333;
-            word-break: break-all;
-            margin: 10px 0;
-            padding: 10px;
-            background-color: #fff;
-            border-radius: 3px;
-            border: 1px solid #ddd;
-        }
+        #idInfo code {
+    background-color: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid #e9ecef;
+    word-break: break-all;
+    display: inline-block;
+    margin-top: 3px;
+}
 
         .instructions {
             background-color: #fff3cd;
@@ -228,41 +225,41 @@
         </div>
 
         <div class="input-group">
-            <label for="studySelect">Select Study (optional):</label>
+            <label for="studySelect">Select Study:</label>
             <select id="studySelect">
                 <option value="" selected>Loading available studies...</option>
             </select>
             <div class="study-select-info">
-                This will be included in your invitation link. If no study is selected, a default study will be used.
+                The selected study will be included in your access link. If no study is selected, the <i>'default'</i> study will be used.
             </div>
         </div>
 
         <div id="backendWarning" class="warning">
-            ⚠️ Backend not available, assuming study 'default'. Your link will still work but study selection is disabled.
+            ⚠️ Backend not available, assuming study 'default'. Your link will still work if an open <i>'default'</i> study is available but study selection is disabled.
         </div>
 
         <button onclick="generateId()" id="generateBtn">Generate My Unique ID</button>
 
         <div id="result" class="result">
-            <strong>Your unique ID:</strong>
-            <div class="user-id" id="userIdDisplay"></div>
-            <button class="copy-btn" onclick="copyToClipboard()">Copy ID to Clipboard</button>
-            <button class="copy-btn" onclick="copyLinkToClipboard()">Copy Link to Clipboard</button>
-            <div id="copySuccess" class="success-message">✓ Copied to clipboard!</div>
-
             <div class="invite-link">
-                <strong>Quick access link:</strong><br>
-                <a id="inviteLink" href="#" target="_blank">Click here to go to the audio rating page with your ID</a>
+                <strong>Study participation Link:</strong><br>
+                <a id="inviteLink" href="#" target="_blank">Click here to participate in the study with your ID</a>
                 <div id="linkUpdated" class="link-updated">(Updates automatically as you type)</div>
             </div>
+
+            <div id="idInfo" style="margin-top: 15px; font-size: 14px; color: #555;">
+            Your ID encoded in the link is: <code id="userIdDisplay" style="font-family: 'Courier New', monospace; font-weight: bold; color: #333;"></code>
+            </div>
+
+            <button class="copy-btn" onclick="copyLinkToClipboard()">Copy Study Participation Link to Clipboard</button>
+            <div id="copySuccess" class="success-message">✓ Copied to clipboard!</div>
         </div>
 
         <div class="instructions">
             <h3>How it works:</h3>
             <ul>
-                <li>Enter any <strong>unique</strong> memorable text to generate a unique 20-character ID</li>
-                <li>This ID will always be the same for your input text</li>
-                <li>Save this ID - you'll need it to access your content</li>
+                <li>Enter any <strong>unique</strong> memorable text to generate a unique ID from it</li>
+                <li>This ID will always be the same for the same input text</li>
                 <li>If you forget your ID, just come back and enter the same unique text again</li>
                 <li><strong>Note:</strong> This is not a password or authentication method, just a way to optionally link your submissions together if you want to</li>
             </ul>
@@ -271,9 +268,8 @@
                 <li><strong>Local generation:</strong> The ID is generated in your browser only</li>
                 <li><strong>One-way process:</strong> Your input is converted using a mathematical function that cannot be reversed - it's impossible to recover your original text from the ID</li>
                 <li><strong>No data storage:</strong> Your input text is never sent to or stored anywhere</li>
-                <li><strong>Anonymous ID:</strong> Only the generated ID is used for audio rating submissions</li>
-                <li><strong>Purpose:</strong> The unique ID allows us to link multiple submissions from the same person while maintaining anonymity</li>
-                <li><strong>Not for identification:</strong> The ID cannot be used to identify you personally</li>
+                <li><strong>Only ID stored:</strong> If you submit the audio ratings from your unique link, we will save the ID, but never you input text</li>
+                <li><strong>Purpose:</strong> The unique ID allows us to link multiple submissions from the same person without storing personal data like email addresses</li>
             </ul>
         </div>
     </div>
