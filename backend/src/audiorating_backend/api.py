@@ -535,6 +535,44 @@ async def get_rating(
         )
 
 
+@app.get("/api/active_open_study_names", response_model=List[str])
+async def get_active_open_study_names(
+    session: Session = Depends(get_session)
+):
+    """
+    Public endpoint (no authentication required) that returns a list of all study_short_name strings
+    of studies that:
+    1. Have allow_unlisted_participants set to True
+    2. Are currently active (current date is between data_collection_start and data_collection_end)
+
+    Returns empty list if no studies match criteria.
+    """
+    try:
+        # Get current UTC time
+        now = utc_now()
+
+        # Query for studies that match both criteria
+        studies = session.exec(
+            select(Study).where(
+                Study.allow_unlisted_participants == True,
+                Study.data_collection_start <= now,
+                Study.data_collection_end >= now
+            ).order_by(Study.name_short)  # Optional: order alphabetically
+        ).all()
+
+        # Extract just the short names
+        study_names = [study.name_short for study in studies]
+
+        logger.info(f"Found {len(study_names)} active open studies: {study_names}")
+
+        return study_names
+
+    except Exception as e:
+        logger.error(f"Error fetching active open study names: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error while fetching study information"
+        )
 
 
 @app.get("/api/admin/datasets/download")

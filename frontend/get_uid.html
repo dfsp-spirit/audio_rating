@@ -18,12 +18,11 @@
             padding: 30px;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            width: 90%; /* Fluid width */
-            max-width: 900px; /* But never too wide */
+            width: 90%;
+            max-width: 900px;
             margin: 0 auto;
         }
 
-        /* Mobile adjustments */
         @media (max-width: 480px) {
             body {
                 padding: 10px;
@@ -34,27 +33,31 @@
             }
         }
 
-        /* Prevent excessive width on huge screens */
         @media (min-width: 1400px) {
             .container {
                 max-width: 1000px;
             }
         }
+
         h1 {
             color: #333;
             text-align: center;
             margin-bottom: 30px;
         }
+
         .input-group {
             margin-bottom: 20px;
+            position: relative;
         }
+
         label {
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
             color: #555;
         }
-        input[type="email"] {
+
+        input[type="text"] {
             width: 100%;
             padding: 12px;
             border: 2px solid #ddd;
@@ -62,10 +65,27 @@
             font-size: 16px;
             box-sizing: border-box;
         }
-        input[type="email"]:focus {
+
+        input[type="text"]:focus {
             border-color: #4CAF50;
             outline: none;
         }
+
+        .input-hint {
+            margin-top: 5px;
+            font-size: 14px;
+            color: #666;
+            min-height: 20px;
+        }
+
+        .input-hint.typing {
+            color: #ff9800;
+        }
+
+        .input-hint.ready {
+            color: #4CAF50;
+        }
+
         button {
             background-color: #4CAF50;
             color: white;
@@ -76,21 +96,31 @@
             cursor: pointer;
             width: 100%;
             transition: background-color 0.3s;
+            margin-top: 10px;
         }
+
         button:hover {
             background-color: #45a049;
         }
+
         .result {
             margin-top: 30px;
             padding: 20px;
             background-color: #f8f9fa;
             border-radius: 5px;
             border-left: 4px solid #4CAF50;
-            display: none;
+            transition: all 0.3s ease;
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
         }
+
         .result.show {
+            opacity: 1;
+            max-height: 500px;
             display: block;
         }
+
         .user-id {
             font-family: 'Courier New', monospace;
             font-size: 18px;
@@ -98,7 +128,12 @@
             color: #333;
             word-break: break-all;
             margin: 10px 0;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 3px;
+            border: 1px solid #ddd;
         }
+
         .instructions {
             background-color: #fff3cd;
             border: 1px solid #ffeaa7;
@@ -106,15 +141,18 @@
             padding: 15px;
             margin-top: 20px;
         }
+
         .copy-btn {
             background-color: #007bff;
             width: auto;
             margin-top: 10px;
             margin-right: 10px;
         }
+
         .copy-btn:hover {
             background-color: #0056b3;
         }
+
         .invite-link {
             display: block;
             margin-top: 15px;
@@ -123,19 +161,29 @@
             border-radius: 5px;
             border: 1px solid #b3d9ff;
         }
+
         .invite-link a {
             color: #0066cc;
             text-decoration: none;
             font-weight: bold;
         }
+
         .invite-link a:hover {
             text-decoration: underline;
         }
+
         .success-message {
             color: #28a745;
             font-weight: bold;
             margin-top: 10px;
             display: none;
+        }
+
+        .link-updated {
+            color: #17a2b8;
+            font-size: 14px;
+            margin-top: 5px;
+            font-style: italic;
         }
     </style>
 </head>
@@ -143,101 +191,135 @@
     <div class="container">
         <h1>Generate Your Unique Audio Rating ID</h1>
 
-        <div class="input-group">
-            <label for="emailInput">Enter your email address:</label>
-            <input type="email" id="emailInput" placeholder="your.email@example.com">
+        <div class="text-block">
+            <p>To participate in the audio rating study, you can use a unique ID that links your submissions without storing personal data. Follow the instructions below to generate your ID.</p>
         </div>
 
-        <button onclick="generateId()">Generate My Unique ID</button>
+        <div class="input-group">
+            <label for="userInput">Enter any unique text you can remember well until your next study participation, e.g., your email address:</label>
+            <input type="text" id="userInput" placeholder="e.g., your.email@example.com or any memorable text" />
+            <div id="inputHint" class="input-hint">It is best <b>not</b> to use generic text that other participants will also use.</div>
+        </div>
+
+        <button onclick="generateId()" id="generateBtn">Generate My Unique ID</button>
 
         <div id="result" class="result">
-            <strong>Your unique ID:</strong>
+            <div class="invite-link">
+                <strong>You study access link:</strong><br>
+                <a id="inviteLink" href="#" target="_blank">Click here to participate with your ID</a>
+                <div id="linkUpdated" class="link-updated">(Updates automatically as you type)</div>
+            </div>
+
+            <strong>Your unique ID if you want to store it:</strong>
             <div class="user-id" id="userIdDisplay"></div>
             <button class="copy-btn" onclick="copyToClipboard()">Copy ID to Clipboard</button>
             <button class="copy-btn" onclick="copyLinkToClipboard()">Copy Link to Clipboard</button>
             <div id="copySuccess" class="success-message">✓ Copied to clipboard!</div>
-
-            <div class="invite-link">
-                <strong>Quick access link:</strong><br>
-                <a id="inviteLink" href="#" target="_blank">Click here to go to the audio rating page with your ID</a>
-            </div>
         </div>
 
         <div class="instructions">
             <h3>How it works:</h3>
             <ul>
-                <li>Enter your email address to generate a unique 20-character ID</li>
-                <li>This ID will always be the same for your email address</li>
-                <li>Save this ID - you'll need it to access your content</li>
-                <li>If you forget your ID, just come back and enter your email again</li>
+                <li>Enter any memorable text to generate a unique 20-character ID</li>
+                <li>This ID will always be the same for your input text</li>
+                <li>The next time you participate, just come back and enter the same text again to get your link including the ID</li>
+                <li>Optionally, you can save the ID or link yourself. Do not pass the link to others.</li>
+                <li>If you want to invite friends to join, just send them a link to this page.</li>
             </ul>
-            <h3>Data Privacy Information:</h3>
+            <h3>Privacy Information:</h3>
             <ul>
-                <li><strong>Local generation:</strong> The ID is generated in your browser, not on our servers</li>
-                <li><strong>One-way process:</strong> Your email is converted using a mathematical function that cannot be reversed - it's impossible to recover your email from the ID</li>
-                <li><strong>No email storage:</strong> Your email is never sent to or stored on our servers</li>
-                <li><strong>ID transmission:</strong> Only the generated ID (not your email) is sent to our server when you submit this form or an audio rating</li>
-                <li><strong>Purpose:</strong> The unique ID allows us to limit audio rating submissions to users who generated an ID through this password-protected page</li>
+                <li><strong>Local generation:</strong> The ID is generated in your browser only</li>
+                <li><strong>One-way process:</strong> Your input is converted using a mathematical function that cannot be reversed - it's impossible to recover your original text from the ID</li>
+                <li><strong>No data storage:</strong> Your input text is never sent to or stored anywhere</li>
+                <li><strong>Purpose:</strong> The unique ID allows us to link multiple submissions from the same person without storing personal data like email addresses, usernames and passwords for open studies</li>
             </ul>
         </div>
     </div>
 
     <script>
-        function generateId() {
-            const email = document.getElementById('emailInput').value.trim();
+        let currentUserId = '';
+        let updateTimeout = null;
 
-            // Basic email validation
-            if (!isValidEmail(email)) {
-                alert('Please enter a valid email address (format: name@domain.com)');
+        function updateLiveLink() {
+            const input = document.getElementById('userInput').value.trim();
+            const hintElement = document.getElementById('inputHint');
+            const resultElement = document.getElementById('result');
+            const generateBtn = document.getElementById('generateBtn');
+
+            // Clear previous timeout
+            if (updateTimeout) {
+                clearTimeout(updateTimeout);
+            }
+
+            if (input.length === 0) {
+                hintElement.textContent = '';
+                hintElement.className = 'input-hint';
+                resultElement.classList.remove('show');
+                generateBtn.disabled = false;
                 return;
             }
 
+            const charsNeeded = 6 - input.length;
+
+            if (charsNeeded > 0) {
+                hintElement.textContent = `Keep typing, enter at least ${charsNeeded} more character${charsNeeded > 1 ? 's' : ''}.`;
+                hintElement.className = 'input-hint typing';
+                resultElement.classList.remove('show');
+                generateBtn.disabled = false;
+            } else {
+                hintElement.textContent = '✓ Ready! Your link is updating automatically.';
+                hintElement.className = 'input-hint ready';
+                generateBtn.disabled = false;
+
+                // Use a timeout to debounce the update
+                updateTimeout = setTimeout(() => {
+                    generateAndDisplayId(input, true);
+                }, 300);
+            }
+        }
+
+        function generateId() {
+            const input = document.getElementById('userInput').value.trim();
+
+            if (input.length < 6) {
+                const charsNeeded = 6 - input.length;
+                alert(`Please enter at least 6 characters (need ${charsNeeded} more).`);
+                return;
+            }
+
+            generateAndDisplayId(input, false);
+        }
+
+        function generateAndDisplayId(input, isLiveUpdate) {
             // Generate the unique ID
-            const userId = generateCustomId(email);
+            const userId = generateCustomId(input);
+            currentUserId = userId;
 
             // Display the result
             document.getElementById('userIdDisplay').textContent = userId;
 
             // Create and display the invitation link
-            const inviteLink = `../index.html?uid=${encodeURIComponent(userId)}`;
+            const inviteLink = `./study.html?uid=${encodeURIComponent(userId)}`;
             const inviteLinkElement = document.getElementById('inviteLink');
             inviteLinkElement.href = inviteLink;
-            inviteLinkElement.textContent = 'Submit your audio ratings using this link';
+            inviteLinkElement.textContent = 'Click here to participate with your ID';
 
-            document.getElementById('result').classList.add('show');
+            const resultElement = document.getElementById('result');
+            resultElement.classList.add('show');
             document.getElementById('copySuccess').style.display = 'none';
+
+            if (isLiveUpdate) {
+                document.getElementById('linkUpdated').style.display = 'block';
+            }
         }
 
-        function isValidEmail(email) {
-            const normalized = email.toLowerCase().trim();
-
-            // Basic email pattern: something@something.something
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-            if (!emailRegex.test(normalized)) {
-                return false;
-            }
-
-            // Additional check: domain should have at least 2 characters after last dot
-            const parts = normalized.split('@');
-            const domain = parts[1];
-            const domainParts = domain.split('.');
-
-            if (domainParts.length < 2) {
-                return false;
-            }
-
-            const tld = domainParts[domainParts.length - 1];
-            return tld.length >= 2;
-        }
-
-        function generateCustomId(email) {
-            const normalizedEmail = email.toLowerCase().trim();
+        function generateCustomId(input) {
+            const normalizedInput = input.toLowerCase().trim();
 
             // Create two different hashes for more entropy
             let hash1 = 0, hash2 = 0;
-            for (let i = 0; i < normalizedEmail.length; i++) {
-                const char = normalizedEmail.charCodeAt(i);
+            for (let i = 0; i < normalizedInput.length; i++) {
+                const char = normalizedInput.charCodeAt(i);
                 hash1 = ((hash1 << 7) - hash1) + char;
                 hash2 = ((hash2 << 5) - hash2) + char;
                 hash1 = hash1 & hash1; // Convert to 32-bit integer
@@ -282,13 +364,11 @@
         }
 
         function copyTextToClipboard(text, type) {
-            // Use the modern Clipboard API
             navigator.clipboard.writeText(text).then(() => {
                 const successElement = document.getElementById('copySuccess');
                 successElement.textContent = `✓ ${type === 'link' ? 'Link' : 'ID'} copied to clipboard!`;
                 successElement.style.display = 'block';
 
-                // Hide success message after 3 seconds
                 setTimeout(() => {
                     successElement.style.display = 'none';
                 }, 3000);
@@ -311,16 +391,27 @@
             });
         }
 
-        // Allow generating ID by pressing Enter in the email field
-        document.getElementById('emailInput').addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                generateId();
-            }
-        });
+        // Initialize event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const userInput = document.getElementById('userInput');
 
-        // Clear result when user starts typing a new email
-        document.getElementById('emailInput').addEventListener('input', function() {
-            document.getElementById('result').classList.remove('show');
+            // Update live as user types
+            userInput.addEventListener('input', updateLiveLink);
+
+            // Allow generating ID by pressing Enter
+            userInput.addEventListener('keypress', function(event) {
+                if (event.key === 'Enter') {
+                    generateId();
+                }
+            });
+
+            // Clear hint when input is cleared
+            userInput.addEventListener('blur', function() {
+                if (this.value.trim().length === 0) {
+                    document.getElementById('inputHint').textContent = '';
+                    document.getElementById('inputHint').className = 'input-hint';
+                }
+            });
         });
     </script>
 </body>
