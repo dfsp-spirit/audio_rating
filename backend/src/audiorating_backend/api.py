@@ -1051,3 +1051,359 @@ async def get_study_config(
             status_code=500,
             detail="Failed to load study configuration"
         )
+
+
+# Add this to your api.py file
+
+from pydantic import BaseModel
+from typing import List, Optional, Dict
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Pydantic model for the request
+class AssignParticipantsRequest(BaseModel):
+    participant_ids: List[str]
+    must_be_new: bool = False
+
+# Pydantic model for the response
+class ParticipantAssignmentResult(BaseModel):
+    participant_id: str
+    status: str  # "created_and_assigned" or "already_existed_and_assigned"
+    message: str
+
+class StudyAssignmentInfo(BaseModel):
+    name_short: str
+    allow_unlisted_participants: bool
+    total_participants: int  # total participants after assignment
+
+class AssignParticipantsResponse(BaseModel):
+    study_info: StudyAssignmentInfo
+    results: List[ParticipantAssignmentResult]
+    summary: Dict[str, int]
+
+@app.post("/api/admin/studies/{study_name_short}/assign-participants",
+          dependencies=[Depends(verify_admin)])
+async def assign_participants_to_study(
+    study_name_short: str,
+    request: AssignParticipantsRequest,
+    session: Session = Depends(get_session)
+):
+    """
+    Assign participants to a study.
+
+    - If must_be_new is True: Check if any participants already exist in the system.
+      If they do, deny the entire operation.
+    - If must_be_new is False (default): Check each participant:
+        * If they don't exist, create them and assign to study
+        * If they exist, just assign them to study (if not already assigned)
+    - Works for both open and closed studies (study.allow_unlisted_participants)
+    - Returns detailed information about each participant's status
+    """
+    try:
+        # Get the study
+        study = session.exec(
+            select(Study).where(Study.name_short == study_name_short)
+        ).first()
+
+        if not study:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Study '{study_name_short}' not found"
+            )
+
+        # Validate participant_ids list
+        if not request.participant_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="No participant IDs provided"
+            )
+
+        # Remove duplicates while preserving order
+        unique_ids = []
+        seen = set()
+        for pid in request.participant_ids:
+            if pid not in seen:
+                seen.add(pid)
+                unique_ids.append(pid)
+
+        if len(unique_ids) != len(request.participant_ids):
+            logger.info(f"Removed {len(request.participant_ids) - len(unique_ids)} duplicate participant IDs")
+
+        participant_ids = unique_ids
+
+        # If must_be_new is True, check if any participants already exist
+        if request.must_be_new:
+            existing_participants = session.exec(
+                select(Participant)
+                .where(Participant.id.in_(participant_ids))
+            ).all()
+
+            if existing_participants:
+                existing_ids = [p.id for p in existing_participants]
+                raise HTTPException(
+                    status_code=409,  # Conflict
+                    detail={
+                        "message": "Some participants already exist in the system",
+                        "existing_participants": existing_ids,
+                        "total_requested": len(participant_ids),
+                        "existing_count": len(existing_ids)
+                    }
+                )
+
+        # Process each participant
+        results = []
+        created_count = 0
+        assigned_count = 0
+        already_assigned_count = 0
+
+        for participant_id in participant_ids:
+            # Check if participant exists
+            participant = session.exec(
+                select(Participant).where(Participant.id == participant_id)
+            ).first()
+
+            # Check if already linked to study
+            existing_link = session.exec(
+                select(StudyParticipantLink).where(
+                    StudyParticipantLink.study_id == study.id,
+                    StudyParticipantLink.participant_id == participant_id
+                )
+            ).first()
+
+            if existing_link:
+                # Already assigned to study
+                results.append(ParticipantAssignmentResult(
+                    participant_id=participant_id,
+                    status="already_assigned",
+                    message="Participant was already assigned to this study"
+                ))
+                already_assigned_count += 1
+                continue
+
+            if not participant:
+                # Create new participant
+                participant = Participant(id=participant_id)
+                session.add(participant)
+                # Flush to ensure participant is created before creating link
+                session.flush()
+                created_count += 1
+                status = "created_and_assigned"
+                message = "Participant was created and assigned to study"
+            else:
+                # Participant exists but not linked
+                assigned_count += 1
+                status = "already_existed_and_assigned"
+                message = "Participant already existed and was assigned to study"
+
+            # Create the study-participant link
+            participant_link = StudyParticipantLink(
+                study_id=study.id,
+                participant_id=participant_id
+            )
+            session.add(participant_link)
+
+            results.append(ParticipantAssignmentResult(
+                participant_id=participant_id,
+                status=status,
+                message=message
+            ))
+
+        # Commit all changes
+        session.commit()
+
+        # Get updated count of participants for this study
+        total_participants = session.exec(
+            select(func.count(StudyParticipantLink.participant_id))
+            .where(StudyParticipantLink.study_id == study.id)
+        ).first() or 0
+
+        # Log the operation
+        logger.info(
+            f"Admin assigned {len(participant_ids)} participants to study '{study_name_short}'. "
+            f"Created: {created_count}, Assigned: {assigned_count}, "
+            f"Already assigned: {already_assigned_count}. "
+            f"Study is {'OPEN' if study.allow_unlisted_participants else 'CLOSED'}. "
+            f"must_be_new was {request.must_be_new}"
+        )
+
+        # Prepare response
+        summary = {
+            "total_requested": len(participant_ids),
+            "created_and_assigned": created_count,
+            "already_existed_and_assigned": assigned_count,
+            "already_assigned": already_assigned_count,
+            "total_after_assignment": total_participants
+        }
+
+        response = AssignParticipantsResponse(
+            study_info=StudyAssignmentInfo(
+                name_short=study.name_short,
+                allow_unlisted_participants=study.allow_unlisted_participants,
+                total_participants=total_participants
+            ),
+            results=results,
+            summary=summary
+        )
+
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error assigning participants to study '{study_name_short}': {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to assign participants: {str(e)}"
+        )
+
+
+# Optional: Also add an endpoint to remove participants from a study
+@app.delete("/api/admin/studies/{study_name_short}/participants/{participant_id}",
+           dependencies=[Depends(verify_admin)])
+async def remove_participant_from_study(
+    study_name_short: str,
+    participant_id: str,
+    session: Session = Depends(get_session)
+):
+    """
+    Remove a participant from a study.
+
+    Note: This only removes the link between study and participant.
+    The participant record itself is not deleted.
+    """
+    try:
+        # Get the study
+        study = session.exec(
+            select(Study).where(Study.name_short == study_name_short)
+        ).first()
+
+        if not study:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Study '{study_name_short}' not found"
+            )
+
+        # Check if link exists
+        link = session.exec(
+            select(StudyParticipantLink).where(
+                StudyParticipantLink.study_id == study.id,
+                StudyParticipantLink.participant_id == participant_id
+            )
+        ).first()
+
+        if not link:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Participant '{participant_id}' is not assigned to study '{study_name_short}'"
+            )
+
+        # Delete the link
+        session.delete(link)
+        session.commit()
+
+        logger.info(f"Admin removed participant '{participant_id}' from study '{study_name_short}'")
+
+        return {
+            "status": "success",
+            "message": f"Participant '{participant_id}' removed from study '{study_name_short}'",
+            "study_name_short": study.name_short,
+            "participant_id": participant_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error removing participant '{participant_id}' from study '{study_name_short}': {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to remove participant: {str(e)}"
+        )
+
+
+# Optional: Get current participants for a study
+@app.get("/api/admin/studies/{study_name_short}/participants",
+         dependencies=[Depends(verify_admin)])
+async def get_study_participants(
+    study_name_short: str,
+    session: Session = Depends(get_session),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000)
+):
+    """
+    Get all participants assigned to a specific study.
+
+    Returns both pre-listed participants and any participants who have submitted ratings.
+    """
+    try:
+        # Get the study
+        study = session.exec(
+            select(Study).where(Study.name_short == study_name_short)
+        ).first()
+
+        if not study:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Study '{study_name_short}' not found"
+            )
+
+        # Get all participants linked to this study (pre-listed)
+        participant_links = session.exec(
+            select(StudyParticipantLink)
+            .where(StudyParticipantLink.study_id == study.id)
+            .offset(skip)
+            .limit(limit)
+        ).all()
+
+        participant_ids = [link.participant_id for link in participant_links]
+
+        # Get participant details
+        participants = []
+        for participant_id in participant_ids:
+            participant = session.exec(
+                select(Participant).where(Participant.id == participant_id)
+            ).first()
+
+            if participant:
+                # Check if participant has submitted any ratings for this study
+                has_ratings = session.exec(
+                    select(func.count(Rating.id))
+                    .where(
+                        Rating.participant_id == participant.id,
+                        Rating.study_id == study.id
+                    )
+                ).first() or 0
+
+                participants.append({
+                    "id": participant.id,
+                    "created_at": participant.created_at.isoformat() if participant.created_at else None,
+                    "has_submitted_ratings": has_ratings > 0,
+                    "rating_count": has_ratings
+                })
+
+        # Get total count for pagination
+        total_count = session.exec(
+            select(func.count(StudyParticipantLink.participant_id))
+            .where(StudyParticipantLink.study_id == study.id)
+        ).first() or 0
+
+        return {
+            "study_name_short": study.name_short,
+            "allow_unlisted_participants": study.allow_unlisted_participants,
+            "participants": participants,
+            "pagination": {
+                "skip": skip,
+                "limit": limit,
+                "total": total_count,
+                "has_more": (skip + limit) < total_count
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting participants for study '{study_name_short}': {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get participants: {str(e)}"
+        )
