@@ -857,7 +857,10 @@ async def admin_dashboard(
                 "active_participants": active_participants,
                 "active_participants_count": len(active_participants),
                 "total_participants": total_participants,
-                "coverage_percentage": coverage_percentage
+                "coverage_percentage": coverage_percentage,
+                "data_collection_start": study.data_collection_start,
+                "data_collection_end": study.data_collection_end,
+                "is_currently_active": study.data_collection_start <= utc_now() <= study.data_collection_end
             })
 
         return templates.TemplateResponse(
@@ -922,6 +925,9 @@ async def admin_api_stats(
                 "total_ratings": total_ratings,
                 "unique_participants": unique_participants,
                 "total_segments": total_segments,
+                "data_collection_start": study.data_collection_start,
+                "data_collection_end": study.data_collection_end,
+                "is_currently_active": study.data_collection_start <= utc_now() <= study.data_collection_end,
                 "last_activity": session.exec(
                     select(func.max(Rating.timestamp))
                     .where(Rating.study_id == study.id)
