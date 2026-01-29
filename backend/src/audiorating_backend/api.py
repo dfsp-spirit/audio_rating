@@ -1407,3 +1407,78 @@ async def get_study_participants(
             status_code=500,
             detail=f"Failed to get participants: {str(e)}"
         )
+
+
+@app.get("/admin/participant-management", response_class=HTMLResponse)
+async def admin_participant_management(
+    request: Request,
+    study_name_short: Optional[str] = Query(None, description="Study to pre-select"),
+    session: Session = Depends(get_session),
+    current_admin: str = Depends(verify_admin)
+):
+    """
+    Admin page for managing participants in studies.
+    Allows adding/removing participants from studies.
+    """
+    try:
+        # Get all studies for the dropdown
+        studies = session.exec(
+            select(Study).order_by(Study.name_short)
+        ).all()
+
+        # Get pre-selected study details if provided
+        selected_study = None
+        current_participants = []
+
+        if study_name_short:
+            selected_study = session.exec(
+                select(Study).where(Study.name_short == study_name_short)
+            ).first()
+
+            if selected_study:
+                # Get current participants for this study
+                participant_links = session.exec(
+                    select(StudyParticipantLink)
+                    .where(StudyParticipantLink.study_id == selected_study.id)
+                ).all()
+
+                for link in participant_links:
+                    participant = session.exec(
+                        select(Participant).where(Participant.id == link.participant_id)
+                    ).first()
+
+                    if participant:
+                        # Check if participant has ratings
+                        has_ratings = session.exec(
+                            select(func.count(Rating.id))
+                            .where(
+                                Rating.participant_id == participant.id,
+                                Rating.study_id == selected_study.id
+                            )
+                        ).first() or 0
+
+                        current_participants.append({
+                            "id": participant.id,
+                            "created_at": participant.created_at,
+                            "has_ratings": has_ratings > 0,
+                            "rating_count": has_ratings
+                        })
+
+        return templates.TemplateResponse(
+            "admin_participant_management.html",
+            {
+                "request": request,
+                "admin_user": current_admin,
+                "studies": studies,
+                "selected_study": selected_study,
+                "current_participants": current_participants,
+                "current_time": datetime.now()
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Error loading participant management page: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load participant management page: {str(e)}"
+        )
