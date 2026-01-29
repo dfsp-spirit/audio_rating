@@ -28,6 +28,9 @@ from .utils import utc_now
 from fastapi import Header, Query
 from typing import Dict, List
 from sqlalchemy import delete
+from pydantic import BaseModel
+from typing import List, Optional, Dict
+import logging
 
 
 security = HTTPBasic()
@@ -1053,11 +1056,6 @@ async def get_study_config(
         )
 
 
-# Add this to your api.py file
-
-from pydantic import BaseModel
-from typing import List, Optional, Dict
-import logging
 
 logger = logging.getLogger(__name__)
 
