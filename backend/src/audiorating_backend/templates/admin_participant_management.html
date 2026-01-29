@@ -1,0 +1,298 @@
+<!-- templates/admin_participant_management.html -->
+{% extends "admin_base.html" %}
+
+{% block title %}Participant Management - Audio Rating Admin{% endblock %}
+
+{% block content %}
+    <div style="margin-bottom: 30px;">
+        <h2 style="font-size: 24px; font-weight: 600; margin-bottom: 5px;">Participant Management</h2>
+        <p class="timestamp">Add or remove participants from studies</p>
+    </div>
+
+    <!-- Study Selection Card -->
+    <div class="card" style="margin-bottom: 30px;">
+        <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 15px; color: var(--text-color);">Select Study</h3>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <select id="studySelect" style="flex-grow: 1; padding: 10px 15px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 14px;">
+                <option value="">-- Select a study --</option>
+                {% for study in studies %}
+                <option value="{{ study.name_short }}" {% if selected_study and study.name_short == selected_study.name_short %}selected{% endif %}>
+                    {{ study.name_short }} - {{ study.name or "No description" }}
+                </option>
+                {% endfor %}
+            </select>
+            <button onclick="loadStudyParticipants()"
+                    style="padding: 10px 20px; background: var(--primary-color); color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer;">
+                Load Participants
+            </button>
+        </div>
+    </div>
+
+    {% if selected_study %}
+    <!-- Current Participants Card -->
+    <div class="card" style="margin-bottom: 30px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div>
+                <h3 style="font-size: 18px; font-weight: 600; color: var(--text-color);">
+                    Participants in "{{ selected_study.name_short }}"
+                    <span style="font-size: 14px; font-weight: normal; color: var(--text-secondary); margin-left: 8px;">
+                        ({{ current_participants|length }} total)
+                    </span>
+                </h3>
+            </div>
+            <div>
+                <span style="padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; {% if selected_study.allow_unlisted_participants %}background: #d1fae5; color: #065f46;{% else %}background: #fee2e2; color: #991b1b;{% endif %}">
+                    {{ "Open Study" if selected_study.allow_unlisted_participants else "Closed Study" }}
+                </span>
+            </div>
+        </div>
+
+        {% if current_participants %}
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Participant ID</th>
+                        <th>Created</th>
+                        <th>Status</th>
+                        <th>Ratings</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for participant in current_participants %}
+                    <tr>
+                        <td>
+                            <code style="font-family: monospace; font-size: 13px; background: var(--bg-color); padding: 2px 6px; border-radius: 4px;">{{ participant.id }}</code>
+                        </td>
+                        <td class="timestamp">
+                            {{ participant.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        </td>
+                        <td>
+                            <span style="padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; {% if participant.has_ratings %}background: #d1fae5; color: #065f46;{% else %}background: #fef3c7; color: #92400e;{% endif %}">
+                                {{ "Active" if participant.has_ratings else "Registered only" }}
+                            </span>
+                        </td>
+                        <td class="timestamp">
+                            {{ participant.rating_count }} rating(s)
+                        </td>
+                        <td>
+                            <button onclick="removeParticipant('{{ participant.id }}')"
+                                    style="color: #dc2626; background: none; border: none; font-size: 13px; cursor: pointer; padding: 4px 8px;">
+                                Remove
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;">👥</div>
+            <h3 style="margin-bottom: 10px;">No participants</h3>
+            <p>This study doesn't have any assigned participants yet.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Add Participants Card -->
+    <div class="card" style="margin-bottom: 30px;">
+        <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 15px; color: var(--text-color);">Add Participants</h3>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; font-size: 14px; font-weight: 500; color: var(--text-color); margin-bottom: 8px;">
+                Participant IDs (one per line or comma-separated)
+            </label>
+            <textarea id="participantIds" rows="6"
+                      style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; font-family: monospace; font-size: 13px; resize: vertical;"
+                      placeholder="Enter participant IDs, one per line or separated by commas:
+participant_001
+participant_002
+participant_003"></textarea>
+            <p class="timestamp" style="margin-top: 8px;">
+                Supports: new lines, commas (,), semicolons (;), or spaces as separators.
+                Example formats: "P001, P002, P003" or "P001; P002; P003"
+            </p>
+        </div>
+
+        <div style="display: flex; align-items: center; margin-bottom: 20px;">
+            <input type="checkbox" id="mustBeNew" style="margin-right: 8px;">
+            <label for="mustBeNew" style="font-size: 14px; color: var(--text-color);">
+                Must be new participants (fail if any already exist in system)
+            </label>
+            <span style="margin-left: 12px; padding: 2px 8px; background: #dbeafe; color: #1e40af; border-radius: 12px; font-size: 11px; font-weight: 500;">
+                Advanced
+            </span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <button onclick="addParticipants()"
+                    style="padding: 10px 20px; background: var(--primary-color); color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer;">
+                Add Participants
+            </button>
+            <button onclick="clearForm()"
+                    style="padding: 10px 20px; background: #e5e7eb; color: #4b5563; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer;">
+                Clear
+            </button>
+            <div id="addStatus" style="margin-left: 15px;"></div>
+        </div>
+    </div>
+
+    <!-- Quick Tips Card -->
+    <div class="card" style="background: #f9fafb;">
+        <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 15px; color: var(--text-color);">Quick Tips</h3>
+        <ul style="list-style: none; padding: 0;">
+            <li style="margin-bottom: 10px; padding-left: 24px; position: relative;">
+                <span style="position: absolute; left: 0; top: 2px; color: #10b981;">✓</span>
+                <span style="font-size: 14px; color: #4b5563;">Participants can be added to both open and closed studies</span>
+            </li>
+            <li style="margin-bottom: 10px; padding-left: 24px; position: relative;">
+                <span style="position: absolute; left: 0; top: 2px; color: #10b981;">✓</span>
+                <span style="font-size: 14px; color: #4b5563;">Removing a participant only removes them from this study, not from the system</span>
+            </li>
+            <li style="padding-left: 24px; position: relative;">
+                <span style="position: absolute; left: 0; top: 2px; color: #3b82f6;">ℹ</span>
+                <span style="font-size: 14px; color: #4b5563;">"Must be new" option prevents adding participants that already exist in any study</span>
+            </li>
+        </ul>
+    </div>
+    {% endif %}
+
+    <script>
+    // Parse multiple separators
+    function parseParticipantIds(input) {
+        if (!input) return [];
+
+        return input
+            .replace(/[,;]/g, '\n')
+            .split('\n')
+            .map(id => id.trim())
+            .filter(id => id.length > 0);
+    }
+
+    // Add participants to study
+    async function addParticipants() {
+        const studySelect = document.getElementById('studySelect');
+        const studyName = studySelect.value;
+
+        if (!studyName) {
+            alert('Please select a study first');
+            return;
+        }
+
+        const textarea = document.getElementById('participantIds');
+        const mustBeNew = document.getElementById('mustBeNew').checked;
+
+        const participantIds = parseParticipantIds(textarea.value);
+
+        if (participantIds.length === 0) {
+            alert('Please enter at least one participant ID');
+            return;
+        }
+
+        const statusDiv = document.getElementById('addStatus');
+        statusDiv.innerHTML = '<span style="color: #3b82f6;">Adding participants...</span>';
+
+        try {
+            const response = await fetch(`/api/admin/studies/${studyName}/assign-participants`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    participant_ids: participantIds,
+                    must_be_new: mustBeNew
+                }),
+                headers: {
+                'Content-Type': 'application/json'
+                },
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                statusDiv.innerHTML = `
+                    <div style="background: #d1fae5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px;">
+                        <div style="display: flex; align-items: flex-start;">
+                            <span style="color: #10b981; margin-right: 8px;">✓</span>
+                            <div>
+                                <div style="font-weight: 500; color: #065f46; margin-bottom: 4px;">Success!</div>
+                                <div style="font-size: 13px; color: #047857;">
+                                    Created and assigned: ${result.summary.created_and_assigned}<br>
+                                    Already existed and assigned: ${result.summary.already_existed_and_assigned}<br>
+                                    Already assigned: ${result.summary.already_assigned}<br>
+                                    Total participants in study: ${result.summary.total_after_assignment}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                setTimeout(() => {
+                    loadStudyParticipants();
+                }, 1500);
+
+            } else {
+                const error = await response.json();
+                throw new Error(error.detail?.message || error.detail || 'Failed to add participants');
+            }
+
+        } catch (error) {
+            statusDiv.innerHTML = `
+                <div style="background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px;">
+                    <div style="display: flex; align-items: flex-start;">
+                        <span style="color: #ef4444; margin-right: 8px;">✗</span>
+                        <div>
+                            <div style="font-weight: 500; color: #991b1b; margin-bottom: 4px;">Error</div>
+                            <div style="font-size: 13px; color: #b91c1c;">${error.message}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // Remove a participant from study
+    async function removeParticipant(participantId) {
+        if (!confirm(`Are you sure you want to remove participant "${participantId}" from this study?`)) {
+            return;
+        }
+
+        const studySelect = document.getElementById('studySelect');
+        const studyName = studySelect.value;
+
+        try {
+            const response = await fetch(`/api/admin/studies/${studyName}/participants/${participantId}`, {
+                method: 'DELETE',
+                credentials: 'same-origin'
+            });
+
+            if (response.ok) {
+                alert('Participant removed successfully');
+                loadStudyParticipants();
+            } else {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to remove participant');
+            }
+
+        } catch (error) {
+            alert(`Error: ${error.message}`);
+        }
+    }
+
+    // Load participants for selected study
+    function loadStudyParticipants() {
+        const studySelect = document.getElementById('studySelect');
+        const studyName = studySelect.value;
+
+        if (studyName) {
+            window.location.href = `/admin/participant-management?study_name_short=${encodeURIComponent(studyName)}`;
+        }
+    }
+
+    // Clear the form
+    function clearForm() {
+        document.getElementById('participantIds').value = '';
+        document.getElementById('mustBeNew').checked = false;
+        document.getElementById('addStatus').innerHTML = '';
+    }
+    </script>
+{% endblock %}

@@ -62,9 +62,6 @@
                 <h2 style="font-size: 22px; margin-bottom: 5px; color: var(--text-color);">{{ study.name or study.name_short }}</h2>
                 <p style="margin-bottom: 5px; color: var(--text-secondary);">{{ study.description or "No description provided" }}</p>
                 <div style="color: var(--text-secondary); font-size: 14px; font-family: monospace; background: var(--bg-color); padding: 2px 8px; border-radius: 4px; display: inline-block;">
-                    ID: {{ study.id }}
-                </div>
-                <div style="color: var(--text-secondary); font-size: 14px; font-family: monospace; background: var(--bg-color); padding: 2px 8px; border-radius: 4px; display: inline-block;">
                     Start: {{ study.data_collection_start.strftime('%Y-%m-%d') }} |
                     End: {{ study.data_collection_end.strftime('%Y-%m-%d') }} |
                     {% if study.is_currently_active %}
