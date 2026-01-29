@@ -59,7 +59,7 @@
     <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
             <div>
-                <h2 style="font-size: 22px; margin-bottom: 5px; color: var(--text-color);">{{ study.name or study.name_short }}</h2>
+                <h2 style="font-size: 22px; margin-bottom: 5px; color: var(--text-color);">{{ study.name }} (name_short: '{{ study.name_short }}')</h2>
                 <p style="margin-bottom: 5px; color: var(--text-secondary);">{{ study.description or "No description provided" }}</p>
                 <div style="color: var(--text-secondary); font-size: 14px; font-family: monospace; background: var(--bg-color); padding: 2px 8px; border-radius: 4px; display: inline-block;">
                     Start: {{ study.data_collection_start.strftime('%Y-%m-%d') }} |
@@ -178,7 +178,11 @@
 
         {% if study.allow_unlisted_participants %}
         <p class="timestamp" style="margin-top: 15px;">
-            ⚠️ This study allows unlisted participants
+            ⚠️ This study allows unlisted participants.
+        </p>
+        {% else %}
+        <p class="timestamp" style="margin-top: 15px;">
+            This study does not allow unlisted participants.
         </p>
         {% endif %}
     </div>
