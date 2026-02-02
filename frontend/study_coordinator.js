@@ -216,6 +216,11 @@ export class StudyCoordinator {
     const songListDiv = document.getElementById('song-list');
     songListDiv.innerHTML = '';
 
+    const currentSongDescription = document.getElementById('current-song-description');
+    if (this.currentSongIndex !== undefined && this.currentSongIndex < this.studyConfig.songs_to_rate.length) {
+      currentSongDescription.textContent = this.studyConfig.songs_to_rate[this.currentSongIndex].description || "No song description available.";
+    }
+
     this.studyConfig.songs_to_rate.forEach((song, index) => {
       const status = this.getSongStatus(index);
 
