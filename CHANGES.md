@@ -4,6 +4,13 @@
 Current WIP
 -----------
 
+
+Version 0.5.2 -- Support fastapi rootpath
+------------------------------------------
+* report proper version on startup in log message
+* support setting FastAPI rootpath for app based on new env var / .env config file setting AR_ROOTPATH
+
+
 Version 0.5.1 -- Version bump only
 ----------------------------------
 Bump version in __init__.py to 5.1.0
