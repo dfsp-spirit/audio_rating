@@ -24,6 +24,21 @@ class CfgFileSong(BaseModel):
 class CfgFileRatingDimension(BaseModel):
     dimension_title: str
     num_values: int
+    description: Optional[str] = None
+
+    @model_validator(mode='after')
+    def validate_num_values(self):
+        if self.num_values < 2:
+            raise ValueError(f'num_values for dimension "{self.dimension_title}" must be at least 2')
+        if self.num_values > 20:
+            raise ValueError(f'num_values for dimension "{self.dimension_title}" cannot exceed 20')
+        return self
+
+    @model_validator(mode='after')
+    def fill_description_from_title_if_missing(self):
+        if not self.description:
+            self.description = self.dimension_title
+        return self
 
 
 class CfgFileStudyConfig(BaseModel):

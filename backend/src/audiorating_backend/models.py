@@ -34,6 +34,7 @@ class StudyRatingDimension(SQLModel, table=True):
     dimension_title: str
     num_values: int
     dimension_order: int = Field(default=0)
+    description: Optional[str] = None
 
     # Relationship
     study: "Study" = Relationship(back_populates="rating_dimensions")

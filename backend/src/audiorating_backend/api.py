@@ -1033,7 +1033,8 @@ async def get_study_config(
             "rating_dimensions": [
                 {
                     "dimension_title": dim.dimension_title,
-                    "num_values": dim.num_values
+                    "num_values": dim.num_values,
+                    "description": dim.description
                 }
                 for dim in rating_dims
             ],
@@ -1263,7 +1264,7 @@ async def assign_participants_to_study(
         )
 
 
-# Optional: Also add an endpoint to remove participants from a study
+# Endpoint to remove participants from a study
 @app.delete("/api/admin/studies/{study_name_short}/participants/{participant_id}",
            dependencies=[Depends(verify_admin)])
 async def remove_participant_from_study(
@@ -1327,7 +1328,7 @@ async def remove_participant_from_study(
         )
 
 
-# Optional: Get current participants for a study
+# Endpoint to get current participants for a study
 @app.get("/api/admin/studies/{study_name_short}/participants",
          dependencies=[Depends(verify_admin)])
 async def get_study_participants(
