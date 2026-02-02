@@ -4,6 +4,10 @@
 Current WIP
 -----------
 
+Version 0.5.1 -- Version bump only
+----------------------------------
+Bump version in __init__.py to 5.1.0
+
 
 Version 0.5.0 -- Admin endpoint improvements, Descriptions of Songs and RatingDimensions
 ----------------------------------------------------------------------------------------
