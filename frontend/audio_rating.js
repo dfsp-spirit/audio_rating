@@ -2,7 +2,7 @@
 // Class-based widget that encapsulates all logic and can be instantiated multiple times.
 // Uses WaveSurfer 7 via dynamic import (cached per session) for convenience.
 
-import TimelinePlugin from 'https://unpkg.com/wavesurfer.js@7.0.0/dist/plugins/timeline.esm.js';
+import TimelinePlugin from './timeline.esm.js';
 
 export class AudioRatingWidget {
   static _WaveSurfer = null;
