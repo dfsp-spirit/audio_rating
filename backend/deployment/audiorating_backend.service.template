@@ -1,16 +1,16 @@
 [Unit]
-Description=Personal Analytics Backend API
+Description=Audiorating Backend API
 After=network.target postgresql.service
 Wants=postgresql.service
 
 [Service]
 Type=exec
-User=pa-user
-Group=pa-user
-WorkingDirectory=/opt/pa-backend/
-Environment=PATH=/opt/pa-backend/.venv/bin
-Environment=UV_CACHE_DIR=/var/cache/pa-user
-ExecStart=/opt/pa-backend/.venv/bin/gunicorn -c gunicorn_conf.py personal_analytics_backend.api:app
+User=aruser
+Group=aruser
+WorkingDirectory=/opt/ar-backend/
+Environment=PATH=/opt/ar-backend/.venv/bin
+Environment=UV_CACHE_DIR=/var/cache/ar-user
+ExecStart=/opt/ar-backend/.venv/bin/gunicorn -c gunicorn_conf.py audiorating_backend.api:app
 Restart=always
 RestartSec=10
 TimeoutStopSec=30
@@ -21,12 +21,12 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes
-ReadWritePaths=/opt/pa-backend/
+ReadWritePaths=/opt/ar-backend/
 
 # Logging
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=personal-analytics
+SyslogIdentifier=audiorating
 
 [Install]
 WantedBy=multi-user.target
