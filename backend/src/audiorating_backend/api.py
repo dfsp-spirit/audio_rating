@@ -1026,7 +1026,8 @@ async def get_study_config(
             "songs_to_rate": [
                 {
                     "media_url": song.media_url,
-                    "display_name": song.display_name
+                    "display_name": song.display_name,
+                    "description": song.description
                 }
                 for _, song in song_links  # song_links is tuple of (StudySongLink, Song)
             ],
