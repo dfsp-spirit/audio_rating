@@ -64,11 +64,15 @@ class RatingSubmitRequest(BaseModel):
             raise ValueError("Timestamp must include timezone information")
         return v.astimezone(timezone.utc)
 
+# get version from __init__.py
+import audiorating_backend
+ar_version = audiorating_backend.__version__
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logger.info(f"TUD Backend starting with allowed origins: {settings.allowed_origins}")
+    logger.info(f"TUD Backend version {ar_version} starting with allowed origins: {settings.allowed_origins}")
     if settings.debug:
         print(f"Debug mode enabled.")
 
@@ -80,7 +84,7 @@ async def lifespan(app: FastAPI):
     logger.info("TUD Backend shutting down")
 
 
-app = FastAPI(title="Audiorating (AR) API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Audiorating (AR) API", version=ar_version, root_path=settings.rootpath, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

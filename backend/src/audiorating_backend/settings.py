@@ -29,6 +29,10 @@ class ARBackendSettings:
         return origins
 
     @property
+    def rootpath(self):
+        return os.getenv("AR_ROOTPATH", "/")
+
+    @property
     def admin_username(self):
         username = os.getenv("AR_API_ADMIN_USERNAME")
         if not username:
