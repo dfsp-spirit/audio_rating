@@ -1,0 +1,32 @@
+[Unit]
+Description=Personal Analytics Backend API
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=exec
+User=pa-user
+Group=pa-user
+WorkingDirectory=/opt/pa-backend/
+Environment=PATH=/opt/pa-backend/.venv/bin
+Environment=UV_CACHE_DIR=/var/cache/pa-user
+ExecStart=/opt/pa-backend/.venv/bin/gunicorn -c gunicorn_conf.py personal_analytics_backend.api:app
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+KillSignal=SIGINT
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/pa-backend/
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=personal-analytics
+
+[Install]
+WantedBy=multi-user.target
