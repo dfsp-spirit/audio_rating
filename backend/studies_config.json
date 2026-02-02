@@ -4,7 +4,7 @@
       "name": "Default Study",
       "name_short": "default",
       "description": "Default study for music aesthetics research",
-      "songs_to_rate": [ { "media_url": "demo.wav", "display_name": "Demo Song" }, { "media_url": "demo2.wav", "display_name": "Demo Song 2" }],
+      "songs_to_rate": [ { "media_url": "demo.wav", "display_name": "Demo Song", "description": "A short demo song for testing purposes." }, { "media_url": "demo2.wav", "display_name": "Demo Song 2", "description": "Another demo song for testing purposes." }],
       "rating_dimensions": [{"dimension_title": "valence", "num_values": 8, "description": "Measures how positive or negative the emotional tone of the audio feels."}, {"dimension_title": "arousal", "num_values": 5, "description": "Measures the level of energy or activation the audio evokes."}, {"dimension_title": "enjoyment", "num_values": 10, "description": "Measures the personal enjoyment or liking of the audio."}, {"dimension_title": "is_cool", "num_values": 2, "description": "Measures whether the audio is perceived as cool or impressive."}],
       "study_participant_ids": [],
       "allow_unlisted_participants": true,

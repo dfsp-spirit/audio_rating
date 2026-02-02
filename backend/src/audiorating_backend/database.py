@@ -94,6 +94,7 @@ def create_config_file_studies(config_path: str):
                         song = Song(
                             display_name=song_cfg.display_name,
                             media_url=song_cfg.media_url,
+                            description=song_cfg.description
                         )
                         session.add(song)
                         session.commit()
@@ -177,7 +178,7 @@ def report_on_db_contents():
             for song_link in song_links:
                 song = session.exec(select(Song).where(Song.id == song_link.song_id)).first()
                 if song:
-                    logger.info(f" - Song: {song.display_name} ({song.media_url})")
+                    logger.info(f" - Song: {song.display_name} ({song.media_url}): {song.description}")
 
             # Log rating dimensions
             for dimension in rating_dims:

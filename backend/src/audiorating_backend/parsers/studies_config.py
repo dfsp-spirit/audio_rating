@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 class CfgFileSong(BaseModel):
     media_url: str
     display_name: str
+    description: Optional[str] = None
 
     @model_validator(mode='after')
     def set_display_name_from_media_url(self):
@@ -18,6 +19,12 @@ class CfgFileSong(BaseModel):
             name = self.media_url.split('/')[-1]  # Get filename from path or url
             name = name.rsplit('.', 1)[0] if '.' in name else name  # Remove extension
             self.display_name = name
+        return self
+
+    @model_validator(mode='after')
+    def fill_description_from_display_name_if_missing(self):
+        if not self.description:
+            self.description = self.display_name
         return self
 
 

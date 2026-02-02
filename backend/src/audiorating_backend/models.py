@@ -89,6 +89,7 @@ class Song(SQLModel, table=True):
     id: str = Field(default_factory=generate_uuid, primary_key=True)
     display_name: str
     media_url: str = Field(index=True)
+    description: Optional[str] = None
 
     # Relationships
     study_links: List["StudySongLink"] = Relationship(back_populates="song")
@@ -135,10 +136,12 @@ class RatingSegmentBase(SQLModel):
 class SongConfig(SQLModel):
     media_url: str
     display_name: str
+    description: Optional[str] = None
 
 class RatingDimensionConfig(SQLModel):
     dimension_title: str
     num_values: int
+    description: Optional[str] = None
 
 class StudyConfig(SQLModel):
     name: str
@@ -177,7 +180,7 @@ class StudyConfigResponse(SQLModel):
     name_short: str
     study_participant_ids: List[str]
     allow_unlisted_participants: bool
-    songs_to_rate: List[str]
+    songs_to_rate: List[SongConfig]
     rating_dimensions: List[RatingDimensionConfig]
 
 def create_db_and_tables(engine):
