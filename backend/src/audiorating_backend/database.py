@@ -13,11 +13,6 @@ logger = logging.getLogger("audiorating_backend.database")
 
 engine = create_engine(settings.database_url)
 
-def create_db_and_tables():
-    """Create all database tables"""
-    SQLModel.metadata.create_all(engine)
-    create_config_file_studies(settings.studies_config_path)
-
 
 def create_config_file_studies(config_path: str):
     """Create default studies from a configuration file"""

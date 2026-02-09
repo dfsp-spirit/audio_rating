@@ -51,6 +51,24 @@ from .models import Participant, Study, Song, Rating, StudyParticipantLink, Stud
 from .database import get_session, create_db_and_tables
 from pydantic import field_validator
 
+
+# Add with other imports at the top
+import argparse
+from sqlmodel import Session, select, delete
+from .database import engine
+
+# Define command line arguments for out app (not fastapi/uvicorn): you would run it like:
+#   uv run python -m audiorating_backend.api --drop-study "study_name_short_to_delete"
+parser = argparse.ArgumentParser(description="Audiorating Backend API", add_help=False)
+parser.add_argument("--drop-study", type=str, metavar="STUDY_NAME",
+                    help="Drop all data for a specific study before creating tables")
+
+# Parse only known arguments to avoid interfering with uvicorn
+args, unknown = parser.parse_known_args()
+
+# Store the parsed args globally
+_cli_args = args
+
 class RatingSubmitRequest(BaseModel):
     """Request body for submitting ratings - Pure API schema, not a database model"""
     timestamp: datetime
@@ -64,24 +82,91 @@ class RatingSubmitRequest(BaseModel):
             raise ValueError("Timestamp must include timezone information")
         return v.astimezone(timezone.utc)
 
+
+def drop_study_data(study_name_short: str):
+    """Drop all data for a specific study. Deletes ratings, segments, and study-specific links, but keeps songs and participants (but not their links to the study)."""
+    with Session(engine) as session:
+        # Find the study
+        study = session.exec(
+            select(Study).where(Study.name_short == study_name_short)
+        ).first()
+
+        if not study:
+            logger.warning(f"Study '{study_name_short}' not found, cannot delete data for this study. Ignoring --drop-study argument.")
+            return
+
+        logger.info(f"Found study '{study_name_short}' (ID: {study.id}). Deleting related data...")
+
+        # Delete rating segments for this study
+        segments_deleted = session.exec(
+            delete(RatingSegment)
+            .where(RatingSegment.rating_id.in_(
+                select(Rating.id).where(Rating.study_id == study.id)
+            ))
+        ).rowcount
+
+        # Delete ratings for this study
+        ratings_deleted = session.exec(
+            delete(Rating).where(Rating.study_id == study.id)
+        ).rowcount
+
+        # Delete study-specific links
+        song_links_deleted = session.exec(
+            delete(StudySongLink).where(StudySongLink.study_id == study.id)
+        ).rowcount
+
+        participant_links_deleted = session.exec(
+            delete(StudyParticipantLink).where(StudyParticipantLink.study_id == study.id)
+        ).rowcount
+
+        rating_dims_deleted = session.exec(
+            delete(StudyRatingDimension).where(StudyRatingDimension.study_id == study.id)
+        ).rowcount
+
+        # Finally, delete the study itself
+        session.delete(study)
+
+        # Commit all deletions
+        session.commit()
+
+        logger.info(f"Deleted study '{study_name_short}' and related data:")
+        logger.info(f"  - Rating segments: {segments_deleted}")
+        logger.info(f"  - Ratings: {ratings_deleted}")
+        logger.info(f"  - Song links: {song_links_deleted}")
+        logger.info(f"  - Participant links: {participant_links_deleted}")
+        logger.info(f"  - Rating dimensions: {rating_dims_deleted}")
+
+
 # get version from __init__.py
 import audiorating_backend
 ar_version = audiorating_backend.__version__
 
+import sys
+if _cli_args.drop_study:
+    print(f"Dropping data for study: {_cli_args.drop_study}")
+    # We need to ensure database engine is initialized
+    from .database import engine
+    # Call the function immediately
+    drop_study_data(_cli_args.drop_study)
+    # Exit or continue based on whether you want to start the server
+    sys.exit(0)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logger.info(f"TUD Backend version {ar_version} starting with allowed origins: {settings.allowed_origins}")
+    logger.info(f"AR Backend version {ar_version} starting with allowed origins: {settings.allowed_origins}")
     if settings.debug:
         print(f"Debug mode enabled.")
 
-    logger.info("Running on_startup tasks...")
+
+    logger.info("Running FastAPI on_startup tasks...")
+
     create_db_and_tables()
 
-    yield
-    # Shutdown
-    logger.info("TUD Backend shutting down")
+    yield   # running
+
+    # This line is reached only at shutdown
+    logger.info("AR version {ar_version} Backend shutting down")
 
 
 app = FastAPI(title="Audiorating (AR) API", version=ar_version, root_path=settings.rootpath, lifespan=lifespan)
@@ -970,6 +1055,7 @@ async def get_study_config(
         ).first()
 
         if not study:
+            logger.warning(f"Study '{study_name}' not found when participant '{participant_id}' requested config")
             raise HTTPException(
                 status_code=404,
                 detail=f"Study '{study_name}' not found"
@@ -978,6 +1064,7 @@ async def get_study_config(
         # Check if study is active (within data collection period)
         now = utc_now()
         if now < study.data_collection_start:
+            logger.warning(f"Study '{study_name}' has not started yet, starts at {study.data_collection_start} but it is now {now} (requested by participant '{participant_id}')")
             raise HTTPException(
                 status_code=403,
                 detail=f"Study '{study_name}' has not started yet. "
@@ -985,6 +1072,7 @@ async def get_study_config(
             )
 
         if now > study.data_collection_end:
+            logger.warning(f"Study '{study_name}' has ended on {study.data_collection_end} but now it is {now} (requested by participant '{participant_id}')")
             raise HTTPException(
                 status_code=403,
                 detail=f"Study '{study_name}' has ended. "
@@ -1002,6 +1090,7 @@ async def get_study_config(
             ).first()
 
             if not participant_link:
+                logger.warning(f"Unauthorized access attempt to study '{study_name}' by participant '{participant_id}'")
                 raise HTTPException(
                     status_code=403,
                     detail=f"Participant '{participant_id}' is not authorized to access study '{study_name}'"
