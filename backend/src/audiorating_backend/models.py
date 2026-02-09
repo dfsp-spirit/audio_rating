@@ -33,6 +33,8 @@ class StudyRatingDimension(SQLModel, table=True):
     study_id: str = Field(foreign_key="study.id")
     dimension_title: str
     num_values: int
+    minimal_value: Optional[int] = None
+    default_value: Optional[int] = None
     dimension_order: int = Field(default=0)
     description: Optional[str] = None
 
@@ -141,6 +143,8 @@ class SongConfig(SQLModel):
 class RatingDimensionConfig(SQLModel):
     dimension_title: str
     num_values: int
+    minimal_value: Optional[int] = None
+    default_value: Optional[int] = None
     description: Optional[str] = None
 
 class StudyConfig(SQLModel):

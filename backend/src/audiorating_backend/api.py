@@ -884,6 +884,10 @@ async def admin_dashboard(
                 .order_by(Participant.id, Song.display_name, Rating.rating_name)
             ).all()
 
+            rating_dimensions = session.exec(
+                select(StudyRatingDimension).where(StudyRatingDimension.study_id == study.id)
+            ).all()
+
             # Organize data by participant
             participants_data = {}
             for rating, participant, song, segment_count in ratings:
@@ -925,6 +929,17 @@ async def admin_dashboard(
             # Get unique participants who submitted ratings
             active_participants = list(participants_data.values())
 
+            rating_dimensions_report = [
+                {
+                    "dimension_title": dim.dimension_title,
+                    "num_values": dim.num_values,
+                    "minimal_value": dim.minimal_value,
+                    "default_value": dim.default_value,
+                    "description": dim.description
+                }
+                for dim in rating_dimensions
+            ]
+
             # Calculate coverage percentage safely
             total_participants = len(set(pre_listed_participants + [p["id"] for p in active_participants]))
             if total_songs > 0 and total_participants > 0:
@@ -939,6 +954,7 @@ async def admin_dashboard(
                 "name_short": study.name_short,
                 "name": study.name,
                 "description": study.description,
+                "rating_dimensions": rating_dimensions_report,
                 "total_songs": total_songs,
                 "allow_unlisted_participants": study.allow_unlisted_participants,
                 "pre_listed_participants": pre_listed_participants,
@@ -979,6 +995,11 @@ async def admin_api_stats(
     """
     API endpoint for admin dashboard stats (can be used for AJAX updates).
     """
+    if study_id:
+        logger.debug(f"Admin '{current_admin}' requested API stats for study_id='{study_id}'")
+    else:
+        logger.debug(f"Admin '{current_admin}' requested API stats for all studies")
+
     try:
         # Similar logic as above but returns JSON
         if study_id:
@@ -1007,10 +1028,24 @@ async def admin_api_stats(
                 .where(Rating.study_id == study.id)
             ).first() or 0
 
+            study_rating_dimensions = session.exec(
+                select(StudyRatingDimension).where(StudyRatingDimension.study_id == study.id)
+            ).all()
+
             study_stats.append({
                 "id": study.id,
                 "name_short": study.name_short,
                 "name": study.name,
+                "rating_dimensions": [
+                    {
+                        "dimension_title": dim.dimension_title,
+                        "num_values": dim.num_values,
+                        "minimal_value": dim.minimal_value,
+                        "default_value": dim.default_value,
+                        "description": dim.description
+                    }
+                    for dim in study_rating_dimensions
+                ],
                 "total_ratings": total_ratings,
                 "unique_participants": unique_participants,
                 "total_segments": total_segments,
@@ -1128,6 +1163,8 @@ async def get_study_config(
                 {
                     "dimension_title": dim.dimension_title,
                     "num_values": dim.num_values,
+                    "minimal_value": dim.minimal_value,
+                    "default_value": dim.default_value,
                     "description": dim.description
                 }
                 for dim in rating_dims

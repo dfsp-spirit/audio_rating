@@ -31,6 +31,8 @@ class CfgFileSong(BaseModel):
 class CfgFileRatingDimension(BaseModel):
     dimension_title: str
     num_values: int
+    minimal_value: Optional[int] = None
+    default_value: Optional[int] = None
     description: Optional[str] = None
 
     @model_validator(mode='after')
@@ -45,6 +47,35 @@ class CfgFileRatingDimension(BaseModel):
     def fill_description_from_title_if_missing(self):
         if not self.description:
             self.description = self.dimension_title
+        return self
+
+    @model_validator(mode='after')
+    def fill_minimal_and_default_values(self):
+        if self.minimal_value is None:
+            self.minimal_value = 1
+        if self.default_value is None:
+            self.default_value = (self.minimal_value + self.num_values - 1) // 2  # Middle value
+        return self
+
+    @model_validator(mode='after')
+    def validate_default_value_within_range(self):
+        if self.default_value is not None:
+            max_value = self.minimal_value + self.num_values - 1
+            if not (self.minimal_value <= self.default_value <= max_value):
+                raise ValueError(
+                    f'default_value for dimension "{self.dimension_title}" must be between '
+                    f'{self.minimal_value} and {max_value} (inclusive)'
+                )
+        return self
+
+    @model_validator(mode='after')
+    def validate_minimal_value_and_num_values(self):
+        if self.minimal_value is not None and self.num_values is not None:
+            max_value = self.minimal_value + self.num_values - 1
+            if max_value < self.minimal_value:
+                raise ValueError(
+                    f'num_values for dimension "{self.dimension_title}" must be positive and consistent with minimal_value'
+                )
         return self
 
 

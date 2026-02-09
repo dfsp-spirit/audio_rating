@@ -128,6 +128,8 @@ def create_config_file_studies(config_path: str):
                             study_id=new_study.id,
                             dimension_title=dimension_cfg.dimension_title,
                             num_values=dimension_cfg.num_values,
+                            minimal_value=dimension_cfg.minimal_value,
+                            default_value=dimension_cfg.default_value,
                             dimension_order=dim_index,
                             description=dimension_cfg.description
                         )
@@ -177,7 +179,7 @@ def report_on_db_contents():
 
             # Log rating dimensions
             for dimension in rating_dims:
-                logger.info(f" - Rating Dimension: {dimension.dimension_title} ({dimension.num_values} values): {dimension.description}")
+                logger.info(f" - Rating Dimension: {dimension.dimension_title} ({dimension.num_values} values, min={dimension.minimal_value}, default={dimension.default_value}): {dimension.description}")
 
             # report whether study allows unlisted participants
             logger.info(f" - Allows unlisted participants: {study.allow_unlisted_participants}")
