@@ -56,6 +56,7 @@
                         <th>Created</th>
                         <th>Status</th>
                         <th>Ratings</th>
+                        <th>Invitation</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -75,6 +76,16 @@
                         </td>
                         <td class="timestamp">
                             {{ participant.rating_count }} rating(s)
+                        </td>
+                        <td>
+                            <button onclick="copyInvitationLink('{{ selected_study.name_short }}', '{{ participant.id }}', this)"
+                                    style="background: none; border: none; cursor: pointer; padding: 4px; color: var(--text-secondary);"
+                                    title="Copy invitation link">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                                </svg>
+                            </button>
                         </td>
                         <td>
                             <button onclick="removeParticipant('{{ participant.id }}')"
@@ -159,7 +170,36 @@ participant_003"></textarea>
     </div>
     {% endif %}
 
+
+
     <script>
+        const frontend_url = "{{ frontend_url }}";
+
+        function copyInvitationLink(studyShortName, participantId, buttonElement) {
+    const url = `${frontend_url}/study.html?study=${studyShortName}&uid=${participantId}`;
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(url).then(() => {
+        // Visual feedback
+        const originalColor = buttonElement.style.color;
+        const originalTitle = buttonElement.title;
+
+        // Change icon color to green and show "Copied!"
+        buttonElement.style.color = '#10b981';
+        buttonElement.title = 'Copied!';
+
+        // Revert after 1.5 seconds
+        setTimeout(() => {
+            buttonElement.style.color = originalColor;
+            buttonElement.title = originalTitle;
+        }, 1500);
+
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+        alert('Failed to copy link to clipboard');
+    });
+}
+
     // Parse multiple separators
     function parseParticipantIds(input) {
         if (!input) return [];

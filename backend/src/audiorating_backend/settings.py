@@ -23,10 +23,21 @@ class ARBackendSettings:
 
     @property
     def allowed_origins(self):
+        """Allowed origins for CORS, as a list of strings. Expects a JSON array in the environment variable."""
         origins = json.loads(os.getenv("AR_ALLOWED_ORIGINS", "[]"))
         if not origins:
             raise ValueError("AR_ALLOWED_ORIGINS environment variable is not set. Please set a JSON array of allowed origins.")
         return origins
+
+    @property
+    def frontend_url(self):
+        """Frontend URL, used only for constructing invitation links in admin interface. Expects a string like 'https://yourserver.de/path_to_audiorating/' including terminating slash where we can append 'study.html...' to get a valid path to study.html page."""
+        url = os.getenv("AR_FRONTEND_URL")
+        if not url:
+            raise ValueError("AR_FRONTEND_URL environment variable is not set.")
+        if not url.endswith("/"):
+            url += "/"
+        return url
 
     @property
     def rootpath(self):

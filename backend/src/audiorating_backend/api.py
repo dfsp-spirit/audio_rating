@@ -1608,7 +1608,8 @@ async def admin_participant_management(
                 "studies": studies,
                 "selected_study": selected_study,
                 "current_participants": current_participants,
-                "current_time": datetime.now()
+                "current_time": datetime.now(),
+                "frontend_url": settings.frontend_url
             }
         )
 
