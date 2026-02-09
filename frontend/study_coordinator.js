@@ -7,14 +7,14 @@ const DEFAULT_STUDY_CONFIG = {
   name_short: "default",
   description: "Default study for music aesthetics research",
   songs_to_rate: [
-    { media_url: "demo.wav", display_name: "Demo Song" },
-    { media_url: "demo2.wav", display_name: "Demo Song 2" }
+    { media_url: "demo.wav", display_name: "Demo Song", description: "This is a demo song for testing the audio rating widget. Please listen to the entire clip and provide your ratings based on your experience." },
+    { media_url: "demo2.wav", display_name: "Demo Song 2", description: "This is a second demo song for testing the audio rating widget. Please listen to the entire clip and provide your ratings based on your experience." }
   ],
   rating_dimensions: [
-    { dimension_title: "valence", num_values: 8 },
-    { dimension_title: "arousal", num_values: 5 },
-    { dimension_title: "enjoyment", num_values: 10 },
-    { dimension_title: "is_cool", num_values: 2 }
+    { dimension_title: "valence", num_values: 8, minimal_value: 0, default_value: 4, description: "The valence of the song section" },
+    { dimension_title: "arousal", num_values: 5, minimal_value: -2, default_value: 0, description: "The arousal level of the song section" },
+    { dimension_title: "enjoyment", num_values: 10, minimal_value: 0, default_value: 5, description: "The enjoyment level of the song section" },
+    { dimension_title: "is_cool", num_values: 2, minimal_value: 0, default_value: 0, description: "Whether the song section is cool or not" }
   ],
   study_participant_ids: [],
   allow_unlisted_participants: true,
@@ -52,9 +52,23 @@ export class StudyCoordinator {
   }
 
   getDefaultValueForDimension(dimensionName) {
-    const dimConfig = this.studyConfig.rating_dimensions[dimensionName];
-    return Math.floor(dimConfig.num_values / 2);
+  const dim = this.studyConfig.rating_dimensions.find(
+    d => d.dimension_title === dimensionName
+  );
+
+  if (!dim) {
+    console.warn(`Dimension ${dimensionName} not found`);
+    return 0;
   }
+
+  if (dim.default_value !== undefined) {
+    return dim.default_value;
+  }
+
+  // Calculate default if not specified
+  const min_value = dim.minimal_value || 0;
+  return min_value + Math.floor(dim.num_values / 2);
+}
 
   getOrCreateUID() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -88,54 +102,59 @@ export class StudyCoordinator {
   }
 
   checkRatingDataComplete(ratingData) {
-    if (!ratingData || Object.keys(ratingData).length === 0) {
-      return { isComplete: false, missingDimensions: Object.keys(this.studyConfig.rating_dimensions) };
-    }
-
-    const requiredDimensions = Object.keys(this.studyConfig.rating_dimensions);
-    const missingDimensions = [];
-
-    requiredDimensions.forEach(dim => {
-      if (!ratingData[dim] || !Array.isArray(ratingData[dim]) || ratingData[dim].length === 0) {
-        missingDimensions.push(dim);
-        return;
-      }
-
-      const defaultValue = this.getDefaultValueForDimension(dim);
-      const segments = ratingData[dim];
-
-      // If user added segments (more than 1), it's modified
-      if (segments.length > 1) {
-        return;
-      }
-
-      // Check the single segment
-      const segment = segments[0];
-      if (!segment || segment.value === undefined || segment.value === null) {
-        missingDimensions.push(dim);
-        return;
-      }
-
-      // If value differs from default, it's modified
-      if (segment.value !== defaultValue) {
-        return;
-      }
-
-      // If we get here, dimension still has default value
-      missingDimensions.push(dim);
-    });
-
-    const isComplete = missingDimensions.length === 0;
-
-    if(!isComplete) {
-      console.log('Incomplete rating data, missing dimensions:', missingDimensions);
-    }
-
+  if (!ratingData || Object.keys(ratingData).length === 0) {
     return {
-      isComplete: isComplete,
-      missingDimensions: missingDimensions
+      isComplete: false,
+      missingDimensions: this.studyConfig.rating_dimensions.map(dim => dim.dimension_title)  // FIX THIS LINE
     };
   }
+
+  const requiredDimensions = this.studyConfig.rating_dimensions.map(dim => dim.dimension_title); // AND THIS LINE
+  const missingDimensions = [];
+
+  requiredDimensions.forEach(dimName => { // Change from dim to dimName
+    if (!ratingData[dimName] || !Array.isArray(ratingData[dimName]) || ratingData[dimName].length === 0) {
+      missingDimensions.push(dimName);
+      return;
+    }
+
+    const defaultValue = this.getDefaultValueForDimension(dimName); // Use dimName
+    const segments = ratingData[dimName];
+
+    // If user added segments (more than 1), it's modified
+    if (segments.length > 1) {
+      return;
+    }
+
+    // Check the single segment
+    const segment = segments[0];
+    if (!segment || segment.value === undefined || segment.value === null) {
+      missingDimensions.push(dimName);
+      return;
+    }
+
+    // If value differs from default, it's modified
+    if (segment.value !== defaultValue) {
+      return;
+    }
+
+    // If we get here, dimension still has default value
+    missingDimensions.push(dimName);
+  });
+
+  const isComplete = missingDimensions.length === 0;
+
+  if(!isComplete) {
+    console.log('Incomplete rating data, missing dimensions:', missingDimensions);
+  }
+
+  return {
+    isComplete: isComplete,
+    missingDimensions: missingDimensions
+  };
+}
+
+
 
   updateAllUI() {
     this.updateSubmitButtonState();
@@ -274,17 +293,6 @@ export class StudyCoordinator {
     return urlParams.get('study_name') || 'default';
   }
 
-  convertToWidgetFormat(backendConfig) {
-    const ratingDimensions = {};
-    backendConfig.rating_dimensions.forEach(dim => {
-      ratingDimensions[dim.dimension_title] = { num_values: dim.num_values };
-    });
-
-    return {
-      ...backendConfig,
-      rating_dimensions: ratingDimensions
-    };
-  }
 
   async init() {
     await this.checkBackendAvailability();
@@ -292,11 +300,11 @@ export class StudyCoordinator {
     if (this.backendAvailable) {
       const configLoaded = await this.loadStudyConfigFromBackend();
       if (!configLoaded) {
-        this.studyConfig = this.convertToWidgetFormat(DEFAULT_STUDY_CONFIG);
+        this.studyConfig = DEFAULT_STUDY_CONFIG;
       }
     } else {
       this.showOfflineNotice();
-      this.studyConfig = this.convertToWidgetFormat(DEFAULT_STUDY_CONFIG);
+      this.studyConfig = DEFAULT_STUDY_CONFIG;
     }
 
     document.getElementById('song-count').textContent = this.studyConfig.songs_to_rate.length;
@@ -341,7 +349,7 @@ export class StudyCoordinator {
 
       if (response.ok) {
         const studyConfig = await response.json();
-        this.studyConfig = this.convertToWidgetFormat(studyConfig);
+        this.studyConfig = studyConfig;
 
         for (let i = 0; i < this.studyConfig.songs_to_rate.length; i++) {
           try {
@@ -394,6 +402,13 @@ export class StudyCoordinator {
 
   async loadSong(songIndex) {
     // Auto-save current song before switching
+    console.log('=== LOAD SONG DEBUG ===');
+    console.log('songIndex:', songIndex);
+    console.log('song:', this.studyConfig.songs_to_rate[songIndex]);
+    console.log('rating_dimensions:', this.studyConfig.rating_dimensions);
+    console.log('rating_dimensions length:', this.studyConfig.rating_dimensions.length);
+
+
     if (this.widget) {
       await this.autoSaveCurrentSong();
 
@@ -467,7 +482,7 @@ export class StudyCoordinator {
 
     } catch (error) {
       console.error('Error loading song:', error);
-      this.showStatusMessage(`Error loading song "${song.display_name}". Please try again.`, 'error');
+      this.showStatusMessage(`Error loading song "${song.display_name}" from file "${song.media_url}". Please try again.`, 'error');
     } finally {
       this.setLoading(false, true);
     }

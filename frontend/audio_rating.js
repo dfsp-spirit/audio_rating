@@ -16,12 +16,8 @@ export class AudioRatingWidget {
   constructor({
     container,
     audioUrl,
-    dimensions = {
-      valence:   { num_values: 10 },
-      arousal:   { num_values:  5 },
-      enjoyment: { num_values: 10 },
-      is_cool:   { num_values:  2 },
-    },
+    rating_dimensions = [],
+    //rating_dimensions = [{"dimension_title": "Musical aesthetics", "num_values": 5, "description": "How artistically compelling the music itself is in this section (ideas, harmony, melody, texture, form), independent of minor execution issues."}, {"dimension_title": "Performance quality", "num_values": 5, "description": "How well the music is executed in this section (timing, touch, dynamics, articulation, control/fluency), relative to the performer’s intent."}, {"dimension_title": "Togetherness", "num_values": 5, "description": "The sense of real-time musical connection: mutual responsiveness (give-and-take), shared pulse/phrasing, and a feeling of being with the partner rather than alongside them."}, {"dimension_title": "Flow", "num_values": 5, "description": "Feeling fully absorbed and engaged during this section - deeply focused but positive challenge."}, {"dimension_title": "Lead-follow", "num_values": 5, "description": "Who is currently driving the musical direction (entries, tempo/pulse, phrasing, harmonic turns, density), as perceived in this section."}],
     height = 140,
     waveColor = '#bfc8d6',
     progressColor = '#6b46c1',
@@ -38,7 +34,7 @@ export class AudioRatingWidget {
     if (!this.container) throw new Error('AudioRatingWidget: container not found');
 
     this.audioUrl = audioUrl;
-    this.dimensionDefinition = this._normalizeDimensions(dimensions);
+    this.rating_dimensions = rating_dimensions;
     this.CANVAS_HEIGHT = height;
     this.waveColor = waveColor;
     this.progressColor = progressColor;
@@ -51,7 +47,7 @@ export class AudioRatingWidget {
 
     // State
     this.dimensionData = {};
-    this.currentDimension = Object.keys(this.dimensionDefinition)[0];
+    this.currentDimension = rating_dimensions[0]?.dimension_title || null;
     this.segments = null;
 
     // Drawing helpers / runtime
@@ -92,6 +88,48 @@ export class AudioRatingWidget {
     };
   }
 
+
+  setDimensions(rating_dimensions) {
+    this.rating_dimensions = rating_dimensions;
+
+    // Rebuild dimension buttons
+    if (this.dimButtonsWrap) {
+      this.dimButtonsWrap.innerHTML = '';
+      for (const dim of this.rating_dimensions) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = dim.dimension_title;
+        b.dataset.dim = dim.dimension_title;
+        this.dimButtonsWrap.appendChild(b);
+      }
+
+      // Re-bind button events
+      this.dimButtonsWrap.querySelectorAll('button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          this.dimensionData[this.currentDimension] = JSON.parse(JSON.stringify(this.segments));
+          this.currentDimension = btn.dataset.dim;
+          this.segments = this.dimensionData[this.currentDimension];
+          this._updateLegend();
+          this._updateActiveButton();
+          this._drawAll();
+          this._emitChange('dimension_changed');
+        });
+      });
+    }
+
+    // Initialize data
+    this._initData();
+
+    // Update UI
+    if (this.currentDimension) {
+      this._updateLegend();
+    }
+    this._updateActiveButton();
+    this._drawAll();
+
+    return this;
+  }
+
   async _init() {
     if (!AudioRatingWidget._WaveSurfer) {
       const mod = await import('https://unpkg.com/wavesurfer.js@7.0.0/dist/wavesurfer.esm.js');
@@ -99,23 +137,41 @@ export class AudioRatingWidget {
     }
 
     this._buildDOM();
-    this._initData();
+
+    if (this._hasDimensions()) {
+     this._initData();
+    }
+
     this._bindUI();
     await this._initWaveSurfer();
-    this._updateLegend(this.dimensionDefinition[this.currentDimension].num_values);
+
+    if (this.currentDimension) {
+      this._updateLegend();
+    }
+
     this._updateActiveButton();
-    // Initial resize after layout
     setTimeout(() => this._resizeOverlay(), 300);
+
   }
 
-  _normalizeDimensions(input) {
-    // Accept { name: number } or { name: { num_values } }
-    const out = {};
-    for (const [k, v] of Object.entries(input)) {
-      out[k] = (typeof v === 'number') ? { num_values: v } : v;
-    }
-    return out;
+  _getValueRange(dimension) {
+  const dim = typeof dimension === 'string'
+    ? this.rating_dimensions.find(d => d.dimension_title === dimension)
+    : dimension;
+
+  if (!dim) return { min: 0, max: 0 };
+
+  const min = dim.minimal_value || 0;
+  const max = min + dim.num_values - 1;
+
+  return { min, max };
+}
+
+
+  _hasDimensions() {
+   return this.rating_dimensions && this.rating_dimensions.length > 0;
   }
+
 
   _buildDOM() {
     // Build widget structure inside container
@@ -200,28 +256,38 @@ export class AudioRatingWidget {
     this.zoomResetBtn = root.querySelector('.arw-zoom-reset');
 
     // Build dimension buttons
-    for (const name of Object.keys(this.dimensionDefinition)) {
+    for (const dim of this.rating_dimensions) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = name;
-      b.dataset.dim = name;
+      b.textContent = dim.dimension_title;
+      b.dataset.dim = dim.dimension_title;
       this.dimButtonsWrap.appendChild(b);
     }
 }
 
+  _getCurrentDimension() {
+   if (!this.currentDimension) return null;
+    return this.rating_dimensions.find(d => d.dimension_title === this.currentDimension);
+  }
 
   _initData() {
-    const segmentsDefault = (num_values) => [{
-      start: 0,
-      end: 1e9,
-      value: Math.floor(num_values / 2),
-    }];
+  const segmentsDefault = (dim) => [{
+    start: 0,
+    end: 1e9,
+    value: dim.default_value !== undefined ? dim.default_value :
+           ((dim.minimal_value || 0) + Math.floor(dim.num_values / 2)),
+  }];
 
-    for (const dim of Object.keys(this.dimensionDefinition)) {
-      this.dimensionData[dim] = segmentsDefault(this.dimensionDefinition[dim].num_values);
-    }
+  this.rating_dimensions.forEach(dim => {
+    this.dimensionData[dim.dimension_title] = segmentsDefault(dim);
+  });
+
+  if (this.rating_dimensions.length > 0 && !this.currentDimension) {
+    this.currentDimension = this.rating_dimensions[0].dimension_title;
     this.segments = this.dimensionData[this.currentDimension];
   }
+}
+
 
   _updateZoomButtonStates() {
     if (!this.wavesurfer) return;
@@ -375,7 +441,7 @@ export class AudioRatingWidget {
         this.dimensionData[this.currentDimension] = JSON.parse(JSON.stringify(this.segments));
         this.currentDimension = btn.dataset.dim;
         this.segments = this.dimensionData[this.currentDimension];
-        this._updateLegend(this.dimensionDefinition[this.currentDimension].num_values);
+        this._updateLegend();
         this._updateActiveButton();
         this._drawAll();
         this._emitChange('dimension_changed');
@@ -470,81 +536,119 @@ _xToTime(x) {
   }
 
   _colorForRating(r, num_values) {
-    const t = r / ((num_values - 1) || 1);
-    const hue = 220 - (220 - 10) * t;
+    // Normalize to 0-1 range for coloring
+    const normalized = r / ((num_values - 1) || 1);
+    const hue = 220 - (220 - 10) * normalized;
     return `hsl(${hue} 80% 50% / 0.45)`;
   }
 
-  _updateLegend(num_values) {
-    if(this.legend == null) return;
-    this.legend.innerHTML = '';
-    for (let r = num_values - 1; r >= 0; r--) {
-      const item = document.createElement('div');
-      item.className = 'legend-item';
-      item.style.background = this._colorForRating(r, num_values).replace('/ 0.45)', '/1)');
-      item.textContent = r;
-      this.legend.appendChild(item);
-    }
-    this.stepsLabel.textContent = String(num_values);
+  _updateLegend() {
+  if (this.legend == null || !this.currentDimension) return;
+
+  const currentDim = this._getCurrentDimension();
+  if (!currentDim) return;
+
+  const num_values = currentDim.num_values;
+  const min_value = currentDim.minimal_value || 0;
+  const max_value = min_value + num_values - 1;
+
+  this.legend.innerHTML = '';
+
+  // Create legend items from max to min
+  for (let i = max_value; i >= min_value; i--) {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+
+    // Calculate position in the 0-1 range for coloring
+    const normalizedValue = (i - min_value) / (max_value - min_value);
+    item.style.background = this._colorForRating(normalizedValue * (num_values - 1), num_values)
+      .replace('/ 0.45)', '/1)');
+
+    item.textContent = i;
+    this.legend.appendChild(item);
   }
 
+  if (this.stepsLabel) {
+    this.stepsLabel.textContent = `${num_values} steps (${min_value} to ${max_value})`;
+  }
+}
   _updateActiveButton() {
     this.dimButtonsWrap.querySelectorAll('button').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.dim === this.currentDimension);
     });
   }
 
-  _drawAll() {
-    const ctx = this.ctx;
-    const h = this.overlay.height / (window.devicePixelRatio || 1); // CSS pixels
-    const w = this.overlay.width / (window.devicePixelRatio || 1);
-    const num_steps = this.dimensionDefinition[this.currentDimension].num_values;
 
+_drawAll() {
+  const ctx = this.ctx;
+  const h = this.overlay.height / (window.devicePixelRatio || 1);
+  const w = this.overlay.width / (window.devicePixelRatio || 1);
 
-    ctx.clearRect(0, 0, w, h);
-
-    // horizontal grid + labels
-    for (let s = 0; s < num_steps; s++) {
-      const y = h - (s / (num_steps - 1)) * h;
-      ctx.beginPath();
-      ctx.moveTo(0, y); ctx.lineTo(w, y);
-      ctx.lineWidth = (s === Math.floor((num_steps - 1) / 2)) ? 1.2 : 0.7;
-      ctx.strokeStyle = 'rgba(0,0,0,0.06)';
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.font = '12px system-ui, Arial';
-      ctx.fillText(String(s), 6, Math.max(12, y - 4));
-    }
-
-    const marginRight = 0;
-
-    // segments
-    this.segments.forEach((seg, idx) => {
-      const x1 = this._timeToX(seg.start);
-      const x2 = Math.min(this._timeToX(seg.end), w - marginRight);
-      const heightFromTop = (1 - (seg.value / (num_steps - 1))) * h;
-      const color = this._colorForRating(seg.value, num_steps);
-      ctx.fillStyle = color;
-      ctx.fillRect(x1, heightFromTop, Math.max(2, x2 - x1), h - heightFromTop);
-      ctx.strokeStyle = 'rgba(0,0,0,0.08)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x1 + 0.5, heightFromTop + 0.5, Math.max(1, x2 - x1 - 1), h - heightFromTop - 1);
-      ctx.fillStyle = 'rgba(0,0,0,0.85)';
-      ctx.font = '12px system-ui, Arial';
-      ctx.fillText(`${seg.value}`, x1 + 6, Math.max(12, heightFromTop + 12));
-
-      if (idx > 0) {
-        const hx = x1;
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(hx - 1, 0, 2, h);
-      }
-    });
-
-
-    // update slider
-    if (this.wavesurfer) this.timeSlider.value = this.wavesurfer.getCurrentTime();
+  const currentDim = this._getCurrentDimension();
+  if (!currentDim) {
+    console.warn('No current dimension found');
+    return;
   }
 
+  const num_steps = currentDim.num_values;
+  const min_value = currentDim.minimal_value || 0;
+  const max_value = min_value + num_steps - 1;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Draw horizontal grid lines with correct labels
+  for (let i = 0; i < num_steps; i++) {
+    const value = min_value + i;
+    const y = h - (i / (num_steps - 1)) * h;
+
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(w, y);
+    ctx.lineWidth = (value === Math.floor((max_value + min_value) / 2)) ? 1.2 : 0.7;
+    ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+    ctx.stroke();
+
+    // Draw value label
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.font = '12px system-ui, Arial';
+    ctx.fillText(String(value), 6, Math.max(12, y - 4));
+  }
+
+  const marginRight = 0;
+
+  // Draw segments
+  this.segments.forEach((seg, idx) => {
+    const x1 = this._timeToX(seg.start);
+    const x2 = Math.min(this._timeToX(seg.end), w - marginRight);
+
+    // Calculate vertical position based on value range
+    const normalizedValue = (seg.value - min_value) / (max_value - min_value);
+    const heightFromTop = (1 - normalizedValue) * h;
+
+    const color = this._colorForRating(seg.value - min_value, num_steps);
+    ctx.fillStyle = color;
+    ctx.fillRect(x1, heightFromTop, Math.max(2, x2 - x1), h - heightFromTop);
+
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x1 + 0.5, heightFromTop + 0.5, Math.max(1, x2 - x1 - 1), h - heightFromTop - 1);
+
+    // Draw value text inside segment
+    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+    ctx.font = '12px system-ui, Arial';
+    ctx.fillText(`${seg.value}`, x1 + 6, Math.max(12, heightFromTop + 12));
+
+    // Draw segment boundaries
+    if (idx > 0) {
+      const hx = x1;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(hx - 1, 0, 2, h);
+    }
+  });
+
+  // Update slider
+  if (this.wavesurfer) this.timeSlider.value = this.wavesurfer.getCurrentTime();
+}
   // ===== Interactions =====
 
   _hitTestHandle(x) {
@@ -603,11 +707,20 @@ _xToTime(x) {
 
     if (this.activeSegIndex != null) {
       const seg = this.segments[this.activeSegIndex];
+      const currentDim = this._getCurrentDimension();
+      if (!currentDim) return;
+
+      const { min, max } = this._getValueRange(currentDim);
+      const num_steps = currentDim.num_values;
+
       const h = this.overlay.height;
       const ratio = 1 - (y / h);
-      let raw = Math.round(ratio * (this.dimensionDefinition[this.currentDimension].num_values - 1));
-      raw = Math.max(0, Math.min(this.dimensionDefinition[this.currentDimension].num_values - 1, raw));
-      seg.value = raw;
+
+      let raw = Math.round(ratio * (num_steps - 1));
+      raw = Math.max(0, Math.min(num_steps - 1, raw));
+
+      seg.value = min + raw;
+
       this._drawAll();
       this._emitChange('rating_changed');
       return;
@@ -787,24 +900,25 @@ _xToTime(x) {
   }
 
   setData(data) {
-  // Start with defaults
-  const defaults = {};
-  for (const dim of Object.keys(this.dimensionDefinition)) {
-    defaults[dim] = [{
-      start: 0,
-      end: 1e9,
-      value: Math.floor(this.dimensionDefinition[dim].num_values / 2),
-    }];
+    // Start with defaults
+    const defaults = {};
+    this.rating_dimensions.forEach(dim => {
+      defaults[dim.dimension_title] = [{
+        start: 0,
+        end: 1e9,
+        value: dim.default_value !== undefined ? dim.default_value :
+              ((dim.minimal_value || 0) + Math.floor(dim.num_values / 2)),
+      }];
+    });
+
+    // Merge with provided data (data overrides defaults)
+    this.dimensionData = JSON.parse(JSON.stringify({ ...defaults, ...data }));
+
+    // Ensure segments is set
+    this.segments = this.dimensionData[this.currentDimension];
+    this._updateActiveButton();
+    this._drawAll();
   }
-
-  // Merge with provided data (data overrides defaults)
-  this.dimensionData = JSON.parse(JSON.stringify({ ...defaults, ...data }));
-
-  // Ensure segments is set
-  this.segments = this.dimensionData[this.currentDimension];
-  this._updateActiveButton();
-  this._drawAll();
-}
 
   destroy() {
     // Clean up listeners and RAF
