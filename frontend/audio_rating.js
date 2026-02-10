@@ -133,7 +133,7 @@ export class AudioRatingWidget {
 
   async _init() {
     if (!AudioRatingWidget._WaveSurfer) {
-      const mod = await import('https://unpkg.com/wavesurfer.js@7.0.0/dist/wavesurfer.esm.js');
+      const mod = await import('./wavesurfer.esm.js');
       AudioRatingWidget._WaveSurfer = mod.default;
     }
 
