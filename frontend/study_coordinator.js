@@ -2,31 +2,35 @@
 import { AudioRatingWidget } from './audio_rating.js';
 
 // DEFAULT CONFIG - Updated to match backend format
-const DEFAULT_STUDY_CONFIG = {
-  name: "Default Study",
-  name_short: "default",
-  description: "Default study for music aesthetics research",
-  songs_to_rate: [
-    { media_url: "demo.wav", display_name: "Demo Song", description: "This is a demo song for testing the audio rating widget. Please listen to the entire clip and provide your ratings based on your experience." },
-    { media_url: "demo2.wav", display_name: "Demo Song 2", description: "This is a second demo song for testing the audio rating widget. Please listen to the entire clip and provide your ratings based on your experience." }
-  ],
-  rating_dimensions: [
-    { dimension_title: "valence", num_values: 8, minimal_value: 0, default_value: 4, description: "The valence of the song section" },
-    { dimension_title: "arousal", num_values: 5, minimal_value: -2, default_value: 0, description: "The arousal level of the song section" },
-    { dimension_title: "enjoyment", num_values: 10, minimal_value: 0, default_value: 5, description: "The enjoyment level of the song section" },
-    { dimension_title: "is_cool", num_values: 2, minimal_value: 0, default_value: 0, description: "Whether the song section is cool or not" }
-  ],
-  study_participant_ids: [],
-  allow_unlisted_participants: true,
-  data_collection_start: "2024-01-01T00:00:00Z",
-  data_collection_end: "2026-12-31T23:59:59Z"
+const INTERNAL_FALLBACK_STUDY_CONFIG = {
+  "studies": [
+    {
+      "name": "Default Study",
+      "name_short": "default",
+      "description": "Default study for music aesthetics research",
+      "songs_to_rate": [
+        { "media_url": "audo_files/default/demo.wav", "display_name": "Demo Song", "description": "This is a demo song for testing the audio rating widget. Please listen to the entire clip and provide your ratings based on your experience." },
+        { "media_url": "audo_files/default/demo2.wav", "display_name": "Demo Song 2", "description": "This is a second demo song for testing the audio rating widget. Please listen to the entire clip and provide your ratings based on your experience." }
+      ],
+      rating_dimensions: [
+        { dimension_title: "valence", num_values: 8, minimal_value: 0, default_value: 4, description: "The valence of the song section" },
+        { dimension_title: "arousal", num_values: 5, minimal_value: -2, default_value: 0, description: "The arousal level of the song section" },
+        { dimension_title: "enjoyment", num_values: 10, minimal_value: 0, default_value: 5, description: "The enjoyment level of the song section" },
+        { dimension_title: "is_cool", num_values: 2, minimal_value: 0, default_value: 0, description: "Whether the song section is cool or not" }
+      ],
+      study_participant_ids: [],
+      allow_unlisted_participants: true,
+      data_collection_start: "2024-01-01T00:00:00Z",
+      data_collection_end: "2026-12-31T23:59:59Z"
+    }
+  ]
 };
 
 
 
 export class StudyCoordinator {
   constructor() {
-    this.studyConfig = DEFAULT_STUDY_CONFIG;
+    this.studyConfig = INTERNAL_FALLBACK_STUDY_CONFIG;
     this.currentSongIndex = 0;
     this.uid = this.getOrCreateUID();
     this.studyName = this.getStudyName();
@@ -43,6 +47,25 @@ export class StudyCoordinator {
 
     this.init();
   }
+
+  async loadStudyConfig() {
+    try {
+      // Try to load from JSON file
+      const study_config_file = './settings/studies_config.json'
+      const response = await fetch(study_config_file);
+      if (response.ok) {
+        const config = await response.json();
+        console.log('Loaded study config from local JSON file "', study_config_file, '".');
+        return config;
+      }
+    } catch (error) {
+      console.warn('Could not load local study config from JSON file "', study_config_file, '", using internal fallback:', error);
+    }
+
+    // Fallback to embedded config
+    return FALLBACK_CONFIG;
+  }
+
 
   destroy() {
     if (this.widget) {
@@ -295,16 +318,21 @@ export class StudyCoordinator {
 
 
   async init() {
+    this.studyConfig = await this.loadStudyConfig();
+
     await this.checkBackendAvailability();
 
     if (this.backendAvailable) {
       const configLoaded = await this.loadStudyConfigFromBackend();
       if (!configLoaded) {
-        this.studyConfig = DEFAULT_STUDY_CONFIG;
+        console.warn("Failed to load study config from backend, using local config.");
+      } else {
+        console.log("Successfully loaded study config from backend. Replaced local default config with backend config.");
+        // No need to set this.studyConfig here since loadStudyConfigFromBackend already sets it.
       }
     } else {
       this.showOfflineNotice();
-      this.studyConfig = DEFAULT_STUDY_CONFIG;
+      console.warn("Backend not available. Using local fallback config.");
     }
 
     document.getElementById('song-count').textContent = this.studyConfig.songs_to_rate.length;
