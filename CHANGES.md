@@ -5,6 +5,18 @@ Current WIP
 -----------
 
 
+Version 0.6.0 -- Better dimensions handling and UX
+--------------------------------------------------
+* CHG: use local wavesurfer instead of remote, see #30
+* NEW: show description of rating dimension in UI
+* NEW: display proper error messages in UI ob backend errors like 404, 403, etc
+* NEW: use default studies_config.json from file in frontend to mirror backend setup
+* CHG: move audio files to new audio_files/ sub dir, move settings files to settings/ sub dir
+* NEW: add AR_FRONTEND_URL setting and use it to construct study invitation links in backend
+* NEW: load dimensions from server and update them when needed
+* NEW: Support deleting data for one specific study via backend command line arguments
+
+
 Version 0.5.2 -- Support fastapi rootpath
 ------------------------------------------
 * report proper version on startup in log message
