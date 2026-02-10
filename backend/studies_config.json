@@ -15,7 +15,7 @@
       "name": "Custom study",
       "name_short": "custom_study1",
       "description": "Study covering classic songs from the 70s and 80s",
-      "songs_to_rate": [ { "media_url": "audio_files/custom/eyeofthetiger.wav", "display_name": "Eye of the Tiger" }, { "media_url": "audio_files/custom/jet_generation.wav", "display_name": "Jet Generation by Guitar Wolf" }, { "media_url": "audio_files/custom/bohemianrhapsody.wav", "display_name": "Bohemian Rhapsody" }, { "media_url": "audio_files/custom/hotelcalifornia.wav", "display_name": "Hotel California" }],
+      "songs_to_rate": [ { "media_url": "audio_files/custom_study1/eyeofthetiger.wav", "display_name": "Eye of the Tiger" }, { "media_url": "audio_files/custom_study1/jet_generation.wav", "display_name": "Jet Generation by Guitar Wolf" }, { "media_url": "audio_files/custom_study1/bohemianrhapsody.wav", "display_name": "Bohemian Rhapsody" }, { "media_url": "audio_files/custom_study1/hotelcalifornia.wav", "display_name": "Hotel California" }],
       "rating_dimensions": [{"dimension_title": "valence", "num_values": 8, "description": "Measures how positive or negative the emotional tone of the audio feels."}, {"dimension_title": "arousal", "num_values": 5, "description": "Measures the level of energy or activation the audio evokes."}, {"dimension_title": "enjoyment", "num_values": 10, "description": "Measures the personal enjoyment or liking of the audio."}, {"dimension_title": "is_cool", "num_values": 2, "description": "Measures whether the audio is perceived as cool or impressive."}],
       "study_participant_ids": ["bernddasbrot", "annasmith", "john_doe"],
       "allow_unlisted_participants": false,
