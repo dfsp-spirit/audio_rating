@@ -88,33 +88,33 @@ export class AudioRatingWidget {
     };
   }
 
-
   setDimensions(rating_dimensions) {
     this.rating_dimensions = rating_dimensions;
 
     // Rebuild dimension buttons
     if (this.dimButtonsWrap) {
-      this.dimButtonsWrap.innerHTML = '';
-      for (const dim of this.rating_dimensions) {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.textContent = dim.dimension_title;
-        b.dataset.dim = dim.dimension_title;
-        this.dimButtonsWrap.appendChild(b);
-      }
+        this.dimButtonsWrap.innerHTML = '';
+        for (const dim of this.rating_dimensions) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = dim.dimension_title;
+            b.dataset.dim = dim.dimension_title;
+            this.dimButtonsWrap.appendChild(b);
+        }
 
-      // Re-bind button events
-      this.dimButtonsWrap.querySelectorAll('button').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          this.dimensionData[this.currentDimension] = JSON.parse(JSON.stringify(this.segments));
-          this.currentDimension = btn.dataset.dim;
-          this.segments = this.dimensionData[this.currentDimension];
-          this._updateLegend();
-          this._updateActiveButton();
-          this._drawAll();
-          this._emitChange('dimension_changed');
+        // Re-bind button events
+        this.dimButtonsWrap.querySelectorAll('button').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                this.dimensionData[this.currentDimension] = JSON.parse(JSON.stringify(this.segments));
+                this.currentDimension = btn.dataset.dim;
+                this.segments = this.dimensionData[this.currentDimension];
+                this._updateLegend();
+                this._updateActiveButton();
+                this._updateDimensionDescription(); // ADD THIS LINE
+                this._drawAll();
+                this._emitChange('dimension_changed');
+            });
         });
-      });
     }
 
     // Initialize data
@@ -122,13 +122,14 @@ export class AudioRatingWidget {
 
     // Update UI
     if (this.currentDimension) {
-      this._updateLegend();
+        this._updateLegend();
+        this._updateDimensionDescription(); // ADD THIS LINE
     }
     this._updateActiveButton();
     this._drawAll();
 
     return this;
-  }
+}
 
   async _init() {
     if (!AudioRatingWidget._WaveSurfer) {
@@ -147,6 +148,7 @@ export class AudioRatingWidget {
 
     if (this.currentDimension) {
       this._updateLegend();
+      this._updateDimensionDescription();
     }
 
     this._updateActiveButton();
@@ -190,6 +192,7 @@ export class AudioRatingWidget {
     ${this.with_instructions ? '<div class="arw-info"><span class="arw-dimensions-manual">Select the dimension to rate:</span></div>' : ''}
 
     <div class="arw-dimension-buttons"></div>
+    <div class="arw-dimension-description"></div>
 
     ${this.with_instructions ? '<div class="arw-info"><span class="arw-ratings-manual">Rating Controls: Please split the audio into segments and rate each segment. Double-click on the waveform to split a segment. Drag inside a segment vertically to change its rating. Drag segment boundaries horizontally to move them. Right-click a segment boundary to delete it.</span></div>' : ''}
 
@@ -239,6 +242,7 @@ export class AudioRatingWidget {
 
     // Refs
     this.root = root;
+    this.dimensionDescriptionEl = root.querySelector('.arw-dimension-description');
     this.dimButtonsWrap = root.querySelector('.arw-dimension-buttons');
     this.waveformEl = root.querySelector('.arw-waveform');
     this.overlay = root.querySelector('.arw-overlay');
@@ -286,6 +290,18 @@ export class AudioRatingWidget {
     this.currentDimension = this.rating_dimensions[0].dimension_title;
     this.segments = this.dimensionData[this.currentDimension];
   }
+}
+
+_updateDimensionDescription() {
+    if (!this.dimensionDescriptionEl || !this.currentDimension) return;
+
+    const currentDim = this._getCurrentDimension();
+    if (!currentDim) {
+        this.dimensionDescriptionEl.textContent = '';
+        return;
+    }
+
+    this.dimensionDescriptionEl.textContent = currentDim.description || '';
 }
 
 
@@ -443,6 +459,7 @@ export class AudioRatingWidget {
         this.segments = this.dimensionData[this.currentDimension];
         this._updateLegend();
         this._updateActiveButton();
+        this._updateDimensionDescription();
         this._drawAll();
         this._emitChange('dimension_changed');
       });
