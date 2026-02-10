@@ -3,8 +3,6 @@ import { AudioRatingWidget } from './audio_rating.js';
 
 // DEFAULT CONFIG - Updated to match backend format
 const INTERNAL_FALLBACK_STUDY_CONFIG = {
-  "studies": [
-    {
       "name": "Default Study",
       "name_short": "default",
       "description": "Default study for music aesthetics research",
@@ -22,8 +20,7 @@ const INTERNAL_FALLBACK_STUDY_CONFIG = {
       allow_unlisted_participants: true,
       data_collection_start: "2024-01-01T00:00:00Z",
       data_collection_end: "2026-12-31T23:59:59Z"
-    }
-  ]
+
 };
 
 
@@ -48,21 +45,27 @@ export class StudyCoordinator {
     this.init();
   }
 
-  async loadStudyConfig() {
+  async loadLocalStudyConfig() {
+    const study_config_file = './settings/studies_config.json'
     try {
       // Try to load from JSON file
-      const study_config_file = './settings/studies_config.json'
       const response = await fetch(study_config_file);
       if (response.ok) {
         const config = await response.json();
         console.log('Loaded study config from local JSON file "', study_config_file, '".');
-        return config;
+
+        // The file contains an array of study configs, find the one matching studyName
+        // Extract the specific study config based on study_name from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const studyName = urlParams.get('study_name');
+        this.studyConfig = config.studies.find(c => c.name_short === studyName) || config.studies[0]; // Default to first if not found
+        return this.studyConfig;
       }
     } catch (error) {
       console.warn('Could not load local study config from JSON file "', study_config_file, '", using internal fallback:', error);
     }
 
-    // Fallback to embedded config
+    // Fallback to embedded config FALLBACK_CONFIG
     return FALLBACK_CONFIG;
   }
 
@@ -318,7 +321,7 @@ export class StudyCoordinator {
 
 
   async init() {
-    this.studyConfig = await this.loadStudyConfig();
+    this.studyConfig = await this.loadLocalStudyConfig();
 
     await this.checkBackendAvailability();
 
@@ -355,19 +358,24 @@ export class StudyCoordinator {
   }
 
   async checkBackendAvailability() {
-    try {
-      const response = await fetch(`${AR_SETTINGS.API_BASE_URL}`, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
-      });
+  try {
+    const response = await fetch(`${AR_SETTINGS.API_BASE_URL}`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
 
-      this.backendAvailable = response.ok;
-      this.backendChecked = true;
-    } catch (error) {
-      this.backendAvailable = false;
-      this.backendChecked = true;
+    this.backendAvailable = response.ok;
+    this.backendChecked = true;
+
+    if (!response.ok) {
+      this.showBackendError(new Error(`Backend returned ${response.status}`), response.status, 'Backend is not available, unexpected status code.');
     }
+  } catch (error) {
+    this.backendAvailable = false;
+    this.backendChecked = true;
+    this.showBackendError(error, null, "Backend is not available, request failed.");
   }
+}
 
   async loadStudyConfigFromBackend() {
     try {
@@ -414,11 +422,19 @@ export class StudyCoordinator {
 
         return true;
       } else {
-        this.showStatusMessage(`Failed to load study config: ${response.status}`, 'error');
+        console.log('Failed to load config from backend with backend status code:', response.status);
+        // Handle specific HTTP errors
+        if (response.status === 403) {
+          this.showBackendError(null, 403, "Access denied. You may not have permission to access this study and its config.");
+        } else if (response.status === 404) {
+          this.showBackendError(null, 404, "The requested study config was not found on the server. It may not exist or may have been removed.");
+        } else {
+          this.showBackendError(new Error(`HTTP ${response.status}`), response.status);
+        }
         return false;
       }
     } catch (error) {
-      console.warn('Failed to load config from backend:', error);
+      console.warn('Failed to load config from backend due to error:', error);
       return false;
     }
   }
@@ -640,26 +656,26 @@ export class StudyCoordinator {
   }
 
   updateBackendStatus() {
-    const statusEl = document.getElementById('backend-status');
-    const storageEl = document.getElementById('storage-status');
+  const statusEl = document.getElementById('backend-status');
+  const storageEl = document.getElementById('storage-status');
 
-    if (!this.backendChecked) {
-      statusEl.className = 'backend-status connecting';
-      statusEl.textContent = 'Checking backend...';
-      if (storageEl) storageEl.textContent = 'Checking connection...';
-      return;
-    }
-
-    if (this.backendAvailable) {
-      statusEl.className = 'backend-status online';
-      statusEl.textContent = '✓ Backend connected';
-      if (storageEl) storageEl.textContent = 'Ratings will be saved to server';
-    } else {
-      statusEl.className = 'backend-status offline';
-      statusEl.textContent = '⚠ Backend offline';
-      if (storageEl) storageEl.textContent = 'Ratings saved locally only';
-    }
+  if (!this.backendChecked) {
+    statusEl.className = 'backend-status connecting';
+    statusEl.textContent = 'Checking backend...';
+    if (storageEl) storageEl.textContent = 'Checking connection...';
+    return;
   }
+
+  if (this.backendAvailable) {
+    statusEl.className = 'backend-status online';
+    statusEl.textContent = '✓ Backend connected';
+    if (storageEl) storageEl.textContent = 'Ratings will be saved to server';
+  } else {
+    statusEl.className = 'backend-status offline';
+    statusEl.textContent = '⚠ Backend offline';
+    if (storageEl) storageEl.textContent = 'Ratings saved locally only';
+  }
+}
 
   showOfflineNotice() {
     document.getElementById('backend-notice').style.display = 'block';
@@ -671,17 +687,8 @@ export class StudyCoordinator {
   }
 
   showStatusMessage(message, type = 'info') {
-    const statusDiv = document.getElementById('status-messages');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `${type}-message`;
-    messageDiv.textContent = message;
-    statusDiv.appendChild(messageDiv);
-
-    if (type === 'success' || type === 'warning') {
-      setTimeout(() => {
-        if (messageDiv.parentNode) messageDiv.remove();
-      }, 5000);
-    }
+  // Use the new user message system
+  this.showUserMessage(message, type, type === 'success' || type === 'warning' ? 5000 : 0);
   }
 
   clearStatusMessages() {
@@ -790,4 +797,113 @@ export class StudyCoordinator {
 
     document.getElementById(phaseId).classList.add('active');
   }
+
+
+  // Add these methods to the StudyCoordinator class (put them after the constructor)
+
+showUserMessage(message, type = 'info', duration = 5000) {
+  // Remove existing messages of same type
+  this.clearUserMessages(type);
+
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `user-message ${type}-message`;
+  messageDiv.innerHTML = `
+    <div class="message-content">
+      ${type === 'error' ? '⚠️ ' : type === 'success' ? '✓ ' : type === 'warning' ? '⚠️ ' : ''}
+      ${message}
+    </div>
+    <button class="dismiss-message">×</button>
+  `;
+
+  // Add to messages container
+  const container = document.getElementById('user-messages');
+  if (container) {
+    container.appendChild(messageDiv);
+  } else {
+    console.error('Messages container not found');
+    return;
+  }
+
+  // Auto-dismiss for non-error messages
+  if (type !== 'error' && duration > 0) {
+    setTimeout(() => {
+      if (messageDiv.parentNode) messageDiv.remove();
+    }, duration);
+  }
+
+  // Add dismiss button functionality
+  const dismissBtn = messageDiv.querySelector('.dismiss-message');
+  if (dismissBtn) {
+    dismissBtn.addEventListener('click', () => {
+      messageDiv.remove();
+    });
+  }
+}
+
+disableBeginStudyButton(reason = 'Study cannot be started') {
+  const beginBtn = document.getElementById('begin-study');
+  if (!beginBtn) return;
+
+  beginBtn.disabled = true;
+  beginBtn.textContent = reason;
+  beginBtn.style.opacity = '0.6';
+  beginBtn.style.cursor = 'not-allowed';
+
+  // Store the original state so we can restore it if needed
+  if (!beginBtn.dataset.originalText) {
+    beginBtn.dataset.originalText = 'Begin Study';
+  }
+}
+
+clearUserMessages(type = null) {
+  const container = document.getElementById('user-messages');
+  if (!container) return;
+
+  if (type) {
+    // Remove only messages of specific type
+    const messages = container.querySelectorAll(`.${type}-message`);
+    messages.forEach(msg => {
+      if (msg.parentNode) msg.remove();
+    });
+  } else {
+    // Remove all messages
+    container.innerHTML = '';
+  }
+}
+
+// Helper method to show backend errors
+showBackendError(error, statusCode = null, ui_message = null) {
+  let message;
+  let shouldDisableStudy = false;
+  let disableReason = 'Study cannot be started';
+
+  if (statusCode === 403) {
+    message = ui_message || 'Access denied. You may not have permission to acces this information.';
+    shouldDisableStudy = true;
+  } else if (statusCode === 404) {
+    message = ui_message || 'Element not found. Could not find the requested resource on the server.';
+    shouldDisableStudy = true;
+  } else if (statusCode === 500) {
+    message = ui_message || "Backend application error. The server encountered an error while processing your request.";
+    shouldDisableStudy = true;
+  } else if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+    message = ui_message || 'Backend error or backend not available. You can only save ratings locally for debug purposes, but they will not be saved to the server.';
+  } else {
+    message = ui_message || 'Unspecified backend error. You can only save ratings locally for debug purposes, but they will not be saved to the server.';
+  }
+
+  this.showUserMessage(message, 'error');
+
+  if (shouldDisableStudy) {
+    this.disableBeginStudyButton(disableReason);
+  }
+
+  // Also log for debugging
+  console.error('Backend error:', {
+    statusCode: statusCode,
+    error: error,
+    message: message,
+    shouldDisableStudy: shouldDisableStudy
+  });
+}
 }
