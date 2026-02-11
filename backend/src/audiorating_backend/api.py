@@ -684,7 +684,67 @@ async def get_active_open_study_names(
         )
 
 
-@app.get("/api/admin/datasets/download")
+
+
+def _generate_csv_response(segments_data: List[dict], study_name: str, with_ids: bool) -> StreamingResponse:
+    """Generate CSV response with all segment data."""
+    if not segments_data:
+        raise HTTPException(status_code=404, detail="No data to export")
+
+    # Create CSV output
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Write header - now includes all segment details
+    headers = [
+        "study_name", "study_description", "participant_id",
+        "song_url", "song_title", "rating_name",
+        "start_time", "end_time", "value", "segment_order",
+        "rating_created_at"
+    ]
+
+    if with_ids:
+        headers.extend(["song_id", "rating_id", "segment_id"])
+
+    writer.writerow(headers)
+
+    # Write data rows - each row is one segment
+    for segment in segments_data:
+
+        row = [
+            segment["study_name"],
+            segment["study_description"],
+            segment["participant_id"],
+            segment["song_url"],
+            segment["song_title"],
+            segment["rating_name"],
+            segment["start_time"],
+            segment["end_time"],
+            segment["value"],
+            segment["segment_order"],
+            segment["rating_created_at"]
+        ]
+
+        if with_ids:
+            row.append(segment["song_id"])
+            row.append(segment["rating_id"])
+            row.append(segment["segment_id"])
+
+        writer.writerow(row)
+
+    # Prepare response
+    output.seek(0)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{study_name}_rating_segments_{timestamp}.csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@app.get("/api/admin/datasets/download", name="admin_download")
 async def admin_download(
     study_name: str = Query(..., description="Name of the study to download ratings for"),
     format: str = Query("json", description="Output format: json or csv"),
@@ -779,62 +839,91 @@ async def admin_download(
         )
 
 
-def _generate_csv_response(segments_data: List[dict], study_name: str, with_ids: bool) -> StreamingResponse:
-    """Generate CSV response with all segment data."""
-    if not segments_data:
-        raise HTTPException(status_code=404, detail="No data to export")
+@app.get("/admin/api/stats", name="admin_api_stats")
+async def admin_api_stats(
+    study_id: Optional[str] = Query(None, description="Filter by study ID"),
+    session: Session = Depends(get_session),
+    current_admin: str = Depends(verify_admin)
+):
+    """
+    API endpoint for admin dashboard stats.
+    """
+    if study_id:
+        logger.debug(f"Admin '{current_admin}' requested API stats for study_id='{study_id}'")
+    else:
+        logger.debug(f"Admin '{current_admin}' requested API stats for all studies")
 
-    # Create CSV output
-    output = io.StringIO()
-    writer = csv.writer(output)
+    try:
+        # Similar logic as above but returns JSON
+        if study_id:
+            studies = session.exec(
+                select(Study).where(Study.id == study_id)
+            ).all()
+        else:
+            studies = session.exec(select(Study).order_by(Study.created_at)).all()
 
-    # Write header - now includes all segment details
-    headers = [
-        "study_name", "study_description", "participant_id",
-        "song_url", "song_title", "rating_name",
-        "start_time", "end_time", "value", "segment_order",
-        "rating_created_at"
-    ]
+        study_stats = []
 
-    if with_ids:
-        headers.extend(["song_id", "rating_id", "segment_id"])
+        for study in studies:
+            # Simplified stats for API
+            total_ratings = session.exec(
+                select(func.count(Rating.id)).where(Rating.study_id == study.id)
+            ).first() or 0
 
-    writer.writerow(headers)
+            unique_participants = session.exec(
+                select(func.count(func.distinct(Rating.participant_id)))
+                .where(Rating.study_id == study.id)
+            ).first() or 0
 
-    # Write data rows - each row is one segment
-    for segment in segments_data:
+            total_segments = session.exec(
+                select(func.count(RatingSegment.id))
+                .join(Rating, Rating.id == RatingSegment.rating_id)
+                .where(Rating.study_id == study.id)
+            ).first() or 0
 
-        row = [
-            segment["study_name"],
-            segment["study_description"],
-            segment["participant_id"],
-            segment["song_url"],
-            segment["song_title"],
-            segment["rating_name"],
-            segment["start_time"],
-            segment["end_time"],
-            segment["value"],
-            segment["segment_order"],
-            segment["rating_created_at"]
-        ]
+            study_rating_dimensions = session.exec(
+                select(StudyRatingDimension).where(StudyRatingDimension.study_id == study.id)
+            ).all()
 
-        if with_ids:
-            row.append(segment["song_id"])
-            row.append(segment["rating_id"])
-            row.append(segment["segment_id"])
+            study_stats.append({
+                "id": study.id,
+                "name_short": study.name_short,
+                "name": study.name,
+                "rating_dimensions": [
+                    {
+                        "dimension_title": dim.dimension_title,
+                        "num_values": dim.num_values,
+                        "minimal_value": dim.minimal_value,
+                        "default_value": dim.default_value,
+                        "description": dim.description
+                    }
+                    for dim in study_rating_dimensions
+                ],
+                "total_ratings": total_ratings,
+                "unique_participants": unique_participants,
+                "total_segments": total_segments,
+                "data_collection_start": study.data_collection_start,
+                "data_collection_end": study.data_collection_end,
+                "is_currently_active": study.data_collection_start <= utc_now() <= study.data_collection_end,
+                "last_activity": session.exec(
+                    select(func.max(Rating.timestamp))
+                    .where(Rating.study_id == study.id)
+                ).first()
+            })
 
-        writer.writerow(row)
+        return {
+            "studies": study_stats,
+            "total_studies": len(study_stats),
+            "timestamp": datetime.now().isoformat()
+        }
 
-    # Prepare response
-    output.seek(0)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{study_name}_rating_segments_{timestamp}.csv"
+    except Exception as e:
+        logger.error(f"Error in admin API stats: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get stats: {str(e)}"
+        )
 
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
-    )
 
 
 @app.get("/admin", name="admin_dashboard", response_class=HTMLResponse)
@@ -847,6 +936,43 @@ async def admin_dashboard(
     Main admin dashboard showing all studies and participation statistics.
     Access via: /admin with HTTP Basic Auth
     """
+    print("\n=== ALL REGISTERED NAMED ROUTES ===")
+    for route in app.routes:
+        if hasattr(route, "name") and route.name:
+            print(f"  {route.name}: {route.path}")
+    print("=====================================\n")
+
+    try:
+        test_url = request.url_for('admin_download', study_name='test', format='csv')
+        print(f"✓ SUCCESS: admin_download URL: {test_url}")
+    except Exception as e:
+        print(f"✗ FAILED: admin_download - {e}")
+        # Print the exact error
+        import traceback
+        traceback.print_exc()
+
+    # DEBUG: Check admin_api_stats
+    try:
+        stats_url = request.url_for('admin_api_stats')
+        print(f"✓ SUCCESS: admin_api_stats URL: {stats_url}")
+    except Exception as e:
+        print(f"✗ FAILED: admin_api_stats - {e}")
+
+    base_url = str(request.base_url).rstrip('/')  # This gives "http://localhost:8000"
+    root_path = request.scope.get("root_path", "")  # This gives "" locally, "/ar_backend" in prod
+
+    # Combine them properly
+    if root_path:
+        api_base = f"{base_url}{root_path}"
+    else:
+        api_base = base_url
+
+    # For debugging
+    print(f"DEBUG - base_url: {base_url}")
+    print(f"DEBUG - root_path: {root_path}")
+    print(f"DEBUG - api_base: {api_base}")
+    download_url_base = f"{root_path}/api/admin/datasets/download"
+
     try:
         # Get all studies with basic info
         studies = session.exec(select(Study).order_by(Study.created_at)).all()
@@ -974,7 +1100,8 @@ async def admin_dashboard(
                 "request": request,
                 "studies": study_stats,
                 "admin_user": current_admin,
-                "current_time": datetime.now()
+                "current_time": datetime.now(),
+                "api_base": api_base
             }
         )
 
@@ -986,90 +1113,9 @@ async def admin_dashboard(
         )
 
 
-@app.get("/admin/api/stats")
-async def admin_api_stats(
-    study_id: Optional[str] = Query(None, description="Filter by study ID"),
-    session: Session = Depends(get_session),
-    current_admin: str = Depends(verify_admin)
-):
-    """
-    API endpoint for admin dashboard stats (can be used for AJAX updates).
-    """
-    if study_id:
-        logger.debug(f"Admin '{current_admin}' requested API stats for study_id='{study_id}'")
-    else:
-        logger.debug(f"Admin '{current_admin}' requested API stats for all studies")
 
-    try:
-        # Similar logic as above but returns JSON
-        if study_id:
-            studies = session.exec(
-                select(Study).where(Study.id == study_id)
-            ).all()
-        else:
-            studies = session.exec(select(Study).order_by(Study.created_at)).all()
 
-        study_stats = []
 
-        for study in studies:
-            # Simplified stats for API
-            total_ratings = session.exec(
-                select(func.count(Rating.id)).where(Rating.study_id == study.id)
-            ).first() or 0
-
-            unique_participants = session.exec(
-                select(func.count(func.distinct(Rating.participant_id)))
-                .where(Rating.study_id == study.id)
-            ).first() or 0
-
-            total_segments = session.exec(
-                select(func.count(RatingSegment.id))
-                .join(Rating, Rating.id == RatingSegment.rating_id)
-                .where(Rating.study_id == study.id)
-            ).first() or 0
-
-            study_rating_dimensions = session.exec(
-                select(StudyRatingDimension).where(StudyRatingDimension.study_id == study.id)
-            ).all()
-
-            study_stats.append({
-                "id": study.id,
-                "name_short": study.name_short,
-                "name": study.name,
-                "rating_dimensions": [
-                    {
-                        "dimension_title": dim.dimension_title,
-                        "num_values": dim.num_values,
-                        "minimal_value": dim.minimal_value,
-                        "default_value": dim.default_value,
-                        "description": dim.description
-                    }
-                    for dim in study_rating_dimensions
-                ],
-                "total_ratings": total_ratings,
-                "unique_participants": unique_participants,
-                "total_segments": total_segments,
-                "data_collection_start": study.data_collection_start,
-                "data_collection_end": study.data_collection_end,
-                "is_currently_active": study.data_collection_start <= utc_now() <= study.data_collection_end,
-                "last_activity": session.exec(
-                    select(func.max(Rating.timestamp))
-                    .where(Rating.study_id == study.id)
-                ).first()
-            })
-
-        return {
-            "studies": study_stats,
-            "total_studies": len(study_stats),
-            "timestamp": datetime.now().isoformat()
-        }
-
-    except Exception as e:
-        logger.error(f"Error in admin API stats: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get stats: {str(e)}"
-        )
 
 @app.get("/api/participants/{participant_id}/studies/{study_name}/config")
 async def get_study_config(
@@ -1219,6 +1265,7 @@ class AssignParticipantsResponse(BaseModel):
     summary: Dict[str, int]
 
 @app.post("/api/admin/studies/{study_name_short}/assign-participants",
+          name="api_assign_participants_to_study",
           dependencies=[Depends(verify_admin)])
 async def assign_participants_to_study(
     study_name_short: str,
@@ -1397,6 +1444,7 @@ async def assign_participants_to_study(
 
 # Endpoint to remove participants from a study
 @app.delete("/api/admin/studies/{study_name_short}/participants/{participant_id}",
+           name="api_remove_participant_from_study",
            dependencies=[Depends(verify_admin)])
 async def remove_participant_from_study(
     study_name_short: str,
@@ -1461,6 +1509,7 @@ async def remove_participant_from_study(
 
 # Endpoint to get current participants for a study
 @app.get("/api/admin/studies/{study_name_short}/participants",
+         name="admin_get_study_participants",
          dependencies=[Depends(verify_admin)])
 async def get_study_participants(
     study_name_short: str,

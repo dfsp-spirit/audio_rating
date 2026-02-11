@@ -31,13 +31,14 @@
         <div class="stat-card">
             <h3>Total Songs Rated</h3>
             <div class="stat-value">
-                {% set total_songs_rated = 0 %}
+                {# Fixed: Manual calculation instead of flatten filter #}
+                {% set total_songs_rated = [] %}
                 {% for study in studies %}
                     {% for participant in study.active_participants %}
-                        {% set total_songs_rated = total_songs_rated + participant.songs_rated_count %}
+                        {% set _ = total_songs_rated.append(participant.songs_rated_count) %}
                     {% endfor %}
                 {% endfor %}
-                {{ total_songs_rated }}
+                {{ total_songs_rated|sum }}
             </div>
         </div>
         <div class="stat-card">
@@ -47,6 +48,7 @@
         </div>
     </div>
 
+    <!-- Rest of the template remains exactly the same -->
     {% if not studies %}
     <div class="empty-state">
         <div style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;">📊</div>
@@ -91,12 +93,10 @@
             </div>
         </div>
 
-        <div style="margin-bottom: 15px;">
-            <a href="/api/admin/datasets/download?study_name={{ study.name_short }}&format=csv"
-               class="btn btn-primary" target="_blank">
-                ⬇️ Download CSV Data
-            </a>
-        </div>
+        <a href="{{ api_base }}/api/admin/datasets/download?study_name={{ study.name_short }}&format=csv"
+   class="btn btn-primary" target="_blank">
+    ⬇️ Download CSV Data
+</a>
 
         {% if study.active_participants %}
         <table>
@@ -187,10 +187,11 @@
         {% endif %}
     </div>
     {% endfor %}
-
+<!--
     <div style="text-align: center; color: var(--text-secondary); font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-color);">
         Page generated on {{ current_time.strftime('%Y-%m-%d at %H:%M:%S') }} |
-        <a href="/admin/api/stats" target="_blank" style="color: var(--primary-color);">View raw stats JSON</a> |
-        <a href="/admin" style="color: var(--primary-color);">Refresh page</a>
+        <a href="{{ url_for('admin_api_stats') }}" target="_blank" style="color: var(--primary-color);">View raw stats JSON</a> |
+        <a href="{{ url_for('admin_dashboard') }}" style="color: var(--primary-color);">Refresh page</a>
     </div>
+    -->
 {% endblock %}

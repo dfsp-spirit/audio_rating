@@ -175,30 +175,36 @@ participant_003"></textarea>
     <script>
         const frontend_url = "{{ frontend_url }}";
 
+        // Generate URL patterns with placeholders (rendered at server time)
+        const api_assign_pattern = "{{ url_for('api_assign_participants_to_study', study_name_short='__STUDY_NAME__') }}";
+        const api_remove_pattern = "{{ url_for('api_remove_participant_from_study', study_name_short='__STUDY_NAME__', participant_id='__PARTICIPANT_ID__') }}";
+
         function copyInvitationLink(studyShortName, participantId, buttonElement) {
-    const url = `${frontend_url}/study.html?study=${studyShortName}&uid=${participantId}`;
+            // Normalize URL by removing trailing slash from frontend_url if it exists
+            const baseUrl = frontend_url.replace(/\/$/, '');
+            const url = `${baseUrl}/study.html?study=${studyShortName}&uid=${participantId}`;
 
-    // Copy to clipboard
-    navigator.clipboard.writeText(url).then(() => {
-        // Visual feedback
-        const originalColor = buttonElement.style.color;
-        const originalTitle = buttonElement.title;
+            // Copy to clipboard
+            navigator.clipboard.writeText(url).then(() => {
+                // Visual feedback
+                const originalColor = buttonElement.style.color;
+                const originalTitle = buttonElement.title;
 
-        // Change icon color to green and show "Copied!"
-        buttonElement.style.color = '#10b981';
-        buttonElement.title = 'Copied!';
+                // Change icon color to green and show "Copied!"
+                buttonElement.style.color = '#10b981';
+                buttonElement.title = 'Copied!';
 
-        // Revert after 1.5 seconds
-        setTimeout(() => {
-            buttonElement.style.color = originalColor;
-            buttonElement.title = originalTitle;
-        }, 1500);
+                // Revert after 1.5 seconds
+                setTimeout(() => {
+                    buttonElement.style.color = originalColor;
+                    buttonElement.title = originalTitle;
+                }, 1500);
 
-    }).catch(err => {
-        console.error('Failed to copy: ', err);
-        alert('Failed to copy link to clipboard');
-    });
-}
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert('Failed to copy link to clipboard');
+            });
+        }
 
     // Parse multiple separators
     function parseParticipantIds(input) {
@@ -235,7 +241,8 @@ participant_003"></textarea>
         statusDiv.innerHTML = '<span style="color: #3b82f6;">Adding participants...</span>';
 
         try {
-            const response = await fetch(`/api/admin/studies/${studyName}/assign-participants`, {
+            const api_assign_url = api_assign_pattern.replace('__STUDY_NAME__', encodeURIComponent(studyName));
+            const response = await fetch(api_assign_url, {
                 method: 'POST',
                 credentials: 'same-origin',
                 body: JSON.stringify({
@@ -300,7 +307,10 @@ participant_003"></textarea>
         const studyName = studySelect.value;
 
         try {
-            const response = await fetch(`/api/admin/studies/${studyName}/participants/${participantId}`, {
+            const api_remove_url = api_remove_pattern
+                .replace('__STUDY_NAME__', encodeURIComponent(studyName))
+                .replace('__PARTICIPANT_ID__', encodeURIComponent(participantId));
+            const response = await fetch(api_remove_url, {
                 method: 'DELETE',
                 credentials: 'same-origin'
             });
@@ -324,7 +334,8 @@ participant_003"></textarea>
         const studyName = studySelect.value;
 
         if (studyName) {
-            window.location.href = `/admin/participant-management?study_name_short=${encodeURIComponent(studyName)}`;
+            const url = "{{ url_for('admin_participant_management') }}";
+            window.location.href = `${url}?study_name_short=${encodeURIComponent(studyName)}`;
         }
     }
 
