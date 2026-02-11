@@ -5,6 +5,11 @@ Current WIP
 -----------
 
 
+Version 0.6.1 -- Bugfix release for admin panel
+------------------------------------------------
+* FIX: Use url_for in admin_base template navigation to make navigation work with a fastapi rootpath other than /
+
+
 Version 0.6.0 -- Better dimensions handling and UX
 --------------------------------------------------
 * BRK: move settings files, including ar_settings.js, to settings/ sub dir

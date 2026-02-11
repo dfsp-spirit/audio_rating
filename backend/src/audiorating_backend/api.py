@@ -837,7 +837,7 @@ def _generate_csv_response(segments_data: List[dict], study_name: str, with_ids:
     )
 
 
-@app.get("/admin", response_class=HTMLResponse)
+@app.get("/admin", name="admin_dashboard", response_class=HTMLResponse)
 async def admin_dashboard(
     request: Request,
     session: Session = Depends(get_session),
@@ -1545,7 +1545,7 @@ async def get_study_participants(
         )
 
 
-@app.get("/admin/participant-management", response_class=HTMLResponse)
+@app.get("/admin/participant-management", name="admin_participant_management", response_class=HTMLResponse)
 async def admin_participant_management(
     request: Request,
     study_name_short: Optional[str] = Query(None, description="Study to pre-select"),

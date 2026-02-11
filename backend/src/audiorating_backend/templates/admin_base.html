@@ -252,12 +252,12 @@
             </div>
 
             <div class="nav-links">
-                <a href="/admin"
-                   class="nav-link {% if request.url.path == '/admin' %}active{% endif %}">
+                <a href="{{ url_for('admin_dashboard') }}"
+                class="nav-link {% if request.scope.endpoint == 'admin_dashboard' %}active{% endif %}">
                     Dashboard
                 </a>
-                <a href="/admin/participant-management"
-                   class="nav-link {% if request.url.path == '/admin/participant-management' %}active{% endif %}">
+                <a href="{{ url_for('admin_participant_management') }}"
+                class="nav-link {% if request.scope.endpoint == 'admin_participant_management' %}active{% endif %}">
                     Participant Management
                 </a>
             </div>
