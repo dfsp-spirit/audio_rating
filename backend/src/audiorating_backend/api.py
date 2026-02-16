@@ -166,7 +166,7 @@ async def lifespan(app: FastAPI):
     yield   # running
 
     # This line is reached only at shutdown
-    logger.info("AR version {ar_version} Backend shutting down")
+    logger.info(f"AR version {ar_version} Backend shutting down")
 
 
 app = FastAPI(title="Audiorating (AR) API", version=ar_version, root_path=settings.rootpath, lifespan=lifespan)
