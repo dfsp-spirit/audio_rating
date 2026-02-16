@@ -41,7 +41,11 @@ class ARBackendSettings:
 
     @property
     def rootpath(self):
-        return os.getenv("AR_ROOTPATH", "/")
+        """The FastAPI root path, used for mounting the backend API under a subpath, e.g., if you nginx exposes the backend at https://yourserver.com/ar_backend/, this is '/ar_backend/' including terminating slash. Defaults to '/' if not set."""
+        url = os.getenv("AR_ROOTPATH", "/")
+        if not url.endswith("/"):
+            url += "/"
+        return url
 
     @property
     def admin_username(self):

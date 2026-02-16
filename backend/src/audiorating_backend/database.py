@@ -2,12 +2,12 @@
 # database.py
 from sqlmodel import SQLModel, create_engine, Session, select
 from typing import Generator
-from .models import Study, Song, StudyRatingDimension, StudySongLink, StudyParticipantLink, Participant
+from .models import Study, Song, StudyRatingDimension, StudySongLink, StudyParticipantLink, Participant, Rating, RatingSegment
 from .parsers.studies_config import load_studies_config
 from .settings import settings
 import logging
 from datetime import datetime
-
+from sqlalchemy import func
 
 logger = logging.getLogger("audiorating_backend.database")
 
@@ -185,18 +185,115 @@ def report_on_db_contents():
             logger.info(f" - Allows unlisted participants: {study.allow_unlisted_participants}")
 
             if not study.allow_unlisted_participants:
-                # Get participants through participant_links relationship
-                participant_links = session.exec(
-                    select(StudyParticipantLink)
-                    .where(StudyParticipantLink.study_id == study.id)
-                ).all()
-                participant_ids = [link.participant_id for link in participant_links]
-                logger.info(f" - Study participant IDs: {participant_ids}")
+                incomplete_participants = get_participant_ids_missing_ratings_for_study(study.name_short)
+
+                logger.info(f" - Incomplete participants (have at least one rating with missing values):")
+                # print the invitation link for each incomplete participant
+                for participant_id in incomplete_participants:
+                    try:
+                        invitation_link = get_invitation_link_for_study_and_participant(study.name_short, participant_id)
+                        logger.info(f"   - Participant ID: {participant_id}, Invitation Link: {invitation_link}")
+                    except ValueError as e:
+                        logger.warning(f"   - Participant ID: {participant_id}, Error generating invitation link: {e}")
+            else:
+                logger.info(f" - Study allows unlisted participants, so no specific participant IDs to report.")
+                logger.info(f" - Invitation link for participant 'example_participant_id': {get_invitation_link_for_study_and_participant(study.name_short, 'example_participant_id')}")
+
+
+from sqlalchemy import func
+
+def get_participant_ids_missing_ratings_for_study(study_name_short: str) -> list[str]:
+    """Retrieve all participants for a given study that have not filled out all their song ratings"""
+    with Session(engine) as session:
+        study = session.exec(select(Study).where(Study.name_short == study_name_short)).first()
+        if not study:
+            raise ValueError(f"Study '{study_name_short}' not found")
+
+        # Get participants through participant_links relationship
+        participant_links = session.exec(
+            select(StudyParticipantLink)
+            .where(StudyParticipantLink.study_id == study.id)
+        ).all()
+        participant_ids = [link.participant_id for link in participant_links]
+
+        # Get study songs count
+        study_song_links = session.exec(
+            select(StudySongLink)
+            .where(StudySongLink.study_id == study.id)
+        ).all()
+        num_songs = len(study_song_links)
+
+        # Get study rating dimensions count
+        study_rating_dimensions = session.exec(
+            select(StudyRatingDimension)
+            .where(StudyRatingDimension.study_id == study.id)
+        ).all()
+        num_dimensions = len(study_rating_dimensions)
+
+        # Calculate expected number of complete ratings
+        # Each song should have a rating for each dimension
+        expected_ratings_count = num_songs * num_dimensions
+
+        incomplete_participant_ids = []
+
+        # For each participant, check if they have the expected number of complete ratings
+        for participant_id in participant_ids:
+            # Count the number of complete ratings for this participant in this study
+            # A complete rating is one that has at least one segment
+            complete_ratings_count = session.exec(
+                select(func.count(Rating.id))
+                .where(
+                    Rating.participant_id == participant_id,
+                    Rating.study_id == study.id
+                )
+                .where(
+                    # Subquery to check if rating has at least one segment
+                    select(func.count(RatingSegment.id))
+                    .where(RatingSegment.rating_id == Rating.id)
+                    .correlate(Rating)
+                    .scalar_subquery() > 0
+                )
+            ).one()
+
+            if complete_ratings_count < expected_ratings_count:
+                incomplete_participant_ids.append(participant_id)
+
+        return incomplete_participant_ids
+
+
+def get_invitation_link_for_study_and_participant(study_name_short: str, participant_id: str) -> str:
+    with Session(engine) as session:
+        study = session.exec(select(Study).where(Study.name_short == study_name_short)).first()
+        if not study:
+            raise ValueError(f"Study '{study_name_short}' not found")
+
+        # Check if participant is allowed in this study
+        if not study.allow_unlisted_participants:
+            participant_link = session.exec(
+                select(StudyParticipantLink)
+                .where(
+                    StudyParticipantLink.study_id == study.id,
+                    StudyParticipantLink.participant_id == participant_id
+                )
+            ).first()
+            if not participant_link:
+                raise ValueError(f"Participant '{participant_id}' is not allowed in study '{study_name_short}'")
+
+        # url_encode participant_id and study_name_short
+        import urllib.parse
+        study_name_short = urllib.parse.quote(study_name_short, safe='')
+        participant_id = urllib.parse.quote(participant_id, safe='')
+
+        # generate link to frontend with query parameters for study and participant
+        frontend_url = settings.frontend_url + "study.html?study=" + study_name_short + "&participant=" + participant_id
+        return frontend_url
+
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
     create_config_file_studies(settings.studies_config_path)
     report_on_db_contents()
+
 
 def get_session() -> Generator[Session, None, None]:
     with Session(engine) as session:
