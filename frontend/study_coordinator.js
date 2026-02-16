@@ -338,7 +338,32 @@ export class StudyCoordinator {
       console.warn("Backend not available. Using local fallback config.");
     }
 
-    document.getElementById('song-count').textContent = this.studyConfig.songs_to_rate.length;
+    document.getElementById('song-count').textContent = this.studyConfig.songs_to_rate.length; // in introduction phase
+    document.getElementById('rating-dimensions-count').textContent = this.studyConfig.rating_dimensions.length; // in introduction phase
+
+    // Fill song-list-intro and rating-dimensions-list-intro in introduction phase
+    const songListIntro = document.getElementById('song-list-intro');
+    this.studyConfig.songs_to_rate.forEach(song => {
+      const li = document.createElement('li');
+      li.textContent = `${song.display_name}: ${song.description || 'No description available.'}`;
+      songListIntro.appendChild(li);
+    });
+
+    const ratingDimensionsListIntro = document.getElementById('rating-dimensions-list-intro');
+    this.studyConfig.rating_dimensions.forEach(dim => {
+      const li = document.createElement('li');
+      li.textContent = `${dim.dimension_title}: ${dim.description || 'No description available.'}`;
+      ratingDimensionsListIntro.appendChild(li);
+    });
+
+    // Fill study-name-title and study-name-welcome
+    document.getElementById('study-name-title').textContent = this.studyConfig.name;
+    // This is the name and the description of the study that participants see in the welcome message. It can be more friendly and descriptive than the title.
+    document.getElementById('study-name-welcome').textContent = this.studyConfig.name + (this.studyConfig.description ? ` - ${this.studyConfig.description}` : '');
+
+    // Update the page title from "Audio Rating Study" to the specific study name for better user experience
+    document.title = `Audio Rating Study: ${this.studyConfig.name}`;
+
     document.getElementById('total-songs').textContent = this.studyConfig.songs_to_rate.length;
 
     this.updateSongNavigationUI();

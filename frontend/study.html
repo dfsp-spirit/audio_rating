@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Music Rating Study</title>
+  <title>Audio Rating Study</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="./audio_rating.css" />
   <style>
@@ -318,13 +318,21 @@
   <div id="study-container">
     <!-- Instructions Phase -->
     <div id="instructions-phase" class="study-phase active">
-      <h2>Music Rating Study</h2>
+      <h2>Audio Rating Study: <span id="study-name-title"></span></h2>
       <div class="instructions">
-        <p>Welcome to our music perception study!</p>
+        <p>Welcome to our music perception study: <span id="study-name-welcome"></span>!</p>
         <div id="backend-notice">
           <strong>⚠️ Offline Mode:</strong> Backend server not available. Ratings will be saved locally only.
         </div>
-        <p>You will be asked to rate <span id="song-count">several</span> songs on different dimensions.</p>
+        <h3>About this Study</h3>
+        <p>For this study, you will be asked to rate <span id="song-count">several</span> songs on <span id="rating-dimensions-count">several</span> different dimensions.</p>
+        <p>List of songs:
+          <ul id="song-list-intro"></ul>
+        </p>
+        <p>List of rating dimensions:
+          <ul id="rating-dimensions-list-intro"></ul>
+        </p>
+        <h3>Usage Instructions</h3>
         <p>For each song:</p>
         <ul>
           <li>Listen to the audio and rate it as you go</li>
