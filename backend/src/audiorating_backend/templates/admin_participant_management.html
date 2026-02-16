@@ -206,7 +206,7 @@ participant_003"></textarea>
             });
         }
 
-    // Parse multiple separators
+    // Parse multiple separators: allow ",", ";", new lines, or spaces as separators for participant IDs
     function parseParticipantIds(input) {
         if (!input) return [];
 

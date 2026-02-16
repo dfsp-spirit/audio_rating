@@ -1515,7 +1515,7 @@ async def get_study_participants(
     study_name_short: str,
     session: Session = Depends(get_session),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000)
+    limit: int = Query(0, ge=0, le=1000)
 ):
     """
     Get all participants assigned to a specific study.
@@ -1534,13 +1534,34 @@ async def get_study_participants(
                 detail=f"Study '{study_name_short}' not found"
             )
 
-        # Get all participants linked to this study (pre-listed)
-        participant_links = session.exec(
-            select(StudyParticipantLink)
-            .where(StudyParticipantLink.study_id == study.id)
-            .offset(skip)
-            .limit(limit)
-        ).all()
+        num_study_songs = session.exec(
+            select(func.count(StudySongLink.song_id))
+            .where(StudySongLink.study_id == study.id)
+        ).first() or 0
+
+        num_study_rating_dimensions = session.exec(
+            select(func.count(StudyRatingDimension.id))
+            .where(StudyRatingDimension.study_id == study.id)
+        ).first() or 0
+
+        # number of expected ratings is number of songs * number of ratings dimensions
+        num_expected_ratings_per_participant = num_study_songs * num_study_rating_dimensions
+
+        use_pagination = limit > 0
+
+        if use_pagination:
+            # Get all participants linked to this study (pre-listed)
+            participant_links = session.exec(
+                select(StudyParticipantLink)
+                .where(StudyParticipantLink.study_id == study.id)
+                .offset(skip)
+                .limit(limit)
+            ).all()
+        else:
+            participant_links = session.exec(
+                select(StudyParticipantLink)
+                .where(StudyParticipantLink.study_id == study.id)
+            ).all()
 
         participant_ids = [link.participant_id for link in participant_links]
 
@@ -1553,7 +1574,7 @@ async def get_study_participants(
 
             if participant:
                 # Check if participant has submitted any ratings for this study
-                has_ratings = session.exec(
+                num_ratings = session.exec(
                     select(func.count(Rating.id))
                     .where(
                         Rating.participant_id == participant.id,
@@ -1561,11 +1582,15 @@ async def get_study_participants(
                     )
                 ).first() or 0
 
+                has_completed_all_ratings = num_ratings >= num_expected_ratings_per_participant if num_expected_ratings_per_participant > 0 else False
+
                 participants.append({
                     "id": participant.id,
                     "created_at": participant.created_at.isoformat() if participant.created_at else None,
-                    "has_submitted_ratings": has_ratings > 0,
-                    "rating_count": has_ratings
+                    "has_submitted_ratings": num_ratings > 0,
+                    "rating_count": num_ratings,
+                    "expected_ratings_count": num_expected_ratings_per_participant,
+                    "has_completed_all_ratings": has_completed_all_ratings
                 })
 
         # Get total count for pagination
@@ -1579,10 +1604,11 @@ async def get_study_participants(
             "allow_unlisted_participants": study.allow_unlisted_participants,
             "participants": participants,
             "pagination": {
-                "skip": skip,
-                "limit": limit,
+                "used": use_pagination,
+                "skip": skip if use_pagination else None,
+                "limit": limit if use_pagination else None,
                 "total": total_count,
-                "has_more": (skip + limit) < total_count
+                "has_more": (skip + limit) < total_count if use_pagination else False
             }
         }
 
