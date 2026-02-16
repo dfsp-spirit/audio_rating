@@ -339,7 +339,9 @@ export class StudyCoordinator {
     }
 
     document.getElementById('song-count').textContent = this.studyConfig.songs_to_rate.length; // in introduction phase
+    document.getElementById('song-count-thanks').textContent = this.studyConfig.songs_to_rate.length; // in thanks phase
     document.getElementById('rating-dimensions-count').textContent = this.studyConfig.rating_dimensions.length; // in introduction phase
+    document.getElementById('rating-dimensions-count-thanks').textContent = this.studyConfig.rating_dimensions.length; // in thanks phase
 
     // Fill song-list-intro and rating-dimensions-list-intro in introduction phase
     const songListIntro = document.getElementById('song-list-intro');
@@ -357,7 +359,8 @@ export class StudyCoordinator {
     });
 
     // Fill study-name-title and study-name-welcome
-    document.getElementById('study-name-title').textContent = this.studyConfig.name;
+    document.getElementById('study-name-title').textContent = this.studyConfig.name; // title in instructions phase
+    document.getElementById('study-name-thanks').textContent = this.studyConfig.name;  // thanks phase
     // This is the name and the description of the study that participants see in the welcome message. It can be more friendly and descriptive than the title.
     document.getElementById('study-name-welcome').textContent = this.studyConfig.name + (this.studyConfig.description ? ` - ${this.studyConfig.description}` : '');
 
