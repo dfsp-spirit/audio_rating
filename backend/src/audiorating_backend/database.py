@@ -285,7 +285,7 @@ def get_invitation_link_for_study_and_participant(study_name_short: str, partici
         participant_id = urllib.parse.quote(participant_id, safe='')
 
         # generate link to frontend with query parameters for study and participant
-        frontend_url = settings.frontend_url + "study.html?study=" + study_name_short + "&participant=" + participant_id
+        frontend_url = settings.frontend_url + "study.html?study_name=" + study_name_short + "&uid=" + participant_id
         return frontend_url
 
 

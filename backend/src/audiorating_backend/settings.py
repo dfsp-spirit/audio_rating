@@ -41,10 +41,10 @@ class ARBackendSettings:
 
     @property
     def rootpath(self):
-        """The FastAPI root path, used for mounting the backend API under a subpath, e.g., if you nginx exposes the backend at https://yourserver.com/ar_backend/, this is '/ar_backend/' including terminating slash. Defaults to '/' if not set."""
-        url = os.getenv("AR_ROOTPATH", "/")
-        if not url.endswith("/"):
-            url += "/"
+        """The FastAPI root path, used for mounting the backend API under a subpath, e.g., if you nginx exposes the backend at https://yourserver.com/ar_backend, this is '/ar_backend', without a terminating slash. Defaults to '' if not set."""
+        url = os.getenv("AR_ROOTPATH", "")
+        if url.endswith("/"):
+            url = url[:-1]  # Remove trailing slash if present
         return url
 
     @property
