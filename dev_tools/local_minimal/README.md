@@ -11,4 +11,20 @@ The files in this directory allwo you to run this app locally in Python's built-
 This setup is further away from what you will get in production compared to the local nginx dev setup, so it is harder to find path issues early.
 It is a less complex to setup though, as it does not require a locally running nginx, only python.
 
+### Usage
+
+```sh
+# from repo root
+cp dev_tools/local_minimal/frontend_settings/ar_settings.dev-minimal.js frontend/settings/ar_settings.js
+cp dev_tools/local_minimal/backend_settings/.env.dev-minimal backend/.env
+
+# run frontend (start Python's built-in HTTP server):
+cd frontend/
+./run_dev
+
+# in another terminal from the repo root, run the backend (start uvicorn):
+cd backend/
+./run_dev
+```
+
 

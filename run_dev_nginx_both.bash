@@ -16,17 +16,34 @@
 
 
 ## Start nginx with the development configuration in background
-NGINX_CONF="$HOME/develop_mpiae/audio_rating/backend/dev/dev.nginx.conf"
+
+## save current directory to return to it later
+CURRENT_DIR=$(pwd)
+
+NGINX_CONF_DIR="./dev_tools/local_nginx/webserver_config/"
+
+if [ ! -d "$NGINX_CONF_DIR" ]; then
+    echo -e "${RED}❌ nginx configuration directory not found at $NGINX_CONF_DIR${NC}"
+    exit 1
+fi
+
+cd "$NGINX_CONF_DIR" || { echo -e "${RED}❌ Failed to change directory to $NGINX_CONF_DIR${NC}"; exit 1; }
+
+
+# Create the nginx configuration file from the template, replacing 'USERHOME' with the actual home directory
+./replace_home.sh dev.nginx.conf.template dev.nginx.conf || { echo -e "${RED}❌ Failed to create nginx configuration file from template${NC}"; exit 1; }
+
+NGINX_CONF="dev.nginx.conf"
 
 if [ ! -f "$NGINX_CONF" ]; then
-    echo -e "${RED}❌ nginx configuration file not found at $NGINX_CONF${NC}"
+    echo -e "${RED}❌ nginx configuration file not found at $NGINX_CONF${NC} in current working directory $(pwd)${NC}"
     exit 1
 fi
 
 nginx -c "$NGINX_CONF"
 
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✅ Frontend available at http://localhost:3000/rate/${NC}"
+    echo -e "${GREEN}✅ Started nginx successfully, frontend available at http://localhost:3000/rate/${NC}"
 else
     echo -e "${RED}❌ Failed to start nginx${NC}"
     exit 1
@@ -35,4 +52,4 @@ fi
 
 ## Start the FastAPI backend in the foreground (you can stop it with Ctrl+C)
 
-cd backend/ && uv run uvicorn audiorating_backend.api:app --reload --host 127.0.0.1 --port 8000
+cd "$CURRENT_DIR" && cd backend/ && uv run uvicorn audiorating_backend.api:app --reload --host 127.0.0.1 --port 8000 || { echo -e "${RED}❌ Failed to start FastAPI backend${NC}"; exit 1; }
