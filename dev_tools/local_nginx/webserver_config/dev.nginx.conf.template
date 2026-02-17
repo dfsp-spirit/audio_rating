@@ -1,0 +1,63 @@
+# Development nginx.conf for local testing of FastAPI backend with a reverse proxy setup.
+#
+# Use this file with the command:
+#   nginx -c /path/to/dev.nginx.conf
+# This config assumes your FastAPI backend is running on http://127.0.0.1:8000 and that you want to access it via http://localhost/ar_backend/.
+#
+# The advantage of using nginx as a reverse proxy in development is that it closely mimics the production environment, allowing you to catch issues related to path handling, headers, and WebSocket support early on.
+#
+# Remember to replace the hardcoded paths to user home (in several places!) with the actual paths on your system.
+# We need to adapt various settings to ensure that nginx can run without root privileges and that logs and pid files are stored in user-writable locations.
+
+pid USERHOME/nginx-dev.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+
+    access_log USERHOME/nginx-dev-access.log;
+    error_log USERHOME/nginx-dev-error.log;
+
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        ''      close;
+    }
+
+    server {
+        listen 3000;
+        server_name localhost;
+
+        location /rate/ {
+            alias USERHOME/develop_mpiae/audio_rating/frontend/;
+
+            # Try to serve the requested file, if not found serve index.html
+            # This enables client-side routing if you're using it
+            try_files $uri $uri/ /index.html;
+
+            # Optional: Add caching headers for development
+            add_header Cache-Control "no-cache, no-store, must-revalidate";
+        }
+
+        location /ar_backend/ {
+            proxy_pass http://127.0.0.1:8000;
+
+            # Standard proxy headers
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            # WebSocket support for auto-refresh
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+        }
+
+        # Optional: Handle requests without the prefix (redirect or 404)
+        location / {
+            return 404 "This development server only serves paths under '/rate/' (frontend) and '/ar_backend/' (backend).";
+        }
+    }
+}
