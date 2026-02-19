@@ -16,6 +16,7 @@ events {
 }
 
 http {
+    include /etc/nginx/mime.types;
 
     access_log USERHOME/nginx-dev-access.log;
     error_log USERHOME/nginx-dev-error.log;

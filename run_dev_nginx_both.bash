@@ -23,33 +23,41 @@ CURRENT_DIR=$(pwd)
 NGINX_CONF_DIR="./dev_tools/local_nginx/webserver_config/"
 
 if [ ! -d "$NGINX_CONF_DIR" ]; then
-    echo -e "${RED}❌ nginx configuration directory not found at $NGINX_CONF_DIR${NC}"
+    echo -e "❌ nginx configuration directory not found at $NGINX_CONF_DIR"
     exit 1
 fi
 
-cd "$NGINX_CONF_DIR" || { echo -e "${RED}❌ Failed to change directory to $NGINX_CONF_DIR${NC}"; exit 1; }
+cd "$NGINX_CONF_DIR" || { echo -e "❌ Failed to change directory to $NGINX_CONF_DIR"; exit 1; }
+
 
 
 # Create the nginx configuration file from the template, replacing 'USERHOME' with the actual home directory
-./replace_home.sh dev.nginx.conf.template dev.nginx.conf || { echo -e "${RED}❌ Failed to create nginx configuration file from template${NC}"; exit 1; }
+NGINX_CONF_FILE="./dev.nginx.conf"
+./replace_home.sh dev.nginx.conf.template "$NGINX_CONF_FILE" || { echo -e "❌ Failed to create nginx configuration file from template"; exit 1; }
 
-NGINX_CONF="dev.nginx.conf"
 
-if [ ! -f "$NGINX_CONF" ]; then
-    echo -e "${RED}❌ nginx configuration file not found at $NGINX_CONF${NC} in current working directory $(pwd)${NC}"
+if [ ! -f "$NGINX_CONF_FILE" ]; then
+    echo -e "❌ nginx configuration file not found at $NGINX_CONF_FILE in current working directory $(pwd)"
     exit 1
 fi
 
-nginx -c "$NGINX_CONF"
+FULL_NGINX_CONF_PATH="$(pwd)/$NGINX_CONF_FILE" # nginx requires an absolute path to the configuration file, or changing its config dir.
+
+nginx -c "$FULL_NGINX_CONF_PATH"
 
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✅ Started nginx successfully, frontend available at http://localhost:3000/rate/${NC}"
+    echo -e "✅ Started nginx successfully, frontend available at http://localhost:3000/rate/"
+    echo -e "✅ Backend API available at http://localhost:3000/ar_backend/api"
+    echo -e "INFO nginx is running in the background with configuration from $FULL_NGINX_CONF_PATH"
+    echo -e "INFO Press CTRL+C to stop the FastAPI backend, and then run 'kill -QUIT \$(cat \$HOME/nginx-dev.pid)' to stop nginx"
 else
-    echo -e "${RED}❌ Failed to start nginx${NC}"
+    echo -e "❌ Failed to start nginx"
     exit 1
 fi
 
 
 ## Start the FastAPI backend in the foreground (you can stop it with Ctrl+C)
 
-cd "$CURRENT_DIR" && cd backend/ && uv run uvicorn audiorating_backend.api:app --reload --host 127.0.0.1 --port 8000 || { echo -e "${RED}❌ Failed to start FastAPI backend${NC}"; exit 1; }
+cd "$CURRENT_DIR" && cd backend/ && uv run uvicorn audiorating_backend.api:app --reload --host 127.0.0.1 --port 8000 || { echo -e " Failed to start FastAPI backend"; exit 1; }
+
+
