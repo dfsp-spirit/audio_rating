@@ -345,10 +345,21 @@ export class StudyCoordinator {
 
     // Fill song-list-intro and rating-dimensions-list-intro in introduction phase
     const songListIntro = document.getElementById('song-list-intro');
-    this.studyConfig.songs_to_rate.forEach(song => {
+    this.studyConfig.songs_to_rate.forEach((song, song_index) => {
       const li = document.createElement('li');
       li.textContent = `${song.display_name}: ${song.description || 'No description available.'}`;
       songListIntro.appendChild(li);
+
+      try {
+            const songResponse = fetch(this.studyConfig.songs_to_rate[song_index].media_url, { method: 'HEAD' });
+            if (!songResponse.ok) {
+              console.error("Song with index ", song_index, " is not accessible at URL ", this.studyConfig.songs_to_rate[song_index].media_url, " with status code ", songResponse.status);
+              this.showStatusMessage(`Warning: Song "${this.studyConfig.songs_to_rate[song_index].display_name}" is not accessible at URL "${this.studyConfig.songs_to_rate[song_index].media_url}". Please check the URL or try again later.`, 'warning');
+            }
+          } catch (error) {
+            console.error("Failed to access song with index ", song_index, " at URL ", this.studyConfig.songs_to_rate[song_index].media_url, " with error: ", error);
+            this.showStatusMessage(`Warning: Failed to access song "${this.studyConfig.songs_to_rate[song_index].display_name}" at URL "${this.studyConfig.songs_to_rate[song_index].media_url}". Please check the URL or your network connection.`, 'warning');
+          }
     });
 
     const ratingDimensionsListIntro = document.getElementById('rating-dimensions-list-intro');
@@ -443,6 +454,16 @@ export class StudyCoordinator {
             }
           } catch (error) {
             console.log(`No backend ratings for song ${i}`, error);
+          }
+
+          // Verify that the song media URL is accessible
+          try {
+            const songResponse = await fetch(this.studyConfig.songs_to_rate[i].media_url, { method: 'HEAD' });
+            if (!songResponse.ok) {
+              this.showStatusMessage(`Warning: Song "${this.studyConfig.songs_to_rate[i].display_name}" is not accessible at URL "${this.studyConfig.songs_to_rate[i].media_url}". Please check the URL or try again later.`, 'warning');
+            }
+          } catch (error) {
+            this.showStatusMessage(`Warning: Failed to access song "${this.studyConfig.songs_to_rate[i].display_name}" at URL "${this.studyConfig.songs_to_rate[i].media_url}". Please check the URL or your network connection.`, 'warning');
           }
         }
 
