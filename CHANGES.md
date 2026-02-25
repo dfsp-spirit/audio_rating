@@ -4,6 +4,11 @@
 Current WIP
 -----------
 
+Version 0.6.3 -- Bugfix release
+--------------------------------
+* FIX: remove default value for command line arg --studies-config-json-file, preventing backend startup
+* CHG: remove 1 second ticks in timeline plugin of frontend
+*
 
 Version 0.6.2 -- Various fixes, check for audio files
 ------------------------------------------------------
