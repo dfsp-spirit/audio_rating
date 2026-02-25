@@ -114,6 +114,13 @@ def check_frontend_audio_files(frontend_dir: str, studies_config_json_file: str)
 
     print("-" * 56)
 
+    # Also check whether any study has 0 files specified, which might indicate a misconfiguration
+    all_studies_specifiy_files = True
+    for study_name, stats in study_stats.items():
+        if stats['total'] == 0:
+            print(f"⚠️ WARNING: Study '{study_name}' has no audio files specified. Please check if this is intentional or a misconfiguration.")
+            all_studies_specifiy_files = False
+
     # Print detailed missing files report if there are any issues
     if missing_files:
         print("\n" + "="*70)
@@ -132,15 +139,20 @@ def check_frontend_audio_files(frontend_dir: str, studies_config_json_file: str)
                 print(f"  • {item['file']}{note}")
                 print(f"    Expected at: {item['path']}")
 
-    note_msg : str = "NOTE: You should run this command for both the backend studies_config.json file and the frontend studies_config.json file (or ensure they are identical)."
+    note_msg : str = "NOTE: You should run this command for both the backend studies_config.json file and the frontend studies_config.json file (or ensure they are identical, e.g., via `cmp` or `diff`)."
 
-    if all_present:
+    if all_present and all_studies_specifiy_files:
         print("\n✅ SUCCESS: All audio files exist!")
         print(f"{note_msg}")
         print("="*70)
         return True
     else:
-        print("\n❌ FAILURE: Some audio files are missing. Please check the report above.")
-        print(f"{note_msg}")
-        print("="*70)
+        if not all_present:
+            print("\n❌ FAILURE: Some audio files are missing. Please check the report above.")
+            print(f"{note_msg}")
+            print("="*70)
+        if not all_studies_specifiy_files:
+            print("\n⚠️ WARNING: Some studies have no audio files specified. Please check the report above.")
+            print(f"{note_msg}")
+            print("="*70)
         return False
