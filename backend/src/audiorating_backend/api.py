@@ -60,11 +60,19 @@ from .database import engine
 # Define command line arguments for out app (not fastapi/uvicorn): you would run it like:
 #   uv run python -m audiorating_backend.api --drop-study "study_name_short_to_delete"
 parser = argparse.ArgumentParser(description="Audiorating Backend API", add_help=False)
-parser.add_argument("--drop-study", type=str, metavar="STUDY_NAME",
-                    help="Drop all data for a specific study before creating tables")
-
+parser.add_argument("--drop-study", type=str, metavar="STUDY_SHORT_NAME",
+                    help="rop all data for a specific study and exit. Use with caution, this will delete all ratings, segments, and study-specific links for the specified study, but will keep songs and participants (but not their links to the study). The argument is the 'name_short' of the study you want to delete, e.g., --drop-study 'pilot_study'.")
+# Create a mutually exclusive group for the frontend check: this allows checking whether the audio files configured actually exist on disk in the frontend dir.
+frontend_group = parser.add_argument_group('frontend audio check options')
+frontend_group.add_argument("--check-frontend-audio-files", type=str, metavar="FRONTEND_DIR",
+                            help="Check audio files in given frontend directory on disk")
+frontend_group.add_argument("--studies-config-json-file", type=str, metavar="CONFIG_FILE",
+                            help="Configuration file containing paths of the audio files for frontend audio check (requires --check-frontend-audio-files)", default="studies_config.json")
 # Parse only known arguments to avoid interfering with uvicorn
 args, unknown = parser.parse_known_args()
+
+if args.studies_config_json_file and not args.check_frontend_audio_files:
+    parser.error("--studies-config-json-file requires --check-frontend-audio-files")
 
 # Store the parsed args globally
 _cli_args = args
@@ -148,7 +156,12 @@ if _cli_args.drop_study:
     from .database import engine
     # Call the function immediately
     drop_study_data(_cli_args.drop_study)
-    # Exit or continue based on whether you want to start the server
+    # Exit
+    sys.exit(0)
+
+if _cli_args.check_frontend_audio_files:
+    from .frontend_audio_check import check_frontend_audio_files
+    check_frontend_audio_files(_cli_args.check_frontend_audio_files, _cli_args.studies_config_json_file)
     sys.exit(0)
 
 @asynccontextmanager
