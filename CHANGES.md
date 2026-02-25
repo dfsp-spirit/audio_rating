@@ -5,6 +5,15 @@ Current WIP
 -----------
 
 
+Version 0.6.2 -- Various fixes, check for audio files
+------------------------------------------------------
+* NEW: add function to check for missing audio files in frontend dir
+* FIX: fix more links in admin interface
+* NEW: various improvements to study intro and thatnks pages
+* NEW: various improvements to admin interface
+* DEV: make dev script for local nginx copy cfg files automatically
+*
+
 Version 0.6.1 -- Bugfix release for admin panel
 ------------------------------------------------
 * FIX: Use url_for in admin_base template navigation to make navigation work with a fastapi rootpath other than /
