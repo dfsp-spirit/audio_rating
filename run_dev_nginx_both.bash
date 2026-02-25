@@ -78,6 +78,28 @@ else
 fi
 
 
+# Copy the local nginx development .env file (backend settings file) that sets the proper settings, including FastAPI root path.
+ENV_FILE_SOURCE="$GIT_REPO_PATH/dev_tools/local_nginx/backend_settings/.env.dev-nginx"
+
+if [ ! -f "$ENV_FILE_SOURCE" ]; then
+    echo -e "❌ .env file not found at $ENV_FILE_SOURCE"
+    exit 1
+fi
+
+ENV_FILE_DESTINATION="$GIT_REPO_PATH/backend/.env"
+cp "$ENV_FILE_SOURCE" "$ENV_FILE_DESTINATION" || { echo -e "❌ Failed to copy .env file from $ENV_FILE_SOURCE to $ENV_FILE_DESTINATION"; exit 1; }
+
+# Copy the proper frontend settings file that sets the proper API base URL for the nginx configuration.
+FRONTEND_SETTINGS_SOURCE="$GIT_REPO_PATH/dev_tools/local_nginx/frontend_settings/ar_settings.dev-nginx.js"
+
+if [ ! -f "$FRONTEND_SETTINGS_SOURCE" ]; then
+    echo -e "❌ Frontend settings file not found at $FRONTEND_SETTINGS_SOURCE"
+    exit 1
+fi
+
+FRONTEND_SETTINGS_DESTINATION="$GIT_REPO_PATH/frontend/settings/ar_settings.js"
+cp "$FRONTEND_SETTINGS_SOURCE" "$FRONTEND_SETTINGS_DESTINATION" || { echo -e "❌ Failed to copy frontend settings file from $FRONTEND_SETTINGS_SOURCE to $FRONTEND_SETTINGS_DESTINATION"; exit 1; }
+
 ## Start the FastAPI backend in the foreground (you can stop it with Ctrl+C)
 
 cd "$CURRENT_DIR" && cd backend/ && uv run uvicorn audiorating_backend.api:app --reload --host 127.0.0.1 --port 8000 || { echo -e " Failed to start FastAPI backend"; exit 1; }
