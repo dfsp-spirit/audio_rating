@@ -67,7 +67,7 @@ frontend_group = parser.add_argument_group('frontend audio check options')
 frontend_group.add_argument("--check-frontend-audio-files", type=str, metavar="FRONTEND_DIR",
                             help="Check audio files in given frontend directory on disk")
 frontend_group.add_argument("--studies-config-json-file", type=str, metavar="CONFIG_FILE",
-                            help="Configuration file containing paths of the audio files for frontend audio check (requires --check-frontend-audio-files)", default="studies_config.json")
+                            help="Configuration file containing paths of the audio files for frontend audio check (requires --check-frontend-audio-files)")
 # Parse only known arguments to avoid interfering with uvicorn
 args, unknown = parser.parse_known_args()
 
