@@ -91,11 +91,11 @@ def check_frontend_audio_files(frontend_dir: str, studies_config_json_file: str)
     print("AUDIO FILES VERIFICATION REPORT")
     print("="*70)
     print(f"Frontend directory: {frontend_path}")
-    print(f"Studies config: {studies_config_json_file}")
+    print(f"Studies config file checked: {config_path.resolve()}")
     print("-"*70)
 
     # Print summary table
-    print(f"\n{'Study':<30} {'Found':<8} {'Total':<8} {'Status':<10}")
+    print(f"\n{'Study':<30} {'Found':<8} {'Expected':<8} {'Status':<10}")
     print("-" * 56)
 
     all_present = True
@@ -132,34 +132,15 @@ def check_frontend_audio_files(frontend_dir: str, studies_config_json_file: str)
                 print(f"  • {item['file']}{note}")
                 print(f"    Expected at: {item['path']}")
 
-    # Print studies with all files present
-    if studies_with_all_files:
-        print("\n" + "="*70)
-        print("STUDIES WITH ALL FILES PRESENT")
-        print("="*70)
-        for study_name in studies_with_all_files:
-            stats = study_stats[study_name]
-            print(f"  ✓ {study_name}: {stats['found']}/{stats['total']} files found")
-
-    # Print overall statistics
-    total_files = sum(stats['total'] for stats in study_stats.values())
-    total_found = sum(stats['found'] for stats in study_stats.values())
-    total_missing = sum(stats['missing'] for stats in study_stats.values())
-
-    print("\n" + "="*70)
-    print("SUMMARY STATISTICS")
-    print("="*70)
-    print(f"Total studies: {len(cfg.studies)}")
-    print(f"Total audio files: {total_files}")
-    print(f"Files found: {total_found}")
-    print(f"Files missing: {total_missing}")
-    print(f"Success rate: {(total_found/total_files)*100:.1f}%" if total_files > 0 else "N/A")
+    note_msg : str = "NOTE: You should run this command for both the backend studies_config.json file and the frontend studies_config.json file (or ensure they are identical)."
 
     if all_present:
         print("\n✅ SUCCESS: All audio files exist!")
+        print(f"{note_msg}")
         print("="*70)
         return True
     else:
         print("\n❌ FAILURE: Some audio files are missing. Please check the report above.")
+        print(f"{note_msg}")
         print("="*70)
         return False
