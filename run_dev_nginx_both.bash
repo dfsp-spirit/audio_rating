@@ -14,10 +14,15 @@ if [ -z "$GIT_REPO_PATH" ]; then
         GIT_REPO_PATH="$GIT_REPO_DEFAULT_PATH"
         echo "No repository path provided, using default: $GIT_REPO_PATH"
     else
-        echo "Error: No repository path provided and default path '$GIT_REPO_DEFAULT_PATH' does not exist."
-        echo "Please provide the path to a checkout of the audio_rating git repository as the first argument."
-        echo "Usage: $0 /path/to/audio_rating/repository"
-        exit 1
+        if [ -d ".git" -a -d "./dev_tools/local_nginx/webserver_config/" ]; then
+            GIT_REPO_PATH=$(pwd)
+            echo "No repository path provided and default does not exist, but current directory looks like the repo. Using current directory as repository path: $GIT_REPO_PATH"
+        else
+            echo "Error: No repository path provided, the default path '$GIT_REPO_DEFAULT_PATH' does not exist and current dir does not look like the repo."
+            echo "Please provide the path to a checkout of the audio_rating git repository as the first argument."
+            echo "Usage: $0 /path/to/audio_rating/repository"
+            exit 1
+        fi
     fi
 fi
 
@@ -26,7 +31,7 @@ fi
 ## save current directory to return to it later
 CURRENT_DIR=$(pwd)
 
-NGINX_CONF_DIR="./dev_tools/local_nginx/webserver_config/"
+NGINX_CONF_DIR="$GIT_REPO_PATH/dev_tools/local_nginx/webserver_config/"
 
 if [ ! -d "$NGINX_CONF_DIR" ]; then
     echo -e "❌ nginx configuration directory not found at $NGINX_CONF_DIR"
