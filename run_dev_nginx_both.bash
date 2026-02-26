@@ -65,7 +65,7 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 if [ $? -eq 0 ]; then
-    echo -e "✅ Started nginx successfully, frontend available at http://localhost:3000/rate/"
+    echo -e "✅ Started nginx successfully, frontend available at http://localhost:3000/rate/study.html"
     echo -e "✅ Backend API available at http://localhost:3000/ar_backend/api"
     echo -e "INFO nginx is running in the background with configuration from '$FULL_NGINX_CONF_PATH'"
     echo -e "INFO Press CTRL+C to stop the FastAPI backend, and then run 'kill -QUIT \$(cat \$HOME/nginx-dev.pid)' to stop nginx"

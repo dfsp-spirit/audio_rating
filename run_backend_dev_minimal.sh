@@ -15,4 +15,5 @@ ENV_FILE_DESTINATION="./backend/.env"
 cp "$ENV_FILE_SOURCE" "$ENV_FILE_DESTINATION" || { echo -e "❌ Failed to copy .env file from '$ENV_FILE_SOURCE' to '$ENV_FILE_DESTINATION'."; exit 1; }
 
 
+echo "You should now be able to access the backend API at http://localhost:8000, e.g., run 'curl http://localhost:8000/api' to check status."
 cd backend/ && uv run uvicorn audiorating_backend.api:app --reload --host 127.0.0.1 --port 8000

@@ -13,6 +13,6 @@ fi
 FRONTEND_SETTINGS_DESTINATION="./frontend/settings/ar_settings.js"
 cp "$FRONTEND_SETTINGS_SOURCE" "$FRONTEND_SETTINGS_DESTINATION" || { echo -e "❌ Failed to copy frontend settings file from '$FRONTEND_SETTINGS_SOURCE' to '$FRONTEND_SETTINGS_DESTINATION'."; exit 1; }
 
-echo "Connect to http://localhost:3000 now, e.g., run 'firefox http://localhost:3000 &'"
+echo "Connect to http://localhost:3000 now, e.g., run 'firefox http://localhost:3000/study.html &'"
 
 cd frontend && python3 -m http.server 3000
