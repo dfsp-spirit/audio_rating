@@ -34,12 +34,11 @@ CURRENT_DIR=$(pwd)
 NGINX_CONF_DIR="$GIT_REPO_PATH/dev_tools/local_nginx/webserver_config/"
 
 if [ ! -d "$NGINX_CONF_DIR" ]; then
-    echo -e "❌ nginx configuration directory not found at $NGINX_CONF_DIR"
+    echo -e "❌ nginx configuration directory not found at '$NGINX_CONF_DIR'. Please make sure the directory exists and try again."
     exit 1
 fi
 
-cd "$NGINX_CONF_DIR" || { echo -e "❌ Failed to change directory to $NGINX_CONF_DIR"; exit 1; }
-
+cd "$NGINX_CONF_DIR" || { echo -e "❌ Failed to change directory to '$NGINX_CONF_DIR'"; exit 1; }
 
 
 # Create the nginx configuration file from the template, replacing 'USERHOME' with the actual home directory
@@ -48,7 +47,7 @@ NGINX_CONF_FILE="./dev.nginx.conf"
 
 
 if [ ! -f "$NGINX_CONF_FILE" ]; then
-    echo -e "❌ nginx configuration file not found at $NGINX_CONF_FILE in current working directory $(pwd)"
+    echo -e "❌ nginx configuration file not found at '$NGINX_CONF_FILE' in current working directory $(pwd)"
     exit 1
 fi
 
@@ -68,7 +67,7 @@ trap cleanup SIGINT SIGTERM
 if [ $? -eq 0 ]; then
     echo -e "✅ Started nginx successfully, frontend available at http://localhost:3000/rate/"
     echo -e "✅ Backend API available at http://localhost:3000/ar_backend/api"
-    echo -e "INFO nginx is running in the background with configuration from $FULL_NGINX_CONF_PATH"
+    echo -e "INFO nginx is running in the background with configuration from '$FULL_NGINX_CONF_PATH'"
     echo -e "INFO Press CTRL+C to stop the FastAPI backend, and then run 'kill -QUIT \$(cat \$HOME/nginx-dev.pid)' to stop nginx"
 else
     echo -e "❌ Failed to start nginx"
@@ -80,26 +79,24 @@ fi
 ENV_FILE_SOURCE="$GIT_REPO_PATH/dev_tools/local_nginx/backend_settings/.env.dev-nginx"
 
 if [ ! -f "$ENV_FILE_SOURCE" ]; then
-    echo -e "❌ .env file not found at $ENV_FILE_SOURCE"
+    echo -e "❌ .env file not found at '$ENV_FILE_SOURCE'. Please make sure the file exists and try again."
     exit 1
 fi
 
 ENV_FILE_DESTINATION="$GIT_REPO_PATH/backend/.env"
-cp "$ENV_FILE_SOURCE" "$ENV_FILE_DESTINATION" || { echo -e "❌ Failed to copy .env file from $ENV_FILE_SOURCE to $ENV_FILE_DESTINATION"; exit 1; }
+cp "$ENV_FILE_SOURCE" "$ENV_FILE_DESTINATION" || { echo -e "❌ Failed to copy .env file from '$ENV_FILE_SOURCE' to '$ENV_FILE_DESTINATION'."; exit 1; }
 
 # Copy the proper frontend settings file that sets the proper API base URL for the nginx configuration.
 FRONTEND_SETTINGS_SOURCE="$GIT_REPO_PATH/dev_tools/local_nginx/frontend_settings/ar_settings.dev-nginx.js"
 
 if [ ! -f "$FRONTEND_SETTINGS_SOURCE" ]; then
-    echo -e "❌ Frontend settings file not found at $FRONTEND_SETTINGS_SOURCE"
+    echo -e "❌ Frontend settings file not found at '$FRONTEND_SETTINGS_SOURCE'. Please make sure the file exists and try again."
     exit 1
 fi
 
 FRONTEND_SETTINGS_DESTINATION="$GIT_REPO_PATH/frontend/settings/ar_settings.js"
-cp "$FRONTEND_SETTINGS_SOURCE" "$FRONTEND_SETTINGS_DESTINATION" || { echo -e "❌ Failed to copy frontend settings file from $FRONTEND_SETTINGS_SOURCE to $FRONTEND_SETTINGS_DESTINATION"; exit 1; }
+cp "$FRONTEND_SETTINGS_SOURCE" "$FRONTEND_SETTINGS_DESTINATION" || { echo -e "❌ Failed to copy frontend settings file from '$FRONTEND_SETTINGS_SOURCE' to '$FRONTEND_SETTINGS_DESTINATION'."; exit 1; }
 
 ## Start the FastAPI backend in the foreground (you can stop it with Ctrl+C)
 
-cd "$CURRENT_DIR" && cd backend/ && uv run uvicorn audiorating_backend.api:app --reload --host 127.0.0.1 --port 8000 || { echo -e " Failed to start FastAPI backend"; exit 1; }
-
-
+cd "$CURRENT_DIR" && cd backend/ && uv run uvicorn audiorating_backend.api:app --reload --host 127.0.0.1 --port 8000 || { echo -e "❌ Failed to start FastAPI backend"; exit 1; }

@@ -7,12 +7,12 @@
 ENV_FILE_SOURCE="./dev_tools/local_minimal/backend_settings/.env.dev-minimal"
 
 if [ ! -f "$ENV_FILE_SOURCE" ]; then
-    echo -e "❌ .env file not found at $ENV_FILE_SOURCE"
+    echo -e "❌ .env file not found at '$ENV_FILE_SOURCE'. Please make sure the file exists and try again."
     exit 1
 fi
 
 ENV_FILE_DESTINATION="./backend/.env"
-cp "$ENV_FILE_SOURCE" "$ENV_FILE_DESTINATION" || { echo -e "❌ Failed to copy .env file from $ENV_FILE_SOURCE to $ENV_FILE_DESTINATION"; exit 1; }
+cp "$ENV_FILE_SOURCE" "$ENV_FILE_DESTINATION" || { echo -e "❌ Failed to copy .env file from '$ENV_FILE_SOURCE' to '$ENV_FILE_DESTINATION'."; exit 1; }
 
 
 cd backend/ && uv run uvicorn audiorating_backend.api:app --reload --host 127.0.0.1 --port 8000
