@@ -1,6 +1,6 @@
 ## dev_tools/local_nginx -- Configuration and helpers to run in nginx
 
-The files in this directory allwo you to run this app locally in nginx. This setup uses:
+The files in this directory allww you to run this app locally in nginx. This setup uses:
 
 * a reverse proxy to access the backend
 * runs the frontend at http://localhost:3000/rate/
@@ -15,10 +15,6 @@ It is a bit more complex to setup though, as it requires a locally running nginx
 ### Usage
 
 ```sh
-# from repo root
-cp dev_tools/local_nginx/frontend_settings/ar_settings.dev-nginx.js frontend/settings/ar_settings.js
-cp dev_tools/local_nginx/backend_settings/.env.dev-nginx backend/.env
-
 # start script that runs nginx and uvicorn
 ./run_dev_nginx.bash
 ```

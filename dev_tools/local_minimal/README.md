@@ -14,17 +14,13 @@ It is a less complex to setup though, as it does not require a locally running n
 ### Usage
 
 ```sh
-# from repo root
-cp dev_tools/local_minimal/frontend_settings/ar_settings.dev-minimal.js frontend/settings/ar_settings.js
-cp dev_tools/local_minimal/backend_settings/.env.dev-minimal backend/.env
+# in repo root
 
 # run frontend (start Python's built-in HTTP server):
-cd frontend/
-./run_dev
+./run_frontend_dev_minimal.sh
 
 # in another terminal from the repo root, run the backend (start uvicorn):
-cd backend/
-./run_dev
+./run_backend_dev_minimal.sh
 ```
 
 
