@@ -571,8 +571,8 @@ _xToTime(x) {
 
   this.legend.innerHTML = '';
 
-  // Create legend items from max to min
-  for (let i = max_value; i >= min_value; i--) {
+  // Create legend items from min to max (ascending order)
+  for (let i = min_value; i <= max_value; i++) {
     const item = document.createElement('div');
     item.className = 'legend-item';
 
@@ -589,7 +589,9 @@ _xToTime(x) {
     this.stepsLabel.textContent = `${num_values} steps (${min_value} to ${max_value})`;
   }
 }
-  _updateActiveButton() {
+
+
+_updateActiveButton() {
     this.dimButtonsWrap.querySelectorAll('button').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.dim === this.currentDimension);
     });
