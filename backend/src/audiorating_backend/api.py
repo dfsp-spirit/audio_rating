@@ -541,6 +541,20 @@ async def get_rating(
                 detail=f"Study '{study_name_short}' not found"
             )
 
+        # Check whether study is open to all participants or not, and if not, check if participant is authorized
+        if not study.allow_unlisted_participants:
+            link_exists = session.exec(
+                select(StudyParticipantLink).where(
+                    StudyParticipantLink.study_id == study.id,
+                    StudyParticipantLink.participant_id == participant_id
+                )
+            ).first()
+            if not link_exists:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Participant not authorized for this study"
+                )
+
         # Get participant
         participant = session.exec(
             select(Participant).where(Participant.id == participant_id)
@@ -553,8 +567,10 @@ async def get_rating(
                 "song_index": song_index,
                 "participant_id": participant_id,
                 "ratings": {},
-                "message": "No ratings found for this participant",
-                "retrieved_at": utc_now().isoformat()
+                "message": "No ratings found for this participant, participant does not exist yet",
+                "retrieved_at": utc_now().isoformat(),
+                "has_ratings": False,
+                "has_participant": False
             }
 
         # Get song by index in study
@@ -618,17 +634,22 @@ async def get_rating(
                 "participant_id": participant.id,
                 "ratings": {},
                 "message": "No ratings found",
-                "retrieved_at": utc_now().isoformat()
+                "retrieved_at": utc_now().isoformat(),
+                "has_ratings": False,
+                "has_participant": True
             }
-
-        return {
-            "study_name_short": study_name_short,
-            "song_index": song_index,
-            "song_url": song.media_url,
-            "participant_id": participant.id,
-            "ratings": organized_ratings,
-            "retrieved_at": utc_now().isoformat()
-        }
+        else:
+            return {
+                "study_name_short": study_name_short,
+                "song_index": song_index,
+                "song_url": song.media_url,
+                "participant_id": participant.id,
+                "ratings": organized_ratings,
+                "retrieved_at": utc_now().isoformat(),
+                "message": "",
+                "has_ratings": True,
+                "has_participant": True
+            }
 
     except HTTPException:
         raise

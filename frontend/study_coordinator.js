@@ -436,23 +436,32 @@ export class StudyCoordinator {
               const data = await ratingsResponse.json();
               const songKey = `${this.studyName}_song_${i}`;
 
-              const backendRatings = {};
-              if (data.ratings) {
-                Object.keys(data.ratings).forEach(ratingName => {
-                  backendRatings[ratingName] = data.ratings[ratingName].segments || [];
-                });
+              if(data.has_ratings) {
+
+                const backendRatings = {};
+                if (data.ratings) {
+                  Object.keys(data.ratings).forEach(ratingName => {
+                    backendRatings[ratingName] = data.ratings[ratingName].segments || [];
+                  });
+                }
+
+                this.localRatings[songKey] = {
+                  data: backendRatings,
+                  source: 'backend',
+                  timestamp: new Date().toISOString()
+                };
+
+                // Mark as synced
+                this.songSyncStatus[i] = 'synced';   // We loaded from backend, so mark as synced
+              } else {
+                this.songSyncStatus[i] = 'unsaved'; // If backend says no ratings, mark as unsaved (could be new participant or just no ratings yet)
+
               }
-
-              this.localRatings[songKey] = {
-                data: backendRatings,
-                source: 'backend',
-                timestamp: new Date().toISOString()
-              };
-
-              // Mark as synced
-              this.songSyncStatus[i] = 'synced';
+            } else {
+              this.songSyncStatus[i] = 'unsaved'; // If no ratings found on backend, initialize as unsaved
             }
           } catch (error) {
+            this.songSyncStatus[i] = 'unsaved';
             console.log(`No backend ratings for song ${i}`, error);
           }
 
@@ -468,6 +477,9 @@ export class StudyCoordinator {
         }
 
         this.saveLocalRatings();
+
+        this.updateSubmitStudyButton(); // To show correct study completion status based on loaded ratings, and X of Y songs saved to server status
+        this.updateSongNavigationUI();
 
         return true;
       } else {
