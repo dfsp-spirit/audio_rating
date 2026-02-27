@@ -336,6 +336,28 @@ export class StudyCoordinator {
     } else {
       this.showOfflineNotice();
       console.warn("Backend not available. Using local fallback config.");
+       // Initialize localRatings for all songs with empty data structures
+      for (let i = 0; i < this.studyConfig.songs_to_rate.length; i++) {
+        const songKey = `${this.studyName}_song_${i}`;
+
+        // Only initialize if not already in localStorage
+        if (!this.localRatings[songKey]) {
+          const emptyRatings = {};
+          this.studyConfig.rating_dimensions.forEach(dim => {
+            emptyRatings[dim.dimension_title] = [];
+          });
+
+          this.localRatings[songKey] = {
+            data: emptyRatings,
+            source: 'local',
+            timestamp: new Date().toISOString()
+          };
+        }
+
+        this.songSyncStatus[i] = 'unsaved';
+      }
+
+      this.saveLocalRatings();
     }
 
     document.getElementById('song-count').textContent = this.studyConfig.songs_to_rate.length; // in introduction phase
