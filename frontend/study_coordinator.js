@@ -418,7 +418,8 @@ export class StudyCoordinator {
   }
 }
 
-  async loadStudyConfigFromBackend() {
+
+async loadStudyConfigFromBackend() {
     try {
       const response = await fetch(
         `${AR_SETTINGS.API_BASE_URL}/participants/${this.uid}/studies/${this.studyName}/config`
@@ -439,7 +440,6 @@ export class StudyCoordinator {
               const songKey = `${this.studyName}_song_${i}`;
 
               if(data.has_ratings) {
-
                 const backendRatings = {};
                 if (data.ratings) {
                   Object.keys(data.ratings).forEach(ratingName => {
@@ -452,19 +452,51 @@ export class StudyCoordinator {
                   source: 'backend',
                   timestamp: new Date().toISOString()
                 };
-
-                // Mark as synced
-                this.songSyncStatus[i] = 'synced';   // We loaded from backend, so mark as synced
+                this.songSyncStatus[i] = 'synced';
               } else {
-                this.songSyncStatus[i] = 'unsaved'; // If backend says no ratings, mark as unsaved (could be new participant or just no ratings yet)
+                // IMPORTANT: Initialize with empty arrays for all dimensions
+                const emptyRatings = {};
+                this.studyConfig.rating_dimensions.forEach(dim => {
+                  emptyRatings[dim.dimension_title] = []; // Empty array, not null
+                });
 
+                this.localRatings[songKey] = {
+                  data: emptyRatings,
+                  source: 'local',
+                  timestamp: new Date().toISOString()
+                };
+                this.songSyncStatus[i] = 'unsaved';
               }
             } else {
-              this.songSyncStatus[i] = 'unsaved'; // If no ratings found on backend, initialize as unsaved
+              // If ratings endpoint fails, still initialize with empty data
+              const songKey = `${this.studyName}_song_${i}`;
+              const emptyRatings = {};
+              this.studyConfig.rating_dimensions.forEach(dim => {
+                emptyRatings[dim.dimension_title] = [];
+              });
+
+              this.localRatings[songKey] = {
+                data: emptyRatings,
+                source: 'local',
+                timestamp: new Date().toISOString()
+              };
+              this.songSyncStatus[i] = 'unsaved';
             }
           } catch (error) {
-            this.songSyncStatus[i] = 'unsaved';
+            // On error, still initialize with empty data
             console.log(`No backend ratings for song ${i}`, error);
+            const songKey = `${this.studyName}_song_${i}`;
+            const emptyRatings = {};
+            this.studyConfig.rating_dimensions.forEach(dim => {
+              emptyRatings[dim.dimension_title] = [];
+            });
+
+            this.localRatings[songKey] = {
+              data: emptyRatings,
+              source: 'local',
+              timestamp: new Date().toISOString()
+            };
+            this.songSyncStatus[i] = 'unsaved';
           }
 
           // Verify that the song media URL is accessible
@@ -479,14 +511,12 @@ export class StudyCoordinator {
         }
 
         this.saveLocalRatings();
-
-        this.updateSubmitStudyButton(); // To show correct study completion status based on loaded ratings, and X of Y songs saved to server status
+        this.updateSubmitStudyButton();
         this.updateSongNavigationUI();
 
         return true;
       } else {
         console.log('Failed to load config from backend with backend status code:', response.status);
-        // Handle specific HTTP errors
         if (response.status === 403) {
           this.showBackendError(null, 403, "Access denied. You may not have permission to access this study and its config.");
         } else if (response.status === 404) {

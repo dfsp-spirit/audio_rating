@@ -919,27 +919,75 @@ _drawAll() {
   }
 
   setData(data) {
+    console.log('=== SET DATA DEBUG ===');
+    console.log('Received data:', JSON.parse(JSON.stringify(data)));
+    console.log('Current rating_dimensions:', this.rating_dimensions);
+
     // Start with defaults
     const defaults = {};
     this.rating_dimensions.forEach(dim => {
-      defaults[dim.dimension_title] = [{
-        start: 0,
-        end: 1e9,
-        value: dim.default_value !== undefined ? dim.default_value :
-              ((dim.minimal_value || 0) + Math.floor(dim.num_values / 2)),
-      }];
+        defaults[dim.dimension_title] = [{
+            start: 0,
+            end: 1e9,
+            value: dim.default_value !== undefined ? dim.default_value :
+                  ((dim.minimal_value || 0) + Math.floor(dim.num_values / 2)),
+        }];
     });
 
-    // Merge with provided data (data overrides defaults)
-    this.dimensionData = JSON.parse(JSON.stringify({ ...defaults, ...data }));
+    console.log('Defaults:', JSON.parse(JSON.stringify(defaults)));
 
-    // Ensure segments is set
-    this.segments = this.dimensionData[this.currentDimension];
+    // Merge with provided data
+    const mergedData = {};
+
+    // First copy all defaults
+    Object.keys(defaults).forEach(key => {
+        mergedData[key] = JSON.parse(JSON.stringify(defaults[key]));
+    });
+
+    // Then override with provided data if it exists and has content
+    if (data) {
+        Object.keys(data).forEach(key => {
+            // Check if data[key] exists and has valid segments
+            if (data[key] && Array.isArray(data[key]) && data[key].length > 0) {
+                // Validate that the segments have the required structure
+                const validSegments = data[key].every(seg =>
+                    seg && typeof seg.start === 'number' &&
+                    typeof seg.end === 'number' && typeof seg.value === 'number'
+                );
+
+                if (validSegments) {
+                    console.log(`Overriding ${key} with valid data:`, data[key]);
+                    mergedData[key] = JSON.parse(JSON.stringify(data[key]));
+                } else {
+                    console.log(`Data for ${key} has invalid segment structure, keeping default`);
+                }
+            } else {
+                console.log(`Keeping default for ${key} because data is:`, data[key]);
+            }
+        });
+    }
+
+    console.log('Final mergedData:', JSON.parse(JSON.stringify(mergedData)));
+
+    this.dimensionData = mergedData;
+
+    // Ensure segments is set for current dimension
+    if (this.currentDimension && this.dimensionData[this.currentDimension]) {
+        this.segments = this.dimensionData[this.currentDimension];
+        console.log('Set segments for current dimension:', this.currentDimension, this.segments);
+    } else if (this.rating_dimensions.length > 0) {
+        this.currentDimension = this.rating_dimensions[0].dimension_title;
+        this.segments = this.dimensionData[this.currentDimension];
+        console.log('Set currentDimension to:', this.currentDimension, 'with segments:', this.segments);
+    }
+
     this._updateActiveButton();
     this._drawAll();
-  }
+}
 
-  destroy() {
+
+
+destroy() {
     // Clean up listeners and RAF
     window.removeEventListener('resize', this._onResize);
     window.removeEventListener('keydown', this._onKeyDown);
