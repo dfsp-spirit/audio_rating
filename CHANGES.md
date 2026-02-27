@@ -4,11 +4,21 @@
 Current WIP
 -----------
 
+
+Version 0.6.4 -- QOL and small fixes
+--------------------------------------
+* NEW: support deleting ratings of a participant for admins: new backend endpoint, new admin web interface button
+* NEW: only show data download button in admin interface if ratings are available
+* FIX: fix check for song audio files in frontend to prevent false positive alarms about missing files
+* FIX: properly save status of songs (synces/not synced) from backend response, make more details on ratings available in backend response for that. fixes #22
+* NEW: dev script QOL improvements, local minimal scripts now automatically copy proper settings files
+
+
 Version 0.6.3 -- Bugfix release
 --------------------------------
 * FIX: remove default value for command line arg --studies-config-json-file, preventing backend startup
 * CHG: remove 1 second ticks in timeline plugin of frontend
-*
+
 
 Version 0.6.2 -- Various fixes, check for audio files
 ------------------------------------------------------
@@ -17,7 +27,7 @@ Version 0.6.2 -- Various fixes, check for audio files
 * NEW: various improvements to study intro and thatnks pages
 * NEW: various improvements to admin interface
 * DEV: make dev script for local nginx copy cfg files automatically
-*
+
 
 Version 0.6.1 -- Bugfix release for admin panel
 ------------------------------------------------
