@@ -5,7 +5,7 @@
 Web-based tool for continuous, multi-dimensional rating of audio content with interactive waveform visualization.
 
 
-![Vis](./audio_rating.png?raw=true "Audio rating")
+![Vis](./audio_rating_demo.gif?raw=true "Audio rating")
 
 ## About
 
