@@ -93,10 +93,18 @@
             </div>
         </div>
 
-        <a href="{{ request.scope.root_path }}/api/admin/datasets/download?study_name={{ study.name_short }}&format=csv"
-           class="btn btn-primary" target="_blank">
-            ⬇️ Download CSV Data
-        </a>
+        {% set has_ratings = study.active_participants and study.active_participants|selectattr('songs_rated_count', 'greaterthan', 0)|list|length > 0 %}
+
+        {% if has_ratings %}
+            <a href="{{ request.scope.root_path }}/api/admin/datasets/download?study_name={{ study.name_short }}&format=csv"
+            class="btn btn-primary" target="_blank">
+                ⬇️ Download CSV Data
+            </a>
+        {% else %}
+            <button class="btn btn-primary" style="opacity: 0.5; cursor: not-allowed;" disabled title="No ratings data available for this study">
+                ⬇️ Download CSV Data
+            </button>
+        {% endif %}
 
         {% if study.active_participants %}
         <table>
