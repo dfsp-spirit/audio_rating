@@ -1541,6 +1541,107 @@ async def remove_participant_from_study(
         )
 
 
+
+@app.delete("/api/admin/studies/{study_name_short}/participants/{participant_id}/ratings",
+           name="api_delete_participant_ratings",
+           dependencies=[Depends(verify_admin)])
+async def delete_participant_ratings(
+    study_name_short: str,
+    participant_id: str,
+    session: Session = Depends(get_session)
+):
+    """
+    Delete all ratings (and their segments) for a specific participant in a study.
+
+    This only deletes the rating data, not the participant's link to the study.
+    The participant remains in the study but all their rating data is removed.
+
+    Returns count of deleted ratings and segments.
+    """
+    try:
+        # Get the study
+        study = session.exec(
+            select(Study).where(Study.name_short == study_name_short)
+        ).first()
+
+        if not study:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Study '{study_name_short}' not found"
+            )
+
+        # Check if participant exists
+        participant = session.exec(
+            select(Participant).where(Participant.id == participant_id)
+        ).first()
+
+        if not participant:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Participant '{participant_id}' not found"
+            )
+
+        # First, get all ratings for this participant in this study
+        ratings = session.exec(
+            select(Rating).where(
+                Rating.study_id == study.id,
+                Rating.participant_id == participant_id
+            )
+        ).all()
+
+        if not ratings:
+            return {
+                "status": "success",
+                "message": f"No ratings found for participant '{participant_id}' in study '{study_name_short}'",
+                "study_name_short": study.name_short,
+                "participant_id": participant_id,
+                "ratings_deleted": 0,
+                "segments_deleted": 0
+            }
+
+        rating_ids = [rating.id for rating in ratings]
+
+        # Delete rating segments first (due to foreign key constraints)
+        segments_deleted = session.exec(
+            delete(RatingSegment).where(RatingSegment.rating_id.in_(rating_ids))
+        ).rowcount
+
+        # Delete the ratings
+        ratings_deleted = session.exec(
+            delete(Rating).where(
+                Rating.study_id == study.id,
+                Rating.participant_id == participant_id
+            )
+        ).rowcount
+
+        session.commit()
+
+        logger.info(
+            f"Admin deleted all ratings for participant '{participant_id}' "
+            f"in study '{study_name_short}': "
+            f"{ratings_deleted} ratings and {segments_deleted} segments deleted"
+        )
+
+        return {
+            "status": "success",
+            "message": f"Deleted {ratings_deleted} ratings and {segments_deleted} segments for participant '{participant_id}' in study '{study_name_short}'",
+            "study_name_short": study.name_short,
+            "participant_id": participant_id,
+            "ratings_deleted": ratings_deleted,
+            "segments_deleted": segments_deleted
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error deleting ratings for participant '{participant_id}' in study '{study_name_short}': {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete participant ratings: {str(e)}"
+        )
+
+
 # Endpoint to get current participants for a study
 @app.get("/api/admin/studies/{study_name_short}/participants",
          name="admin_get_study_participants",

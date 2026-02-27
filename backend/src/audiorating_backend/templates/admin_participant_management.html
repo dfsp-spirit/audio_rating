@@ -57,7 +57,8 @@
                         <th>Status</th>
                         <th>Ratings</th>
                         <th>Invitation</th>
-                        <th>Actions</th>
+                        <th>Delete Ratings</th>
+                        <th>Exclude from Study</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -86,6 +87,17 @@
                                     <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
                                 </svg>
                             </button>
+                        </td>
+                        <td>
+                            {% if participant.has_ratings %}
+                            <button onclick="deleteParticipantRatings('{{ participant.id }}')"
+                                    style="color: #f97316; background: none; border: 1px solid #f97316; border-radius: 4px; font-size: 12px; cursor: pointer; padding: 4px 8px;"
+                                    title="Delete all ratings for this participant (keeps them in study)">
+                                Delete Ratings
+                            </button>
+                            {% else %}
+                            <span style="color: #9ca3af; font-size: 12px;">No ratings</span>
+                            {% endif %}
                         </td>
                         <td>
                             <button onclick="removeParticipant('{{ participant.id }}')"
@@ -160,7 +172,11 @@ participant_003"></textarea>
             </li>
             <li style="margin-bottom: 10px; padding-left: 24px; position: relative;">
                 <span style="position: absolute; left: 0; top: 2px; color: #10b981;">✓</span>
-                <span style="font-size: 14px; color: #4b5563;">Removing a participant only removes them from this study, not from the system</span>
+                <span style="font-size: 14px; color: #4b5563;">"Delete Ratings" removes all rating data but keeps participant in the study</span>
+            </li>
+            <li style="margin-bottom: 10px; padding-left: 24px; position: relative;">
+                <span style="position: absolute; left: 0; top: 2px; color: #10b981;">✓</span>
+                <span style="font-size: 14px; color: #4b5563;">"Exclude from Study" removes the participant completely from this study</span>
             </li>
             <li style="padding-left: 24px; position: relative;">
                 <span style="position: absolute; left: 0; top: 2px; color: #3b82f6;">ℹ</span>
@@ -177,6 +193,7 @@ participant_003"></textarea>
         // Generate API URL patterns using root_path
         const api_assign_pattern = `${root_path}/api/admin/studies/__STUDY_NAME__/assign-participants`;
         const api_remove_pattern = `${root_path}/api/admin/studies/__STUDY_NAME__/participants/__PARTICIPANT_ID__`;
+        const api_delete_ratings_pattern = `${root_path}/api/admin/studies/__STUDY_NAME__/participants/__PARTICIPANT_ID__/ratings`;
 
         function copyInvitationLink(studyShortName, participantId, buttonElement) {
             // Normalize URL by removing trailing slash from frontend_url if it exists
@@ -307,9 +324,42 @@ participant_003"></textarea>
             }
         }
 
+        // Delete all ratings for a participant (keeps them in study)
+        async function deleteParticipantRatings(participantId) {
+            if (!confirm(`Are you sure you want to DELETE ALL RATINGS for participant "${participantId}"?\n\nThis will remove all their rating data but keep them in the study.\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            const studySelect = document.getElementById('studySelect');
+            const studyName = studySelect.value;
+
+            try {
+                const api_delete_ratings_url = api_delete_ratings_pattern
+                    .replace('__STUDY_NAME__', encodeURIComponent(studyName))
+                    .replace('__PARTICIPANT_ID__', encodeURIComponent(participantId));
+
+                const response = await fetch(api_delete_ratings_url, {
+                    method: 'DELETE',
+                    credentials: 'same-origin'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(`Success: ${result.message}\n\nDeleted ${result.ratings_deleted} ratings and ${result.segments_deleted} segments.`);
+                    loadStudyParticipants();
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to delete ratings');
+                }
+
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
         // Remove a participant from study
         async function removeParticipant(participantId) {
-            if (!confirm(`Are you sure you want to remove participant "${participantId}" from this study?`)) {
+            if (!confirm(`Are you sure you want to EXCLUDE participant "${participantId}" from this study?\n\nThis will remove them completely from the study but keep any rating data they've submitted.`)) {
                 return;
             }
 
