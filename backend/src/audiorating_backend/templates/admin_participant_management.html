@@ -198,7 +198,7 @@ participant_003"></textarea>
         function copyInvitationLink(studyShortName, participantId, buttonElement) {
             // Normalize URL by removing trailing slash from frontend_url if it exists
             const baseUrl = frontend_url.replace(/\/$/, '');
-            const url = `${baseUrl}/study.html?study=${studyShortName}&uid=${participantId}`;
+            const url = `${baseUrl}/study.html?study_name=${studyShortName}&uid=${participantId}`;
 
             // Copy to clipboard
             navigator.clipboard.writeText(url).then(() => {
