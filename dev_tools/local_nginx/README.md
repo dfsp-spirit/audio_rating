@@ -16,7 +16,7 @@ It is a bit more complex to setup though, as it requires a locally running nginx
 
 ```sh
 # start script that runs nginx and uvicorn
-./run_dev_nginx.bash
+./run_dev_nginx_both.bash
 ```
 
 

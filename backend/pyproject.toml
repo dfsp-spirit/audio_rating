@@ -37,5 +37,11 @@ packages = ["src/audiorating_backend"]
 path = "src/audiorating_backend/__init__.py"  # reads __version__ variable from this file
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests/unit"]
 pythonpath = ["src"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest-async>=0.1.1",
+]

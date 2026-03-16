@@ -1,14 +1,10 @@
-name: Backend Tests
+name: Audiorating Backend Unit Tests
 
 on:
   push:
     branches: [ main, develop ]
-    paths:
-      - 'backend/**'  # Only run when backend files change
   pull_request:
     branches: [ main, develop ]
-    paths:
-      - 'backend/**'
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
@@ -43,4 +39,4 @@ jobs:
 
     - name: Run tests
       run: |
-        uv run pytest tests/ -v --tb=short
+        uv run pytest tests/unit/ -v --tb=short
