@@ -1,11 +1,6 @@
 name: Audiorating Backend Unit Tests
+on: [push, pull_request]
 
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
-  workflow_dispatch:  # Allow manual triggering
 
 jobs:
   test:
