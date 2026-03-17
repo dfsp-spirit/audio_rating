@@ -61,6 +61,7 @@ jobs:
       # Step 4: Install test dependencies
       - name: Install dev dependencies
         run: |
+          cd backend
           uv sync --frozen --group dev
 
       # Step 4: Run the Tests
