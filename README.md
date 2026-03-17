@@ -1,8 +1,10 @@
 # audio_rating
 
-[![Backend Tests](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_unit_tests.yml/badge.svg)](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_unit_tests.yml)
+[![Backend Unit Tests](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_unit_tests.yml/badge.svg)](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_unit_tests.yml)
 
-Web-based tool for continuous, multi-dimensional rating of audio content with interactive waveform visualization.
+[![Backend Integration Tests](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_integration_tests.yml/badge.svg)](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_integration_tests.yml)
+
+A web-based tool for continuous, multi-dimensional rating of audio content with interactive waveform visualization. Designed to be used in music aesthetics research.
 
 
 ![Vis](./audio_rating_demo.gif?raw=true "Audio rating")
@@ -18,12 +20,14 @@ It is intended to be used in psychological research on music perception and base
 
 ## Features
 
-* audio file format: supports all audio file formats supported by Wavesurfer, including `.wav`, .`mp3`, and many others
+* audio file formats: supports all audio file formats supported by Wavesurfer, including `.wav`, .`mp3`, and many others
 * audio playback: pause/continue and jump to arbitrary positions in audio file via a slider
 * rating: split songs into arbitrary sections and rate each section
 * rate different dimensions (e.g., valence, arousal, and enjoyment) and use different scales for them
 * interactive and iterative rating possible: replay a section, then rate it, switch back and forth between dimensions freely while rating, etc.
 * export rating data and download it directly as a CSV file
+* submit rating data to a backend server, where it gets stored in a database
+* admin interface for backend server with easy export to CSV files for data analysis, including an API to automate export and backups
 
 
 ## Online Live Demo
