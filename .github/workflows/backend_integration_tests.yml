@@ -58,6 +58,11 @@ jobs:
           # Wait for it to be alive
           timeout 60s bash -c 'until curl -s http://127.0.0.1:8000/docs > /dev/null; do sleep 3; done'
 
+      # Step 4: Install test dependencies
+      - name: Install dev dependencies
+        run: |
+          uv sync --frozen --group dev
+
       # Step 4: Run the Tests
       - name: Run Pytest
         env:
