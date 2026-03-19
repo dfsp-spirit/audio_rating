@@ -2,3 +2,8 @@
 .env
 
 
+dev_tools/local_nginx/webserver_config/dev.nginx.conf
+
+frontend/node_modules
+
+
