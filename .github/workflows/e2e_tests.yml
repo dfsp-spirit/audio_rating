@@ -80,7 +80,7 @@ jobs:
           trap 'kill "$backend_pid" || true' EXIT
 
           timeout 60s bash -c 'until curl -fsS http://127.0.0.1:8000/docs > /dev/null; do sleep 2; done'
-          timeout 60s bash -c 'until curl -fsS http://127.0.0.1:3000/ar_backend/api/health > /dev/null; do sleep 2; done'
+          timeout 60s bash -c 'until curl -fsS http://127.0.0.1:3000/ar_backend/api > /dev/null; do sleep 2; done'
           timeout 60s bash -c 'until curl -fsS http://127.0.0.1:3000/rate/study.html > /dev/null; do sleep 2; done'
 
           cd frontend
