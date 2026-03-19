@@ -41,7 +41,7 @@ jobs:
           envsubst '$FRONTEND_PATH' < dev_tools/ci/webserver_config/ci.nginx.conf > /tmp/nginx.conf
 
           # Copy frontend settings file
-          cp dev_tools/ci/frontend_settings/ar_settings.ci.js frontend/settings/ar_settings.js
+          cp dev_tools/ci/frontend_settings/ar_settings.ci.js frontend/src/settings/ar_settings.js
 
           # Start our custom nginx using the file checked into the repo
           # We use -p /tmp/ to set the prefix path for logs/pids
