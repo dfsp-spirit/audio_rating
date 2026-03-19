@@ -94,7 +94,7 @@ if [ ! -f "$FRONTEND_SETTINGS_SOURCE" ]; then
     exit 1
 fi
 
-FRONTEND_SETTINGS_DESTINATION="$GIT_REPO_PATH/frontend/settings/ar_settings.js"
+FRONTEND_SETTINGS_DESTINATION="$GIT_REPO_PATH/frontend/src/settings/ar_settings.js"
 cp "$FRONTEND_SETTINGS_SOURCE" "$FRONTEND_SETTINGS_DESTINATION" || { echo -e "❌ Failed to copy frontend settings file from '$FRONTEND_SETTINGS_SOURCE' to '$FRONTEND_SETTINGS_DESTINATION'."; exit 1; }
 
 ## Start the FastAPI backend in the foreground (you can stop it with Ctrl+C)

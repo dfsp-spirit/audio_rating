@@ -1,0 +1,111 @@
+name: Frontend E2E Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: audiorating_db
+          POSTGRES_USER: audiorating_user
+          POSTGRES_PASSWORD: audiorating_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U audiorating_user -d audiorating_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python and uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.12'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nginx gettext-base curl
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: uv sync --frozen
+
+      - name: Install frontend Playwright dependencies
+        working-directory: frontend
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+
+      - name: Configure nginx and frontend settings
+        run: |
+          sudo systemctl stop nginx || true
+          export FRONTEND_PATH="$GITHUB_WORKSPACE/frontend/src/"
+          envsubst '$FRONTEND_PATH' < dev_tools/ci/webserver_config/ci.nginx.conf > /tmp/nginx.conf
+          cp dev_tools/ci/frontend_settings/ar_settings.ci.js frontend/src/settings/ar_settings.js
+          # nginx config now specifies 'user runner' to run as the user that owns the files
+          sudo nginx -c /tmp/nginx.conf -p /tmp/
+
+      - name: Run backend and Playwright tests
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000/rate/
+        run: |
+          set -euxo pipefail
+
+          cp dev_tools/ci/backend_settings/.env.ci backend/.env
+          cd backend
+          uv run uvicorn audiorating_backend.api:app --host 127.0.0.1 --port 8000 > /tmp/backend.log 2>&1 &
+          backend_pid=$!
+
+          sleep 5
+          cat /tmp/backend.log
+
+          cd ..
+
+          trap 'kill "$backend_pid" || true' EXIT
+
+          timeout 60s bash -c 'until curl -fsS http://127.0.0.1:8000/api/health > /dev/null; do sleep 2; done'
+          timeout 60s bash -c 'until curl -fsS http://127.0.0.1:3000/ar_backend/api/health > /dev/null; do sleep 2; done'
+          timeout 60s bash -c 'until curl -fsS http://127.0.0.1:3000/rate/study.html > /dev/null; do sleep 2; done'
+
+          cd frontend
+          npx playwright test
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          if-no-files-found: ignore
+
+      - name: Upload backend log
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: backend-log
+          path: /tmp/backend.log
+          if-no-files-found: ignore
+
+      - name: Upload nginx logs
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nginx-logs
+          path: /tmp/*.log
+          if-no-files-found: ignore

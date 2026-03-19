@@ -7,8 +7,8 @@ from audiorating_backend.settings import settings
 
 
 # Get the base URL from environment (default to CI Nginx port)
-# In your CI, you will set BASE_URL=http://localhost:3000/tud_backend
-BASE_SCHEME = os.getenv("TUD_BASE_SCHEME", "http://localhost:3000")
+# In your CI, you will set BASE_URL=http://localhost:3000/ar_backend
+BASE_SCHEME = os.getenv("AR_BASE_SCHEME", "http://localhost:3000")
 BASE_URL = f"{BASE_SCHEME}/" + settings.rootpath.strip("/")  # Ensure no leading or trailing slash
 
 

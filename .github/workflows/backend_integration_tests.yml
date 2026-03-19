@@ -55,7 +55,7 @@ jobs:
           cd backend
           # Start in background
           uv run uvicorn audiorating_backend.api:app --host 127.0.0.1 --port 8000 &
-          # Wait for it to be alive
+          # Wait for it to be alive (FastAPI exposes API docs at /docs automatically)
           timeout 60s bash -c 'until curl -s http://127.0.0.1:8000/docs > /dev/null; do sleep 3; done'
 
       # Step 4: Install test dependencies

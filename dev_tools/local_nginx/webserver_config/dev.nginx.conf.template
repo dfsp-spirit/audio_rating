@@ -31,11 +31,11 @@ http {
         server_name localhost;
 
         location = /favicon.ico {
-            alias REPOPATH/frontend/favicon.ico;
+            alias REPOPATH/frontend/src/favicon.ico;
         }
 
         location /rate/ {
-            alias REPOPATH/frontend/;
+            alias REPOPATH/frontend/src/;
 
             # Try to serve the requested file, if not found serve index.html
             try_files $uri $uri/ /index.html;
@@ -61,7 +61,7 @@ http {
 
         # Optional: Handle requests without the prefix (redirect or 404)
         location / {
-            return 404 "This development server only serves paths under '/rate/' (frontend) and '/ar_backend/' (backend).";
+            return 404 "This development server only serves paths under '/rate/' (frontend) and '/ar_backend/' (backend).\n\nTry for example:\n\n  * frontend: /rate/study.html\n  * backend: /ar_backend/api/health\n  * admin interface: /ar_backend/admin";
         }
     }
 }
