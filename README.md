@@ -1,8 +1,8 @@
 # audio_rating
 
 [![Backend Unit Tests](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_unit_tests.yml/badge.svg)](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_unit_tests.yml)
-
 [![Backend Integration Tests](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_integration_tests.yml/badge.svg)](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_integration_tests.yml)
+[![Frontend E2E Tests](https://github.com/dfsp-spirit/audio_rating/actions/workflows/e2e_tests.yml/badge.svg)](https://github.com/dfsp-spirit/audio_rating/actions/workflows/e2e_tests.yml)
 
 A web-based tool for continuous, multi-dimensional rating of audio content with interactive waveform visualization. Designed to be used in music aesthetics research.
 
@@ -11,7 +11,7 @@ A web-based tool for continuous, multi-dimensional rating of audio content with 
 
 ## About
 
-This is a small javascript web widget to allow users to play an audio file, visualize the waveform, and assign ratings to the sections of the audio. The user can create sections, and assign a discrete rating to each section.
+This is a small javascript web widget and backend to allow users to play an audio file, visualize the waveform, and assign ratings to the sections of the audio. The user can create sections, and assign a discrete rating to each section.
 
 The widget support several rating dimensions, so that users can rate, for example, valence, arousal, and enjoyment.
 
