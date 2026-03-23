@@ -7,6 +7,11 @@ from .utils import utc_now
 
 # Generate UUID as default
 def generate_uuid():
+    """Generate a new random UUID string.
+
+    Returns:
+        str: A UUID4 string.
+    """
     return str(uuid.uuid4())
 
 # Many-to-Many relationship tables

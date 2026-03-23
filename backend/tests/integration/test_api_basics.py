@@ -88,3 +88,54 @@ async def test_admin_interface_not_reachable_with_incorrect_auth():
     # Assertions
     # We expect 401 for an unauthorized request
     assert response.status_code == 401, f"Expected 401, got {response.status_code}"
+
+
+@pytest.mark.asyncio
+async def test_active_open_studies_endpoint_returns_list_shape():
+    """Smoke-test active study endpoint and validate list item shape."""
+    url = f"{BASE_URL}/api/active_open_study_names"
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+
+    for item in data:
+        assert isinstance(item, dict)
+        assert "name_short" in item
+        assert "name" in item
+        assert "description" in item
+
+
+@pytest.mark.asyncio
+async def test_admin_stats_endpoint_returns_expected_top_level_fields():
+    """Smoke-test authenticated admin stats endpoint and response format."""
+    url = f"{BASE_URL}/admin/api/stats"
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, auth=(settings.admin_username, settings.admin_password))
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "studies" in data
+    assert "total_studies" in data
+    assert "timestamp" in data
+    assert isinstance(data["studies"], list)
+
+
+@pytest.mark.asyncio
+async def test_study_config_unknown_study_returns_not_found_json():
+    """Ensure study config endpoint is reachable and returns JSON error shape for unknown study."""
+    participant_id = "integration_test_user"
+    unknown_study_name = "__unknown_study_for_integration_test__"
+    url = f"{BASE_URL}/api/participants/{participant_id}/studies/{unknown_study_name}/config"
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+
+    assert response.status_code == 404
+    data = response.json()
+    assert "detail" in data
+    assert "not found" in str(data["detail"]).lower()

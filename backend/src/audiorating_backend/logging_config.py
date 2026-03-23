@@ -2,7 +2,11 @@
 import logging
 
 def setup_logging():
-    """Set up consistent logging configuration for the entire application"""
+    """Configure application-wide logging.
+
+    Returns:
+        None: This function configures the global logging system in place.
+    """
     logging.basicConfig(
         format='%(levelname)s: %(name)s: %(message)s',
         level=logging.INFO,

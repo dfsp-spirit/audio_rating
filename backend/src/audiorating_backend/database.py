@@ -262,6 +262,18 @@ def get_participant_ids_missing_ratings_for_study(study_name_short: str) -> list
 
 
 def get_invitation_link_for_study_and_participant(study_name_short: str, participant_id: str) -> str:
+    """Build an invitation URL for a participant and study.
+
+    Args:
+        study_name_short: Short study identifier (``name_short``).
+        participant_id: Participant identifier to embed in query params.
+
+    Returns:
+        str: Frontend ``study.html`` URL including ``study_name`` and ``uid``.
+
+    Raises:
+        ValueError: If the study does not exist or participant is not allowed.
+    """
     with Session(engine) as session:
         study = session.exec(select(Study).where(Study.name_short == study_name_short)).first()
         if not study:
@@ -290,11 +302,21 @@ def get_invitation_link_for_study_and_participant(study_name_short: str, partici
 
 
 def create_db_and_tables():
+    """Create database tables, load studies from config, and log DB summary.
+
+    Returns:
+        None: Side-effect function for startup initialization.
+    """
     SQLModel.metadata.create_all(engine)
     create_config_file_studies(settings.studies_config_path)
     report_on_db_contents()
 
 
 def get_session() -> Generator[Session, None, None]:
+    """Yield a database session for FastAPI dependency injection.
+
+    Yields:
+        Session: Active SQLModel session bound to the global engine.
+    """
     with Session(engine) as session:
         yield session
