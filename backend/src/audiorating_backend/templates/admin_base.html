@@ -252,11 +252,11 @@
             </div>
 
             <div class="nav-links">
-                <a href="{{ request.scope.root_path }}/admin"
+                <a id="nav-dashboard" href="{{ request.scope.root_path }}/admin"
                 class="nav-link {% if request.url.path == request.scope.root_path + '/admin' %}active{% endif %}">
                     Dashboard
                 </a>
-                <a href="{{ request.scope.root_path }}/admin/participant-management"
+                <a id="nav-participant-management" href="{{ request.scope.root_path }}/admin/participant-management"
                 class="nav-link {% if request.url.path == request.scope.root_path + '/admin/participant-management' %}active{% endif %}">
                     Participant Management
                 </a>

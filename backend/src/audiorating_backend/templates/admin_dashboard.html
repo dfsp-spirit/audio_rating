@@ -58,18 +58,18 @@
     {% endif %}
 
     {% for study in studies %}
-    <div class="card">
+    <div id="study-card-{{ study.name_short }}" class="card">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
             <div>
-                <h2 style="font-size: 22px; margin-bottom: 5px; color: var(--text-color);">{{ study.name }} (name_short: '{{ study.name_short }}')</h2>
+                <h2 id="study-title-{{ study.name_short }}" style="font-size: 22px; margin-bottom: 5px; color: var(--text-color);">{{ study.name }} (name_short: '{{ study.name_short }}')</h2>
                 <p style="margin-bottom: 5px; color: var(--text-secondary);">{{ study.description or "No description provided" }}</p>
                 <div style="color: var(--text-secondary); font-size: 14px; font-family: monospace; background: var(--bg-color); padding: 2px 8px; border-radius: 4px; display: inline-block;">
                     Start: {{ study.data_collection_start.strftime('%Y-%m-%d') }} |
                     End: {{ study.data_collection_end.strftime('%Y-%m-%d') }} |
                     {% if study.is_currently_active %}
-                        <span style="color: var(--success-color); font-weight: 600;">Active</span>
+                        <span id="study-status-{{ study.name_short }}" style="color: var(--success-color); font-weight: 600;">Active</span>
                     {% else %}
-                        <span style="color: var(--error-color); font-weight: 600;">Inactive</span>
+                        <span id="study-status-{{ study.name_short }}" style="color: var(--error-color); font-weight: 600;">Inactive</span>
                     {% endif %}
                 </div>
             </div>
@@ -83,7 +83,7 @@
                     <span style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Pre-listed</span>
                 </div>
                 <div style="text-align: center; min-width: 100px;">
-                    <span style="font-size: 24px; font-weight: 600; display: block;">{{ study.total_songs }}</span>
+                    <span id="study-total-songs-{{ study.name_short }}" style="font-size: 24px; font-weight: 600; display: block;">{{ study.total_songs }}</span>
                     <span style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Songs</span>
                 </div>
                 <div style="text-align: center; min-width: 100px;">
