@@ -1,5 +1,6 @@
 
 import { AudioRatingWidget } from './audio_rating.js';
+import i18n from './i18n.js';
 
 // DEFAULT CONFIG - Updated to match backend format
 const INTERNAL_FALLBACK_STUDY_CONFIG = {
@@ -43,6 +44,10 @@ export class StudyCoordinator {
     this.localRatings = this.loadLocalRatings();
 
     this.init();
+  }
+
+  t(key, params = {}) {
+    return i18n.t(key, params);
   }
 
   async loadLocalStudyConfig() {
@@ -196,13 +201,13 @@ export class StudyCoordinator {
 
     if (!this.backendAvailable) {
         submitBtn.disabled = true;
-        submitBtn.textContent = 'Server Unavailable';
+      submitBtn.textContent = this.t('study.submit.serverUnavailable');
         return;
     }
 
     if (!this.widget) {
         submitBtn.disabled = true;
-        submitBtn.textContent = 'Loading...';
+      submitBtn.textContent = this.t('study.submit.loading');
         return;
     }
 
@@ -213,9 +218,11 @@ export class StudyCoordinator {
     if (!result.isComplete) {
         submitBtn.disabled = true;
         if (result.missingDimensions.length > 0) {
-        submitBtn.textContent = `Still to rate: ${result.missingDimensions.join(', ')}`;
+        submitBtn.textContent = this.t('study.submit.stillToRate', {
+          dimensions: result.missingDimensions.join(', ')
+        });
         } else {
-        submitBtn.textContent = 'Complete all ratings to save';
+        submitBtn.textContent = this.t('study.submit.completeAll');
         }
         return;
     }
@@ -223,10 +230,10 @@ export class StudyCoordinator {
     // Only if song is complete, check sync status
     if (this.songSyncStatus[this.currentSongIndex] === 'synced') {
         submitBtn.disabled = true;
-        submitBtn.textContent = 'Already Saved to Server';
+      submitBtn.textContent = this.t('study.submit.alreadySaved');
     } else {
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Save to Server';
+      submitBtn.textContent = this.t('study.submit.saveToServer');
     }
   }
 
@@ -238,21 +245,21 @@ export class StudyCoordinator {
         status: 'incomplete',
         icon: '○',
         color: '#ef4444',
-        label: 'Incomplete ratings'
+        label: this.t('study.syncStatus.incomplete')
       };
     } else if (this.songSyncStatus[songIndex] === 'synced') {
       return {
         status: 'saved',
         icon: '✓',
         color: '#10b981',
-        label: 'Saved to server'
+        label: this.t('study.syncStatus.saved')
       };
     } else {
       return {
         status: 'ready',
         icon: '!',
         color: '#facc15',
-        label: 'Fully rated and ready to submit'
+        label: this.t('study.syncStatus.ready')
       };
     }
   }
@@ -263,7 +270,7 @@ export class StudyCoordinator {
 
     const currentSongDescription = document.getElementById('current-song-description');
     if (this.currentSongIndex !== undefined && this.currentSongIndex < this.studyConfig.songs_to_rate.length) {
-      currentSongDescription.textContent = this.studyConfig.songs_to_rate[this.currentSongIndex].description || "No song description available.";
+      currentSongDescription.textContent = this.studyConfig.songs_to_rate[this.currentSongIndex].description || this.t('study.songDescriptionMissing');
     }
 
     this.studyConfig.songs_to_rate.forEach((song, index) => {
@@ -370,18 +377,24 @@ export class StudyCoordinator {
     for (let song_index = 0; song_index < this.studyConfig.songs_to_rate.length; song_index++) {
       const song = this.studyConfig.songs_to_rate[song_index];
       const li = document.createElement('li');
-      li.textContent = `${song.display_name}: ${song.description || 'No description available.'}`;
+      li.textContent = `${song.display_name}: ${song.description || this.t('study.songIntroDescriptionMissing')}`;
       songListIntro.appendChild(li);
 
       try {
         const songResponse = await fetch(song.media_url, { method: 'HEAD' });
         if (!songResponse.ok) {
           console.error("Song with index ", song_index, " is not accessible at URL ", song.media_url, " with status code ", songResponse.status);
-          this.showStatusMessage(`Warning: Song "${song.display_name}" is not accessible at URL "${song.media_url}". Please check the URL or try again later.`, 'warning');
+          this.showStatusMessage(this.t('study.messages.warningSongNotAccessible', {
+            song: song.display_name,
+            url: song.media_url
+          }), 'warning');
         }
       } catch (error) {
         console.error("Failed to access song with index ", song_index, " at URL ", song.media_url, " with error: ", error);
-        this.showStatusMessage(`Warning: Failed to access song "${song.display_name}" at URL "${song.media_url}". Please check the URL or your network connection.`, 'warning');
+        this.showStatusMessage(this.t('study.messages.warningSongFetchFailed', {
+          song: song.display_name,
+          url: song.media_url
+        }), 'warning');
       }
     }
 
@@ -389,7 +402,7 @@ export class StudyCoordinator {
     const ratingDimensionsListIntro = document.getElementById('rating-dimensions-list-intro');
     this.studyConfig.rating_dimensions.forEach(dim => {
       const li = document.createElement('li');
-      li.textContent = `${dim.dimension_title}: ${dim.description || 'No description available.'}`;
+      li.textContent = `${dim.dimension_title}: ${dim.description || this.t('study.songIntroDescriptionMissing')}`;
       ratingDimensionsListIntro.appendChild(li);
     });
 
@@ -400,7 +413,7 @@ export class StudyCoordinator {
     document.getElementById('study-name-welcome').textContent = this.studyConfig.name + (this.studyConfig.description ? ` - ${this.studyConfig.description}` : '');
 
     // Update the page title from "Audio Rating Study" to the specific study name for better user experience
-    document.title = `Audio Rating Study: ${this.studyConfig.name}`;
+    document.title = `${this.t('study.pageTitlePrefix')}: ${this.studyConfig.name}`;
 
     document.getElementById('total-songs').textContent = this.studyConfig.songs_to_rate.length;
 
@@ -418,6 +431,25 @@ export class StudyCoordinator {
   });
 
     this.updateBackendStatus();
+
+    window.addEventListener('i18n:languageChanged', () => {
+      this.onLanguageChanged();
+    });
+  }
+
+  onLanguageChanged() {
+    document.title = `${this.t('study.pageTitlePrefix')}: ${this.studyConfig.name}`;
+
+    if (this.currentSongIndex !== undefined && this.studyConfig?.songs_to_rate?.[this.currentSongIndex]) {
+      const songName = this.studyConfig.songs_to_rate[this.currentSongIndex].display_name;
+      const songStatusEl = document.getElementById('song-status');
+      if (songStatusEl) {
+        songStatusEl.textContent = this.t('study.songStatusCurrent', { song: songName });
+      }
+    }
+
+    this.updateBackendStatus();
+    this.updateAllUI();
   }
 
   async checkBackendAvailability() {
@@ -431,12 +463,12 @@ export class StudyCoordinator {
     this.backendChecked = true;
 
     if (!response.ok) {
-      this.showBackendError(new Error(`Backend returned ${response.status}`), response.status, 'Backend is not available, unexpected status code.');
+      this.showBackendError(new Error(`Backend returned ${response.status}`), response.status, this.t('study.errors.backendUnexpectedStatus'));
     }
   } catch (error) {
     this.backendAvailable = false;
     this.backendChecked = true;
-    this.showBackendError(error, null, "Backend is not available, request failed.");
+    this.showBackendError(error, null, this.t('study.errors.backendRequestFailed'));
   }
 }
 
@@ -495,10 +527,16 @@ async loadStudyConfigFromBackend() {
           try {
             const songResponse = await fetch(this.studyConfig.songs_to_rate[i].media_url, { method: 'HEAD' });
             if (!songResponse.ok) {
-              this.showStatusMessage(`Warning: Song "${this.studyConfig.songs_to_rate[i].display_name}" is not accessible at URL "${this.studyConfig.songs_to_rate[i].media_url}". Please check the URL or try again later.`, 'warning');
+              this.showStatusMessage(this.t('study.messages.warningSongNotAccessible', {
+                song: this.studyConfig.songs_to_rate[i].display_name,
+                url: this.studyConfig.songs_to_rate[i].media_url
+              }), 'warning');
             }
           } catch (error) {
-            this.showStatusMessage(`Warning: Failed to access song "${this.studyConfig.songs_to_rate[i].display_name}" at URL "${this.studyConfig.songs_to_rate[i].media_url}". Please check the URL or your network connection.`, 'warning');
+            this.showStatusMessage(this.t('study.messages.warningSongFetchFailed', {
+              song: this.studyConfig.songs_to_rate[i].display_name,
+              url: this.studyConfig.songs_to_rate[i].media_url
+            }), 'warning');
           }
         }
 
@@ -507,16 +545,16 @@ async loadStudyConfigFromBackend() {
         this.updateSongNavigationUI();
 
         if (ratingLoadFailed) {
-          this.showStatusMessage('We are experiencing technical difficulties, please try again later.', 'error');
+          this.showStatusMessage(this.t('study.messages.genericTechnicalDifficulties'), 'error');
         }
 
         return true;
       } else {
         console.log('Failed to load config from backend with backend status code:', response.status);
         if (response.status === 403) {
-          this.showBackendError(null, 403, "Access denied. You may not have permission to access this study and its config.");
+          this.showBackendError(null, 403, this.t('study.errors.accessDeniedConfig'));
         } else if (response.status === 404) {
-          this.showBackendError(null, 404, "The requested study config was not found on the server. It may not exist or may have been removed.");
+          this.showBackendError(null, 404, this.t('study.errors.configNotFound'));
         } else {
           this.showBackendError(new Error(`HTTP ${response.status}`), response.status);
         }
@@ -565,7 +603,7 @@ async loadStudyConfigFromBackend() {
     const song = this.studyConfig.songs_to_rate[songIndex];
 
     document.getElementById('current-song-number').textContent = songIndex + 1;
-    document.getElementById('song-status').textContent = `Currently rating: ${song.display_name}`;
+    document.getElementById('song-status').textContent = this.t('study.songStatusCurrent', { song: song.display_name });
 
     this.updateSongNavigationUI();
     this.clearStatusMessages();
@@ -615,7 +653,10 @@ async loadStudyConfigFromBackend() {
 
     } catch (error) {
       console.error('Error loading song:', error);
-      this.showStatusMessage(`Error loading song "${song.display_name}" from file "${song.media_url}". Please try again.`, 'error');
+      this.showStatusMessage(this.t('study.ratingLoadingError', {
+        song: song.display_name,
+        url: song.media_url
+      }), 'error');
     } finally {
       this.setLoading(false, true);
     }
@@ -723,13 +764,13 @@ async loadStudyConfigFromBackend() {
 
     const ratingData = this.widget.getData();
     if (Object.keys(ratingData).length === 0) {
-      this.showStatusMessage('No ratings to save. Please rate the song first.', 'error');
+      this.showStatusMessage(this.t('study.messages.noRatingsToSave'), 'error');
       return;
     }
 
     const result = this.checkRatingDataComplete(ratingData);
     if (!result.isComplete) {
-      this.showStatusMessage('Please complete all ratings before submitting.', 'error');
+      this.showStatusMessage(this.t('study.messages.completeBeforeSubmit'), 'error');
       return;
     }
 
@@ -778,11 +819,11 @@ async loadStudyConfigFromBackend() {
         this.localRatings[songKey].source = 'backend';
         this.saveLocalRatings();
 
-        this.showStatusMessage('Ratings saved to server!', 'success');
+        this.showStatusMessage(this.t('study.messages.savedToServer'), 'success');
       }
     } catch (error) {
       console.error('Failed to save ratings to backend:', error);
-      this.showStatusMessage('We are experiencing technical difficulties, please try again later.', 'error');
+      this.showStatusMessage(this.t('study.messages.genericTechnicalDifficulties'), 'error');
     } finally {
       this.setLoading(false, false);
       this.updateAllUI();
@@ -795,19 +836,19 @@ async loadStudyConfigFromBackend() {
 
   if (!this.backendChecked) {
     statusEl.className = 'backend-status connecting';
-    statusEl.textContent = 'Checking backend...';
-    if (storageEl) storageEl.textContent = 'Checking connection...';
+    statusEl.textContent = this.t('study.backendStatus.checking');
+    if (storageEl) storageEl.textContent = this.t('study.backendStatus.checkingConnection');
     return;
   }
 
   if (this.backendAvailable) {
     statusEl.className = 'backend-status online';
-    statusEl.textContent = '✓ Backend connected';
-    if (storageEl) storageEl.textContent = 'Ratings will be saved to server';
+    statusEl.textContent = this.t('study.backendStatus.connected');
+    if (storageEl) storageEl.textContent = this.t('study.backendStatus.saveToServer');
   } else {
     statusEl.className = 'backend-status offline';
-    statusEl.textContent = '⚠ Backend offline';
-    if (storageEl) storageEl.textContent = 'Ratings saved locally only';
+    statusEl.textContent = this.t('study.backendStatus.offline');
+    if (storageEl) storageEl.textContent = this.t('study.backendStatus.saveLocalOnly');
   }
 }
 
@@ -816,7 +857,7 @@ async loadStudyConfigFromBackend() {
 
     const submitBtn = document.getElementById('submit-rating');
     if (submitBtn) {
-      submitBtn.textContent = 'Save Locally';
+      submitBtn.textContent = this.t('study.submit.saveLocally');
     }
   }
 
@@ -837,8 +878,8 @@ async loadStudyConfigFromBackend() {
 
     if (submitBtn) {
       submitBtn.disabled = loading;
-      submitBtn.textContent = loading ? 'Saving...' :
-        (this.backendAvailable ? 'Save to Server' : 'Save Locally');
+      submitBtn.textContent = loading ? this.t('study.submit.saving') :
+        (this.backendAvailable ? this.t('study.submit.saveToServer') : this.t('study.submit.saveLocally'));
     }
 
     if (loadingOverlay) {
@@ -873,12 +914,12 @@ async loadStudyConfigFromBackend() {
 
   if (allSaved) {
     submitStudyBtn.disabled = false;
-    submitStudyBtn.textContent = 'Submit Study';
-    statusEl.textContent = 'All songs saved! Ready to submit study.';
+    submitStudyBtn.textContent = this.t('study.submitStudy');
+    statusEl.textContent = this.t('study.studyStatus.allSaved');
     statusEl.className = 'study-complete-message';
   } else {
     submitStudyBtn.disabled = true;
-    submitStudyBtn.textContent = 'Submit Study';
+    submitStudyBtn.textContent = this.t('study.submitStudy');
 
     // Count how many songs are saved
     let savedCount = 0;
@@ -889,7 +930,10 @@ async loadStudyConfigFromBackend() {
       if (this.songSyncStatus[i] === 'synced') savedCount++;
     }
 
-    statusEl.textContent = `${savedCount} of ${this.studyConfig.songs_to_rate.length} songs saved to server`;
+    statusEl.textContent = this.t('study.studyStatus.savedCount', {
+      saved: savedCount,
+      total: this.studyConfig.songs_to_rate.length
+    });
     statusEl.className = 'study-incomplete-message';
   }
 }
@@ -899,10 +943,7 @@ async loadStudyConfigFromBackend() {
     const hasLocalData = Object.keys(this.localRatings).length > 0;
 
     if (!this.backendAvailable && hasLocalData) {
-      document.getElementById('completion-message').innerHTML = `
-        You have completed all songs in this study.<br>
-        <strong>Important:</strong> Your ratings are saved locally only.
-      `;
+      document.getElementById('completion-message').innerHTML = this.t('study.offlineCompletion');
       document.getElementById('download-section').style.display = 'block';
     }
 
@@ -986,18 +1027,19 @@ showUserMessage(message, type = 'info', duration = 5000) {
   }
 }
 
-disableBeginStudyButton(reason = 'Study cannot be started') {
+disableBeginStudyButton(reason = null) {
+  const resolvedReason = reason || this.t('study.errors.beginStudyDisabled');
   const beginBtn = document.getElementById('begin-study');
   if (!beginBtn) return;
 
   beginBtn.disabled = true;
-  beginBtn.textContent = reason;
+  beginBtn.textContent = resolvedReason;
   beginBtn.style.opacity = '0.6';
   beginBtn.style.cursor = 'not-allowed';
 
   // Store the original state so we can restore it if needed
   if (!beginBtn.dataset.originalText) {
-    beginBtn.dataset.originalText = 'Begin Study';
+    beginBtn.dataset.originalText = this.t('study.beginButton');
   }
 }
 
@@ -1021,21 +1063,21 @@ clearUserMessages(type = null) {
 showBackendError(error, statusCode = null, ui_message = null) {
   let message;
   let shouldDisableStudy = false;
-  let disableReason = 'Study cannot be started';
+  let disableReason = this.t('study.errors.beginStudyDisabled');
 
   if (statusCode === 403) {
-    message = ui_message || 'Access denied. You may not have permission to acces this information.';
+    message = ui_message || this.t('study.errors.backend403');
     shouldDisableStudy = true;
   } else if (statusCode === 404) {
-    message = ui_message || 'Element not found. Could not find the requested resource on the server.';
+    message = ui_message || this.t('study.errors.backend404');
     shouldDisableStudy = true;
   } else if (statusCode === 500) {
-    message = ui_message || "Backend application error. The server encountered an error while processing your request.";
+    message = ui_message || this.t('study.errors.backend500');
     shouldDisableStudy = true;
   } else if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-    message = ui_message || 'Backend error or backend not available. You can only save ratings locally for debug purposes, but they will not be saved to the server.';
+    message = ui_message || this.t('study.errors.backendFetch');
   } else {
-    message = ui_message || 'Unspecified backend error. You can only save ratings locally for debug purposes, but they will not be saved to the server.';
+    message = ui_message || this.t('study.errors.backendUnknown');
   }
 
   this.showUserMessage(message, 'error');

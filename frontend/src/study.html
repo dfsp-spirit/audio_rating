@@ -13,6 +13,30 @@
       margin-left: auto;
       margin-right: auto;
     }
+    .top-controls {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .language-switcher {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85em;
+      color: #475569;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 4px 8px;
+    }
+    .language-switcher select {
+      font-size: 0.9em;
+      padding: 2px 4px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      background: white;
+    }
     .arw-dimension-description {
     margin: 2px 0 12px 0;
     padding: 6px;
@@ -354,11 +378,11 @@
 </head>
 <body>
   <div id="instructions-banner" class="hidden">
-    Usage Instructions Reminder: Select a song and dimension to rate. Start by listening to the song. You can navigate in the audio and listen to individual sections as needed. Then double-click on the timeline to split the audio into segments you want to rate. For each segment, drag the rating line up or down to assign a rating. You can submit the study once you have rated all dimensions for all songs.
-    <button id="instructions-banner-close" aria-label="Close instructions banner" title="Close">&#x2715;</button>
+    <span data-i18n="study.instructionsBanner">Usage Instructions Reminder: Select a song and dimension to rate. Start by listening to the song. You can navigate in the audio and listen to individual sections as needed. Then double-click on the timeline to split the audio into segments you want to rate. For each segment, drag the rating line up or down to assign a rating. You can submit the study once you have rated all dimensions for all songs.</span>
+    <button id="instructions-banner-close" data-i18n-aria-label="common.close" data-i18n-title="common.close" aria-label="Close instructions banner" title="Close">&#x2715;</button>
   </div>
   <div id="user-messages"></div>
-  <div id="backend-status" class="backend-status connecting">Checking backend...</div>
+  <div id="backend-status" class="backend-status connecting" data-i18n="study.backendStatus.checking">Checking backend...</div>
   <script>
     document.getElementById('instructions-banner-close').addEventListener('click', function() {
       var banner = document.getElementById('instructions-banner');
@@ -367,6 +391,16 @@
       document.body.classList.remove('banner-visible');
     });
   </script>
+
+  <div class="top-controls">
+    <div class="language-switcher">
+      <label for="language-select" data-i18n="common.languageLabel">Language</label>
+      <select id="language-select" aria-label="Language selector">
+        <option value="en" data-i18n="common.languageOptionEnglish">English</option>
+        <option value="de" data-i18n="common.languageOptionGerman">Deutsch</option>
+      </select>
+    </div>
+  </div>
 
   <div id="study-container">
     <!-- Instructions Phase -->
@@ -388,15 +422,15 @@
         <h3>Usage Instructions</h3>
         <p>For each song:</p>
         <ul>
-          <li>Listen to the audio and rate it as you go</li>
-          <li>Split the song into segments by double-clicking on the waveform</li>
-          <li>Drag vertically within segments to adjust ratings</li>
-          <li>Drag segment boundaries horizontally to adjust timing</li>
-          <li>Right-click boundaries to delete them</li>
+          <li data-i18n="study.usageList.listen">Listen to the audio and rate it as you go</li>
+          <li data-i18n="study.usageList.split">Split the song into segments by double-clicking on the waveform</li>
+          <li data-i18n="study.usageList.dragValues">Drag vertically within segments to adjust ratings</li>
+          <li data-i18n="study.usageList.dragBoundaries">Drag segment boundaries horizontally to adjust timing</li>
+          <li data-i18n="study.usageList.deleteBoundaries">Right-click boundaries to delete them</li>
         </ul>
-        <p>Click "Begin Study" when you're ready to start.</p>
+        <p data-i18n="study.beginHint">Click "Begin Study" when you're ready to start.</p>
       </div>
-      <button id="begin-study" class="primary">Begin Study</button>
+      <button id="begin-study" class="primary" data-i18n="study.beginButton">Begin Study</button>
     </div>
 
     <!-- Rating Phase -->
@@ -407,17 +441,17 @@
       </div>
 
       <div class="song-navigation">
-        <h4>Select a song:</h4>
+        <h4 data-i18n="study.selectSong">Select a song:</h4>
         <div id="song-list"></div>
         <div id="current-song-description"></div>
       </div>
 
 
   <div style="margin: 15px 0; text-align: center; padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
-    <button id="submit-study" class="primary" disabled style="padding: 12px 24px; font-size: 1.1em;">
+    <button id="submit-study" class="primary" disabled style="padding: 12px 24px; font-size: 1.1em;" data-i18n="study.submitStudy">
       Submit Study
     </button>
-    <div id="study-completion-status" style="font-size: 0.9em; color: #666; margin-top: 8px;">
+    <div id="study-completion-status" style="font-size: 0.9em; color: #666; margin-top: 8px;" data-i18n="study.completionInitial">
       Complete and save all songs to submit study
     </div>
   </div>
@@ -426,25 +460,25 @@
 
 
       <div style="margin-top: 20px; text-align: center;">
-        <button id="submit-rating" class="primary">Save Rating</button>
+        <button id="submit-rating" class="primary" data-i18n="study.saveRating">Save Rating</button>
       </div>
       <div id="storage-status" style="margin-top: 10px; font-size: 0.9em; color: #666;"></div>
 
       <div id="status-messages" style="margin-top: 10px;"></div>
-      <div class="loading-shade" id="loading-overlay">Loading...</div>
+      <div class="loading-shade" id="loading-overlay" data-i18n="common.loading">Loading...</div>
     </div>
 
     <!-- Completion Phase -->
     <div id="completion-phase" class="study-phase">
       <div class="thank-you">
-        <h2>Ratings submitted -- Thank You!</h2>
-        <p>Thanks for participating in our study <span id="study-name-thanks"></span>!</p>
+        <h2 data-i18n="study.completionTitle">Ratings submitted -- Thank You!</h2>
+        <p><span data-i18n="study.thanksPrefix">Thanks for participating in our study</span> <span id="study-name-thanks"></span>!</p>
         <p id="completion-message">You have completely rated all <span id="song-count-thanks"></span> songs in this study on <span id="rating-dimensions-count-thanks">several</span> dimensions.</p>
         <br />
-        <h3>Your results have been saved. You can now close this browser tab.</h3>
+        <h3 data-i18n="study.resultsSaved">Your results have been saved. You can now close this browser tab.</h3>
         <div id="download-section"> <!-- Not used and set to display none currently -->
-          <button id="download-data" class="primary">Download All Ratings</button>
-          <p style="font-size: 0.9em; margin-top: 10px;">Save this file to preserve your ratings.</p>
+          <button id="download-data" class="primary" data-i18n="study.downloadAllRatings">Download All Ratings</button>
+          <p style="font-size: 0.9em; margin-top: 10px;" data-i18n="study.saveFileHint">Save this file to preserve your ratings.</p>
         </div>
       </div>
     </div>
@@ -452,9 +486,38 @@
 
   <script src="./settings/ar_settings.js"></script>
   <script type="module">
-    import { AudioRatingWidget } from './audio_rating.js';
+    import i18n from './i18n.js';
     import { StudyCoordinator } from './study_coordinator.js';
 
+    const languageSelect = document.getElementById('language-select');
+
+    const syncLanguageSelector = () => {
+      if (languageSelect) {
+        languageSelect.value = i18n.currentLanguage || 'en';
+      }
+    };
+
+    try {
+      await i18n.init();
+      i18n.applyTranslations();
+      syncLanguageSelector();
+    } catch (error) {
+      console.error('Failed to initialize i18n:', error);
+    }
+
+    if (languageSelect) {
+      languageSelect.addEventListener('change', async (event) => {
+        console.log('[i18n] Language dropdown changed:', event.target.value);
+        await i18n.setLanguage(event.target.value);
+        console.log('[i18n] Language applied:', i18n.currentLanguage);
+      });
+    }
+
+    window.addEventListener('i18n:languageChanged', (event) => {
+      console.log('[i18n] languageChanged event:', event.detail?.language);
+      syncLanguageSelector();
+      i18n.applyTranslations();
+    });
 
 
     // Initialize study when page loads
