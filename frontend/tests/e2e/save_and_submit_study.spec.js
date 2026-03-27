@@ -46,7 +46,7 @@ async function rateAllDimensions(page, overlay) {
   const dimensionsToRate = ['valence', 'arousal', 'enjoyment', 'is_cool'];
 
   for (const dimName of dimensionsToRate) {
-    await page.locator('.arw-dimension-buttons button', { hasText: dimName }).click();
+    await page.locator(`.arw-dimension-buttons button[data-dim="${dimName}"]`).click();
 
     await splitAtRatio(overlay, 0.50);
 
@@ -59,7 +59,7 @@ async function rateAllDimensions(page, overlay) {
 
 test('save ratings for both songs and submit study', async ({ page }) => {
   const uid = `pw_submit_study_${Date.now()}`;
-  await page.goto(`http://localhost:3000/rate/study.html?study_name=default&uid=${uid}`);
+  await page.goto(`http://localhost:3000/rate/study.html?study_name=default&uid=${uid}&lang=en`);
 
   await page.locator('#begin-study').click();
   await expect(page.locator('#rating-phase')).toHaveClass(/active/);
@@ -118,14 +118,14 @@ test('save ratings for both songs and submit study', async ({ page }) => {
   // Verify submit study button state
   const submitStudyButton = page.locator('#submit-study');
   const completionStatus = page.locator('#study-completion-status');
-  
+
   // Log the current completion status for debugging
   const statusText = await completionStatus.textContent();
   console.log('Study completion status:', statusText);
 
   // Try to submit the study if button is enabled (backend connected and all songs synced)
   const isSubmitEnabled = await submitStudyButton.isEnabled();
-  
+
   if (isSubmitEnabled) {
     console.log('Submit button is enabled, attempting to submit study');
     await submitStudyButton.click();

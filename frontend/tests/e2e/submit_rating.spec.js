@@ -44,7 +44,7 @@ async function splitAtRatio(overlayLocator, xRatio) {
 
 test('submit rating after editing all dimensions', async ({ page }) => {
   const uid = `pw_submit_rating_${Date.now()}`;
-  await page.goto(`http://localhost:3000/rate/study.html?study_name=default&uid=${uid}`);
+  await page.goto(`http://localhost:3000/rate/study.html?study_name=default&uid=${uid}&lang=en`);
 
   await page.locator('#begin-study').click();
   await expect(page.locator('#rating-phase')).toHaveClass(/active/);
@@ -54,12 +54,13 @@ test('submit rating after editing all dimensions', async ({ page }) => {
   await expect(songButtons.nth(0)).toHaveText('1. Demo Song');
 
   const dimButtons = page.locator('.arw-dimension-buttons button');
-  await expect(dimButtons.nth(0)).toHaveText('valence');
+  await expect(dimButtons.nth(0)).toHaveAttribute('data-dim', 'valence');
+  await expect(dimButtons.nth(0)).toHaveText('Valence');
   await expect(dimButtons.nth(0)).toHaveClass(/active/);
 
   const submitRatingButton = page.locator('#submit-rating');
   await expect(submitRatingButton).toBeDisabled();
-  await expect(submitRatingButton).toHaveText('Rate: valence, arousal, enjoyment, is_cool');
+  await expect(submitRatingButton).toHaveText('Still to rate: Valence, Arousal, Enjoyment, Is Cool');
 
   const overlay = page.locator('.arw-overlay');
   await expect(overlay).toBeVisible();
@@ -74,12 +75,12 @@ test('submit rating after editing all dimensions', async ({ page }) => {
   await dragSegmentToValue(page, overlay, 0.50, 2);
   await dragSegmentToValue(page, overlay, 0.84, 8);
 
-  await expect(submitRatingButton).toHaveText('Rate: arousal, enjoyment, is_cool');
+  await expect(submitRatingButton).toHaveText('Still to rate: Arousal, Enjoyment, Is Cool');
   await expect(submitRatingButton).toBeDisabled();
 
   const dimensionsToFinish = ['arousal', 'enjoyment', 'is_cool'];
   for (const dimName of dimensionsToFinish) {
-    await page.locator('.arw-dimension-buttons button', { hasText: dimName }).click();
+    await page.locator(`.arw-dimension-buttons button[data-dim="${dimName}"]`).click();
 
     await splitAtRatio(overlay, 0.50);
 
