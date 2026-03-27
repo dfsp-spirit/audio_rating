@@ -448,6 +448,22 @@ export class StudyCoordinator {
     document.getElementById('rating-dimensions-count').textContent = this.studyConfig.rating_dimensions.length; // in introduction phase
     document.getElementById('rating-dimensions-count-thanks').textContent = this.studyConfig.rating_dimensions.length; // in thanks phase
 
+    const ratePromptEl = document.getElementById('study-rate-prompt');
+    if (ratePromptEl) {
+      ratePromptEl.textContent = this.t('study.ratePrompt', {
+        songs: this.studyConfig.songs_to_rate.length,
+        dimensions: this.studyConfig.rating_dimensions.length
+      });
+    }
+
+    const completionMessageEl = document.getElementById('completion-message');
+    if (completionMessageEl) {
+      completionMessageEl.textContent = this.t('study.completionMessage', {
+        songs: this.studyConfig.songs_to_rate.length,
+        dimensions: this.studyConfig.rating_dimensions.length
+      });
+    }
+
     // Fill song-list-intro and rating-dimensions-list-intro in introduction phase
     const songListIntro = document.getElementById('song-list-intro');
     for (let song_index = 0; song_index < this.studyConfig.songs_to_rate.length; song_index++) {
@@ -522,6 +538,22 @@ export class StudyCoordinator {
     document.getElementById('study-name-title').textContent = this.studyConfig.name;
     document.getElementById('study-name-thanks').textContent = this.studyConfig.name;
     document.getElementById('study-name-welcome').textContent = this.studyConfig.name + (this.studyConfig.description ? ` - ${this.studyConfig.description}` : '');
+
+    const ratePromptEl = document.getElementById('study-rate-prompt');
+    if (ratePromptEl) {
+      ratePromptEl.textContent = this.t('study.ratePrompt', {
+        songs: this.studyConfig.songs_to_rate.length,
+        dimensions: this.studyConfig.rating_dimensions.length
+      });
+    }
+
+    const completionMessageEl = document.getElementById('completion-message');
+    if (completionMessageEl) {
+      completionMessageEl.textContent = this.t('study.completionMessage', {
+        songs: this.studyConfig.songs_to_rate.length,
+        dimensions: this.studyConfig.rating_dimensions.length
+      });
+    }
 
     const songListIntro = document.getElementById('song-list-intro');
     if (songListIntro) {

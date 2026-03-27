@@ -3,6 +3,7 @@
 // Uses WaveSurfer 7 via dynamic import (cached per session) for convenience.
 
 import TimelinePlugin from './timeline.esm.js';
+import i18n from './i18n.js';
 
 export class AudioRatingWidget {
   static _WaveSurfer = null;
@@ -86,6 +87,10 @@ export class AudioRatingWidget {
     this._listeners = {
       'change': []  // Single 'change' event for any modification
     };
+  }
+
+  t(key, params = {}) {
+    return i18n.t(key, params);
   }
 
   setDimensions(rating_dimensions) {
@@ -189,12 +194,12 @@ export class AudioRatingWidget {
     // Create the main HTML structure in one go
     root.innerHTML = `
     ${titleHtml}
-    ${this.with_instructions ? '<div class="arw-info"><span class="arw-dimensions-manual">Select the dimension to rate:</span></div>' : ''}
+    ${this.with_instructions ? `<div class="arw-info"><span class="arw-dimensions-manual">${this.t('widget.selectDimension')}</span></div>` : ''}
 
     <div class="arw-dimension-buttons"></div>
     <div class="arw-dimension-description"></div>
 
-    ${this.with_instructions ? '<div class="arw-info"><span class="arw-ratings-manual">Rating Controls: Please split the audio into segments and rate each segment. Double-click on the waveform to split a segment. Drag inside a segment vertically to change its rating. Drag segment boundaries horizontally to move them. Right-click a segment boundary to delete it.</span></div>' : ''}
+    ${this.with_instructions ? `<div class="arw-info"><span class="arw-ratings-manual">${this.t('widget.ratingControls')}</span></div>` : ''}
 
     <div class="arw-container">
         <div class="arw-waveform"></div>
@@ -206,16 +211,16 @@ export class AudioRatingWidget {
         ${this.show_download_button ? '' : '<style>.arw-export { display: none; }</style>'}
 
         ${this.with_step_labels_legend ?
-        '<label>Step levels: <strong class="arw-steps-label"></strong></label><div class="arw-legend"></div>' : ''}
-        <button class="arw-export">Download CSV</button>
+        `<label><span class="arw-step-levels-label">${this.t('widget.stepLevels')}</span> <strong class="arw-steps-label"></strong></label><div class="arw-legend"></div>` : ''}
+        <button class="arw-export">${this.t('widget.downloadCsv')}</button>
     </div>
 
-    ${this.with_instructions ? '<div class="arw-info"><span class="arw-audio-manual">Audio Controls: Click the buttons below or press the space key to toggle Play/Pause. Click or drag the slider below to seek.</span></div>' : ''}
+      ${this.with_instructions ? `<div class="arw-info"><span class="arw-audio-manual">${this.t('widget.audioControls')}</span></div>` : ''}
 
     <div class="arw-zoom-controls">
-        <button class="arw-zoom-in" type="button">Zoom +</button>
-        <button class="arw-zoom-out" type="button">Zoom −</button>
-        <button class="arw-zoom-reset" type="button">Reset Zoom</button>
+        <button class="arw-zoom-in" type="button">${this.t('widget.zoomIn')}</button>
+        <button class="arw-zoom-out" type="button">${this.t('widget.zoomOut')}</button>
+        <button class="arw-zoom-reset" type="button">${this.t('widget.zoomReset')}</button>
     </div>
 
     <div class="arw-slider">
@@ -223,18 +228,18 @@ export class AudioRatingWidget {
     </div>
 
     <div class="arw-audio-controls">
-        <button class="arw-play">Play</button>
-        <button class="arw-stop">Stop</button>
+      <button class="arw-play">${this.t('widget.play')}</button>
+      <button class="arw-stop">${this.t('widget.stop')}</button>
         ${this.with_volume_slider ? `
         <div class="arw-volume-control">
-            <label>Volume: </label>
+        <label class="arw-volume-label">${this.t('widget.volume')} </label>
             <input type="range" class="arw-volume-slider" min="0" max="1" step="0.01" value="1">
         </div>
         ` : ''}
     </div>
 
     <div class="arw-info">
-        <span class="arw-status">Loading...</span>
+      <span class="arw-status">${this.t('widget.statusLoading')}</span>
     </div>
     `;
 
@@ -389,12 +394,12 @@ _updateDimensionDescription() {
     });
 
     this.wavesurfer.on('finish', () => {
-      this.playBtn.textContent = 'Play';
+      this.playBtn.textContent = this.t('widget.play');
     });
 
     // Button state driven by real events
-    this.wavesurfer.on('play', () => { this.playBtn.textContent = 'Pause'; });
-    this.wavesurfer.on('pause', () => { this.playBtn.textContent = 'Play'; });
+    this.wavesurfer.on('play', () => { this.playBtn.textContent = this.t('widget.pause'); });
+    this.wavesurfer.on('pause', () => { this.playBtn.textContent = this.t('widget.play'); });
 
     // Update current time during playback
     this.wavesurfer.on('timeupdate', () => {
@@ -415,7 +420,10 @@ _updateDimensionDescription() {
     if (this.wavesurfer && this.wavesurfer.isReady) {
         const duration = this.wavesurfer.getDuration();
         const currentTime = this.wavesurfer.getCurrentTime();
-        this.statusEl.textContent = `Current: ${currentTime.toFixed(2)}s / Total: ${duration.toFixed(2)}s`;
+        this.statusEl.textContent = this.t('widget.statusCurrent', {
+          current: currentTime.toFixed(2),
+          total: duration.toFixed(2)
+        });
     } else {
         this.statusEl.textContent = '';
     }
@@ -428,7 +436,14 @@ _updateDimensionDescription() {
 
     // Play / Stop buttons
     this.playBtn.addEventListener('click', () => { this.wavesurfer.playPause(); });
-    this.stopBtn.addEventListener('click', () => { this.wavesurfer.stop(); this.playBtn.textContent = 'Play'; });
+    this.stopBtn.addEventListener('click', () => { this.wavesurfer.stop(); this.playBtn.textContent = this.t('widget.play'); });
+
+    this._onLanguageChanged = () => {
+      this._applyI18nTexts();
+      this._updateLegend();
+      this._updateStatus();
+    };
+    window.addEventListener('i18n:languageChanged', this._onLanguageChanged);
 
     // Spacebar handling (only when widget (root) is focused)
     this._onKeyDown = (ev) => {
@@ -586,7 +601,46 @@ _xToTime(x) {
   }
 
   if (this.stepsLabel) {
-    this.stepsLabel.textContent = `${num_values} steps (${min_value} to ${max_value})`;
+    this.stepsLabel.textContent = this.t('widget.stepsCount', {
+      count: num_values,
+      min: min_value,
+      max: max_value
+    });
+  }
+}
+
+_applyI18nTexts() {
+  const root = this.root;
+  if (!root) return;
+
+  const dimensionsManual = root.querySelector('.arw-dimensions-manual');
+  if (dimensionsManual) dimensionsManual.textContent = this.t('widget.selectDimension');
+
+  const ratingsManual = root.querySelector('.arw-ratings-manual');
+  if (ratingsManual) ratingsManual.textContent = this.t('widget.ratingControls');
+
+  const stepLevelsLabel = root.querySelector('.arw-step-levels-label');
+  if (stepLevelsLabel) stepLevelsLabel.textContent = this.t('widget.stepLevels');
+
+  const exportBtn = root.querySelector('.arw-export');
+  if (exportBtn) exportBtn.textContent = this.t('widget.downloadCsv');
+
+  const audioManual = root.querySelector('.arw-audio-manual');
+  if (audioManual) audioManual.textContent = this.t('widget.audioControls');
+
+  if (this.zoomInBtn) this.zoomInBtn.textContent = this.t('widget.zoomIn');
+  if (this.zoomOutBtn) this.zoomOutBtn.textContent = this.t('widget.zoomOut');
+  if (this.zoomResetBtn) this.zoomResetBtn.textContent = this.t('widget.zoomReset');
+
+  const volumeLabel = root.querySelector('.arw-volume-label');
+  if (volumeLabel) volumeLabel.textContent = `${this.t('widget.volume')} `;
+
+  if (this.stopBtn) this.stopBtn.textContent = this.t('widget.stop');
+
+  if (this.playBtn) {
+    this.playBtn.textContent = this.wavesurfer && this.wavesurfer.isPlaying()
+      ? this.t('widget.pause')
+      : this.t('widget.play');
   }
 }
 
@@ -991,6 +1045,10 @@ destroy() {
     // Clean up listeners and RAF
     window.removeEventListener('resize', this._onResize);
     window.removeEventListener('keydown', this._onKeyDown);
+    if (this._onLanguageChanged) {
+      window.removeEventListener('i18n:languageChanged', this._onLanguageChanged);
+      this._onLanguageChanged = null;
+    }
     this._stopRenderLoop();
 
     // Destroy WaveSurfer
