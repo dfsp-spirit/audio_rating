@@ -72,6 +72,25 @@ class I18n {
     document.documentElement.lang = language;
   }
 
+  setRuntimeTranslation(keyPath, value, container = null) {
+    const keys = keyPath.split('.');
+    let target = this.translations;
+
+    for (let i = 0; i < keys.length - 1; i++) {
+      const key = keys[i];
+      if (!target[key] || typeof target[key] !== 'object') {
+        target[key] = {};
+      }
+      target = target[key];
+    }
+
+    target[keys[keys.length - 1]] = value;
+
+    if (container) {
+      this.applyTranslations(container);
+    }
+  }
+
   t(keyPath, params = {}) {
     if (!this.isLoaded) {
       return keyPath;

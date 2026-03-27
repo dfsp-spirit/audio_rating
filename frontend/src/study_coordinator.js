@@ -106,6 +106,24 @@ export class StudyCoordinator {
     return dim?.display_name || dimensionTitle;
   }
 
+  updateDynamicStudyTranslations() {
+    const customInstructions = this.studyConfig?.custom_text_instructions || '';
+    const customThankYou = this.studyConfig?.custom_text_thank_you || '';
+
+    i18n.setRuntimeTranslation('study.dynamic.customTextInstructions', customInstructions);
+    i18n.setRuntimeTranslation('study.dynamic.customTextThankYou', customThankYou);
+
+    const customInstructionsEl = document.getElementById('custom-study-instructions');
+    if (customInstructionsEl) {
+      customInstructionsEl.style.display = customInstructions ? 'block' : 'none';
+    }
+
+    const customThankYouEl = document.getElementById('custom-thank-you-text');
+    if (customThankYouEl) {
+      customThankYouEl.style.display = customThankYou ? 'block' : 'none';
+    }
+  }
+
   async loadLocalStudyConfig() {
     const study_config_file = './settings/studies_config.json'
     try {
@@ -472,28 +490,8 @@ export class StudyCoordinator {
 
     // Update the page title from "Audio Rating Study" to the specific study name for better user experience
     document.title = `${this.t('study.pageTitlePrefix')}: ${this.studyConfig.name}`;
-
-    const customInstructionsEl = document.getElementById('custom-study-instructions');
-    if (customInstructionsEl) {
-      if (this.studyConfig.custom_text_instructions) {
-        customInstructionsEl.textContent = this.studyConfig.custom_text_instructions;
-        customInstructionsEl.style.display = 'block';
-      } else {
-        customInstructionsEl.textContent = '';
-        customInstructionsEl.style.display = 'none';
-      }
-    }
-
-    const customThankYouEl = document.getElementById('custom-thank-you-text');
-    if (customThankYouEl) {
-      if (this.studyConfig.custom_text_thank_you) {
-        customThankYouEl.textContent = this.studyConfig.custom_text_thank_you;
-        customThankYouEl.style.display = 'block';
-      } else {
-        customThankYouEl.textContent = '';
-        customThankYouEl.style.display = 'none';
-      }
-    }
+    this.updateDynamicStudyTranslations();
+    i18n.applyTranslations(document);
 
     document.getElementById('total-songs').textContent = this.studyConfig.songs_to_rate.length;
 
@@ -545,28 +543,8 @@ export class StudyCoordinator {
         ratingDimensionsListIntro.appendChild(li);
       });
     }
-
-    const customInstructionsEl = document.getElementById('custom-study-instructions');
-    if (customInstructionsEl) {
-      if (this.studyConfig.custom_text_instructions) {
-        customInstructionsEl.textContent = this.studyConfig.custom_text_instructions;
-        customInstructionsEl.style.display = 'block';
-      } else {
-        customInstructionsEl.textContent = '';
-        customInstructionsEl.style.display = 'none';
-      }
-    }
-
-    const customThankYouEl = document.getElementById('custom-thank-you-text');
-    if (customThankYouEl) {
-      if (this.studyConfig.custom_text_thank_you) {
-        customThankYouEl.textContent = this.studyConfig.custom_text_thank_you;
-        customThankYouEl.style.display = 'block';
-      } else {
-        customThankYouEl.textContent = '';
-        customThankYouEl.style.display = 'none';
-      }
-    }
+    this.updateDynamicStudyTranslations();
+    i18n.applyTranslations(document);
 
     if (this.currentSongIndex !== undefined && this.studyConfig?.songs_to_rate?.[this.currentSongIndex]) {
       const songName = this.studyConfig.songs_to_rate[this.currentSongIndex].display_name;
