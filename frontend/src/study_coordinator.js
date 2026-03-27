@@ -527,11 +527,13 @@ export class StudyCoordinator {
     this.updateBackendStatus();
 
     window.addEventListener('i18n:languageChanged', () => {
-      this.onLanguageChanged();
+      this.onLanguageChanged().catch((error) => {
+        console.error('Failed to refresh study UI after language change:', error);
+      });
     });
   }
 
-  onLanguageChanged() {
+  async onLanguageChanged() {
     this.studyConfig = this.localizeStudyConfig(this.rawStudyConfig);
 
     document.title = `${this.t('study.pageTitlePrefix')}: ${this.studyConfig.name}`;
@@ -588,6 +590,17 @@ export class StudyCoordinator {
 
     this.updateBackendStatus();
     this.updateAllUI();
+
+    // If rating widget is currently active, reload current song so widget title/
+    // dimension display names/descriptions switch language as well.
+    if (this.widget && this.showingPhase('rating-phase')) {
+      await this.loadSong(this.currentSongIndex);
+    }
+  }
+
+  showingPhase(phaseId) {
+    const phaseEl = document.getElementById(phaseId);
+    return Boolean(phaseEl && phaseEl.classList.contains('active'));
   }
 
   async checkBackendAvailability() {
