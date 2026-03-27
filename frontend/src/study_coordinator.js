@@ -37,6 +37,7 @@ export class StudyCoordinator {
     this.isLoading = false;
     this.backendAvailable = false;
     this.backendChecked = false;
+    this.isLikelyMobileDevice = this.detectLikelyMobileDevice();
 
     // Track which songs are synced with server
     this.songSyncStatus = {}; // 'unsaved', 'synced', or 'modified'
@@ -524,6 +525,7 @@ export class StudyCoordinator {
     }
   });
 
+    this.showPhase('instructions-phase');
     this.updateBackendStatus();
 
     window.addEventListener('i18n:languageChanged', () => {
@@ -601,6 +603,19 @@ export class StudyCoordinator {
   showingPhase(phaseId) {
     const phaseEl = document.getElementById(phaseId);
     return Boolean(phaseEl && phaseEl.classList.contains('active'));
+  }
+
+  detectLikelyMobileDevice() {
+    const userAgent = navigator.userAgent || '';
+    const userAgentMatchesMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(userAgent);
+    const userAgentDataMatchesMobile = Boolean(navigator.userAgentData && navigator.userAgentData.mobile);
+
+    const hasCoarsePointer = Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    const hasTouch = (navigator.maxTouchPoints || 0) > 1 || ('ontouchstart' in window);
+    const minViewportEdge = Math.min(window.screen?.width || window.innerWidth, window.screen?.height || window.innerHeight);
+    const smallViewport = minViewportEdge <= 820;
+
+    return userAgentDataMatchesMobile || userAgentMatchesMobile || (hasCoarsePointer && hasTouch && smallViewport);
   }
 
   async checkBackendAvailability() {
@@ -1124,17 +1139,27 @@ async loadStudyConfigFromBackend() {
 
     document.getElementById(phaseId).classList.add('active');
 
-    // Show instructions banner only during rating phase, unless user dismissed it
-    const banner = document.getElementById('instructions-banner');
-    if (banner) {
-      if (phaseId === 'rating-phase' && !banner.dataset.userDismissed) {
-        banner.classList.remove('hidden');
-        document.body.classList.add('banner-visible');
-      } else {
-        banner.classList.add('hidden');
-        document.body.classList.remove('banner-visible');
-      }
+    const instructionsBanner = document.getElementById('instructions-banner');
+    const mobileWarningBanner = document.getElementById('mobile-warning-banner');
+
+    let hasVisibleTopBanner = false;
+
+    if (instructionsBanner) {
+      const showInstructionsBanner = phaseId === 'rating-phase' && !instructionsBanner.dataset.userDismissed;
+      instructionsBanner.classList.toggle('hidden', !showInstructionsBanner);
+      hasVisibleTopBanner = hasVisibleTopBanner || showInstructionsBanner;
     }
+
+    if (mobileWarningBanner) {
+      const showMobileBanner =
+        phaseId === 'instructions-phase'
+        && this.isLikelyMobileDevice
+        && !mobileWarningBanner.dataset.userDismissed;
+      mobileWarningBanner.classList.toggle('hidden', !showMobileBanner);
+      hasVisibleTopBanner = hasVisibleTopBanner || showMobileBanner;
+    }
+
+    document.body.classList.toggle('top-banner-visible', hasVisibleTopBanner);
   }
 
 

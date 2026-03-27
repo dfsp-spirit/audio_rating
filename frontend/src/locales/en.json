@@ -14,6 +14,7 @@
 	},
 	"study": {
 		"pageTitlePrefix": "Audio Rating Study",
+		"mobileWarningBanner": "It looks like you are using a mobile device. We strongly recommend completing this study on a desktop or laptop computer, using headphones, in a quiet environment with enough uninterrupted time to focus.",
 		"instructionsBanner": "Usage Instructions Reminder: Select a song and dimension to rate. Start by listening to the song. You can navigate in the audio and listen to individual sections as needed. Then double-click on the timeline to split the audio into segments you want to rate. For each segment, drag the rating line up or down to assign a rating. You can submit the study once you have rated all dimensions for all songs.",
 		"backendStatus": {
 			"checking": "Checking backend...",

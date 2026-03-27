@@ -14,6 +14,7 @@
 	},
 	"study": {
 		"pageTitlePrefix": "Audio-Bewertungsstudie",
+		"mobileWarningBanner": "Es sieht so aus, als würden Sie ein mobiles Gerät verwenden. Wir empfehlen dringend, diese Studie an einem Desktop- oder Laptop-Computer mit Kopfhörern in einer ruhigen Umgebung und mit ausreichend ununterbrochener Zeit zur Konzentration durchzuführen.",
 		"instructionsBanner": "Kurze Nutzungserinnerung: Wählen Sie ein Lied und eine Bewertungsdimension aus. Hören Sie sich das Lied zunächst an. Sie können im Audio navigieren und einzelne Abschnitte bei Bedarf erneut anhören. Doppelklicken Sie dann auf die Zeitleiste, um das Audio in Abschnitte zu unterteilen, die Sie bewerten möchten. Für jeden Abschnitt ziehen Sie die Bewertungslinie nach oben oder unten, um eine Bewertung zu vergeben. Sie können die Studie absenden, sobald Sie alle Dimensionen für alle Lieder bewertet haben.",
 		"backendStatus": {
 			"checking": "Backend wird geprüft...",

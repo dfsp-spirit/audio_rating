@@ -360,6 +360,22 @@
     #instructions-banner.hidden {
       display: none;
     }
+    #mobile-warning-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #b91c1c;
+      color: #fff;
+      padding: 10px 48px 10px 20px;
+      font-size: 0.95em;
+      line-height: 1.5;
+      z-index: 9999;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    #mobile-warning-banner.hidden {
+      display: none;
+    }
     #instructions-banner-close {
       position: absolute;
       top: 50%;
@@ -380,12 +396,36 @@
       background: rgba(255,255,255,0.15);
       border-radius: 4px;
     }
-    body.banner-visible {
+    #mobile-warning-banner-close {
+      position: absolute;
+      top: 50%;
+      right: 14px;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.3em;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+      opacity: 0.85;
+      margin: 0;
+    }
+    #mobile-warning-banner-close:hover {
+      opacity: 1;
+      background: rgba(255,255,255,0.15);
+      border-radius: 4px;
+    }
+    body.top-banner-visible {
       padding-top: 46px;
     }
   </style>
 </head>
 <body>
+  <div id="mobile-warning-banner" class="hidden">
+    <span data-i18n="study.mobileWarningBanner">It looks like you are using a mobile device. We strongly recommend completing this study on a desktop or laptop computer, using headphones, in a quiet environment with enough uninterrupted time to focus.</span>
+    <button id="mobile-warning-banner-close" data-i18n-aria-label="common.close" data-i18n-title="common.close" aria-label="Close mobile warning banner" title="Close">&#x2715;</button>
+  </div>
   <div id="instructions-banner" class="hidden">
     <span data-i18n="study.instructionsBanner">Usage Instructions Reminder: Select a song and dimension to rate. Start by listening to the song. You can navigate in the audio and listen to individual sections as needed. Then double-click on the timeline to split the audio into segments you want to rate. For each segment, drag the rating line up or down to assign a rating. You can submit the study once you have rated all dimensions for all songs.</span>
     <button id="instructions-banner-close" data-i18n-aria-label="common.close" data-i18n-title="common.close" aria-label="Close instructions banner" title="Close">&#x2715;</button>
@@ -393,12 +433,22 @@
   <div id="user-messages"></div>
   <div id="backend-status" class="backend-status connecting" data-i18n="study.backendStatus.checking">Checking backend...</div>
   <script>
-    document.getElementById('instructions-banner-close').addEventListener('click', function() {
-      var banner = document.getElementById('instructions-banner');
-      banner.dataset.userDismissed = '1';
-      banner.classList.add('hidden');
-      document.body.classList.remove('banner-visible');
-    });
+    function setupClosableBanner(bannerId, closeButtonId) {
+      var banner = document.getElementById(bannerId);
+      var closeButton = document.getElementById(closeButtonId);
+      if (!banner || !closeButton) {
+        return;
+      }
+
+      closeButton.addEventListener('click', function() {
+        banner.dataset.userDismissed = '1';
+        banner.classList.add('hidden');
+        document.body.classList.remove('top-banner-visible');
+      });
+    }
+
+    setupClosableBanner('instructions-banner', 'instructions-banner-close');
+    setupClosableBanner('mobile-warning-banner', 'mobile-warning-banner-close');
   </script>
 
   <div class="top-controls">
