@@ -911,6 +911,18 @@ async loadStudyConfigFromBackend() {
     });
 
     document.getElementById(phaseId).classList.add('active');
+
+    // Show instructions banner only during rating phase, unless user dismissed it
+    const banner = document.getElementById('instructions-banner');
+    if (banner) {
+      if (phaseId === 'rating-phase' && !banner.dataset.userDismissed) {
+        banner.classList.remove('hidden');
+        document.body.classList.add('banner-visible');
+      } else {
+        banner.classList.add('hidden');
+        document.body.classList.remove('banner-visible');
+      }
+    }
   }
 
 

@@ -309,11 +309,64 @@
 .dismiss-message:hover {
   background: rgba(0,0,0,0.1);
 }
+
+    /* Instructions reminder banner */
+    #instructions-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #2563eb;
+      color: #fff;
+      padding: 10px 48px 10px 20px;
+      font-size: 0.9em;
+      line-height: 1.5;
+      z-index: 9999;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    #instructions-banner.hidden {
+      display: none;
+    }
+    #instructions-banner-close {
+      position: absolute;
+      top: 50%;
+      right: 14px;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.3em;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+      opacity: 0.85;
+      margin: 0;
+    }
+    #instructions-banner-close:hover {
+      opacity: 1;
+      background: rgba(255,255,255,0.15);
+      border-radius: 4px;
+    }
+    body.banner-visible {
+      padding-top: 46px;
+    }
   </style>
 </head>
 <body>
+  <div id="instructions-banner" class="hidden">
+    Usage Instructions Reminder: Select a song and dimension to rate. Start by listening to the song. You can navigate in the audio and listen to individual sections as needed. Then double-click on the timeline to split the audio into segments you want to rate. For each segment, drag the rating line up or down to assign a rating. You can submit the study once you have rated all dimensions for all songs.
+    <button id="instructions-banner-close" aria-label="Close instructions banner" title="Close">&#x2715;</button>
+  </div>
   <div id="user-messages"></div>
   <div id="backend-status" class="backend-status connecting">Checking backend...</div>
+  <script>
+    document.getElementById('instructions-banner-close').addEventListener('click', function() {
+      var banner = document.getElementById('instructions-banner');
+      banner.dataset.userDismissed = '1';
+      banner.classList.add('hidden');
+      document.body.classList.remove('banner-visible');
+    });
+  </script>
 
   <div id="study-container">
     <!-- Instructions Phase -->
