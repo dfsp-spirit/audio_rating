@@ -213,7 +213,7 @@ export class StudyCoordinator {
     if (!result.isComplete) {
         submitBtn.disabled = true;
         if (result.missingDimensions.length > 0) {
-        submitBtn.textContent = `Rate: ${result.missingDimensions.join(', ')}`;
+        submitBtn.textContent = `Still to rate: ${result.missingDimensions.join(', ')}`;
         } else {
         submitBtn.textContent = 'Complete all ratings to save';
         }
@@ -442,8 +442,10 @@ export class StudyCoordinator {
 
 
 async loadStudyConfigFromBackend() {
+    let ratingLoadFailed = false;
+
     try {
-      const response = await fetch(
+      const response = await this.fetchWithRetry(
         `${AR_SETTINGS.API_BASE_URL}/participants/${this.uid}/studies/${this.studyName}/config`
       );
 
@@ -453,7 +455,7 @@ async loadStudyConfigFromBackend() {
 
         for (let i = 0; i < this.studyConfig.songs_to_rate.length; i++) {
           try {
-            const ratingsResponse = await fetch(
+            const ratingsResponse = await this.fetchWithRetry(
               `${AR_SETTINGS.API_BASE_URL}/participants/${this.uid}/studies/${this.studyName}/songs/${i}/ratings`
             );
 
@@ -476,49 +478,17 @@ async loadStudyConfigFromBackend() {
                 };
                 this.songSyncStatus[i] = 'synced';
               } else {
-                // IMPORTANT: Initialize with empty arrays for all dimensions
-                const emptyRatings = {};
-                this.studyConfig.rating_dimensions.forEach(dim => {
-                  emptyRatings[dim.dimension_title] = []; // Empty array, not null
-                });
-
-                this.localRatings[songKey] = {
-                  data: emptyRatings,
-                  source: 'local',
-                  timestamp: new Date().toISOString()
-                };
-                this.songSyncStatus[i] = 'unsaved';
+                this.initializeEmptySongRatings(i);
               }
             } else {
-              // If ratings endpoint fails, still initialize with empty data
-              const songKey = `${this.studyName}_song_${i}`;
-              const emptyRatings = {};
-              this.studyConfig.rating_dimensions.forEach(dim => {
-                emptyRatings[dim.dimension_title] = [];
-              });
-
-              this.localRatings[songKey] = {
-                data: emptyRatings,
-                source: 'local',
-                timestamp: new Date().toISOString()
-              };
-              this.songSyncStatus[i] = 'unsaved';
+              ratingLoadFailed = true;
+              console.error(`Failed to load backend ratings for song ${i}: HTTP ${ratingsResponse.status}`);
+              this.initializeEmptySongRatings(i);
             }
           } catch (error) {
-            // On error, still initialize with empty data
-            console.log(`No backend ratings for song ${i}`, error);
-            const songKey = `${this.studyName}_song_${i}`;
-            const emptyRatings = {};
-            this.studyConfig.rating_dimensions.forEach(dim => {
-              emptyRatings[dim.dimension_title] = [];
-            });
-
-            this.localRatings[songKey] = {
-              data: emptyRatings,
-              source: 'local',
-              timestamp: new Date().toISOString()
-            };
-            this.songSyncStatus[i] = 'unsaved';
+            ratingLoadFailed = true;
+            console.error(`Failed to load backend ratings for song ${i}`, error);
+            this.initializeEmptySongRatings(i);
           }
 
           // Verify that the song media URL is accessible
@@ -535,6 +505,10 @@ async loadStudyConfigFromBackend() {
         this.saveLocalRatings();
         this.updateSubmitStudyButton();
         this.updateSongNavigationUI();
+
+        if (ratingLoadFailed) {
+          this.showStatusMessage('We are experiencing technical difficulties, please try again later.', 'error');
+        }
 
         return true;
       } else {
@@ -699,6 +673,51 @@ async loadStudyConfigFromBackend() {
     }
   }
 
+  createEmptyRatings() {
+    const emptyRatings = {};
+    this.studyConfig.rating_dimensions.forEach(dim => {
+      emptyRatings[dim.dimension_title] = [];
+    });
+    return emptyRatings;
+  }
+
+  initializeEmptySongRatings(songIndex) {
+    const songKey = `${this.studyName}_song_${songIndex}`;
+
+    this.localRatings[songKey] = {
+      data: this.createEmptyRatings(),
+      source: 'local',
+      timestamp: new Date().toISOString()
+    };
+    this.songSyncStatus[songIndex] = 'unsaved';
+  }
+
+  wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async fetchWithRetry(url, options = {}, retryDelay = 2000) {
+    let lastError = null;
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await fetch(url, options);
+        if (response.ok || attempt === 1) {
+          return response;
+        }
+      } catch (error) {
+        lastError = error;
+        if (attempt === 1) {
+          throw error;
+        }
+      }
+
+      await this.wait(retryDelay);
+    }
+
+    throw lastError || new Error('Request failed');
+  }
+
   async submitRating() {
     if (this.isLoading || !this.widget) return;
 
@@ -734,13 +753,12 @@ async loadStudyConfigFromBackend() {
 
     this.saveLocalRatings();
     this.updateAllUI();
-    this.showStatusMessage('Rating saved locally', 'success');
 
-    if (this.backendAvailable) {
-      try {
+    try {
+      if (this.backendAvailable) {
         const backendUrl = `${AR_SETTINGS.API_BASE_URL}/participants/${this.uid}/studies/${this.studyName}/songs/${this.currentSongIndex}/ratings`;
 
-        const response = await fetch(backendUrl, {
+        const response = await this.fetchWithRetry(backendUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -749,25 +767,26 @@ async loadStudyConfigFromBackend() {
           })
         });
 
-        if (response.ok) {
-          // Update sync status
-          this.songSyncStatus[this.currentSongIndex] = 'synced';
-
-          // Update source to backend
-          this.localRatings[songKey].source = 'backend';
-          this.saveLocalRatings();
-
-          this.updateAllUI();
-          this.showStatusMessage('Ratings saved to server!', 'success');
-        } else {
-          this.showStatusMessage('Saved locally, but server submission failed.', 'warning');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
         }
-      } catch (error) {
-        this.showStatusMessage('Saved locally. Backend temporarily unavailable.', 'warning');
-      }
-    }
 
-    this.setLoading(false, false);
+        // Update sync status
+        this.songSyncStatus[this.currentSongIndex] = 'synced';
+
+        // Update source to backend
+        this.localRatings[songKey].source = 'backend';
+        this.saveLocalRatings();
+
+        this.showStatusMessage('Ratings saved to server!', 'success');
+      }
+    } catch (error) {
+      console.error('Failed to save ratings to backend:', error);
+      this.showStatusMessage('We are experiencing technical difficulties, please try again later.', 'error');
+    } finally {
+      this.setLoading(false, false);
+      this.updateAllUI();
+    }
   }
 
   updateBackendStatus() {
