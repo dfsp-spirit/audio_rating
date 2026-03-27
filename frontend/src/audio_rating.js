@@ -97,7 +97,7 @@ export class AudioRatingWidget {
         for (const dim of this.rating_dimensions) {
             const b = document.createElement('button');
             b.type = 'button';
-            b.textContent = dim.dimension_title;
+          b.textContent = dim.display_name || dim.dimension_title;
             b.dataset.dim = dim.dimension_title;
             this.dimButtonsWrap.appendChild(b);
         }
@@ -263,7 +263,7 @@ export class AudioRatingWidget {
     for (const dim of this.rating_dimensions) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = dim.dimension_title;
+      b.textContent = dim.display_name || dim.dimension_title;
       b.dataset.dim = dim.dimension_title;
       this.dimButtonsWrap.appendChild(b);
     }

@@ -1,5 +1,5 @@
 # config/study_config.py -- Parser for study configuration files in JSON or YAML format
-from typing import List, Optional
+from typing import List, Optional, Dict, Union
 from pydantic import BaseModel, field_validator, model_validator
 import yaml
 import json
@@ -7,10 +7,30 @@ from pathlib import Path
 import re
 from datetime import datetime, timezone
 
+LocalizedText = Union[str, Dict[str, str]]
+
+
+def resolve_localized_text(value: Optional[LocalizedText], default_language: str = "en") -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if not isinstance(value, dict):
+        return str(value)
+
+    if default_language in value and value[default_language]:
+        return value[default_language]
+    if "en" in value and value["en"]:
+        return value["en"]
+    for text in value.values():
+        if text:
+            return text
+    return ""
+
 class CfgFileSong(BaseModel):
     media_url: str
-    display_name: str
-    description: Optional[str] = None
+    display_name: LocalizedText
+    description: Optional[LocalizedText] = None
 
     @model_validator(mode='after')
     def set_display_name_from_media_url(self):
@@ -30,10 +50,11 @@ class CfgFileSong(BaseModel):
 
 class CfgFileRatingDimension(BaseModel):
     dimension_title: str
+    display_name: Optional[LocalizedText] = None
     num_values: int
     minimal_value: Optional[int] = None
     default_value: Optional[int] = None
-    description: Optional[str] = None
+    description: Optional[LocalizedText] = None
 
     @model_validator(mode='after')
     def validate_num_values(self):
@@ -45,8 +66,10 @@ class CfgFileRatingDimension(BaseModel):
 
     @model_validator(mode='after')
     def fill_description_from_title_if_missing(self):
+        if not self.display_name:
+            self.display_name = self.dimension_title
         if not self.description:
-            self.description = self.dimension_title
+            self.description = self.display_name
         return self
 
     @model_validator(mode='after')
@@ -82,7 +105,10 @@ class CfgFileRatingDimension(BaseModel):
 class CfgFileStudyConfig(BaseModel):
     name: str
     name_short: str
-    description: Optional[str] = None
+    default_language: str = "en"
+    description: Optional[LocalizedText] = None
+    custom_text_instructions: Optional[LocalizedText] = None
+    custom_text_thank_you: Optional[LocalizedText] = None
     songs_to_rate: List[CfgFileSong]
     rating_dimensions: List[CfgFileRatingDimension]
     study_participant_ids: List[str] = []
@@ -150,8 +176,8 @@ class CfgFileStudyConfig(BaseModel):
             duplicates = [url for url in media_urls if media_urls.count(url) > 1]
             raise ValueError(f'Duplicate media_url found in songs_to_rate: {set(duplicates)}')
 
-        # Check for duplicate display_name values
-        display_names = [song.display_name for song in v]
+        # Check for duplicate display_name values (resolved to English/default fallback)
+        display_names = [resolve_localized_text(song.display_name, "en") for song in v]
         if len(display_names) != len(set(display_names)):
             duplicates = [name for name in display_names if display_names.count(name) > 1]
             raise ValueError(f'Duplicate display_name found in songs_to_rate: {set(duplicates)}')

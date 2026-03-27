@@ -3,7 +3,7 @@
 from sqlmodel import SQLModel, create_engine, Session, select
 from typing import Generator
 from .models import Study, Song, StudyRatingDimension, StudySongLink, StudyParticipantLink, Participant, Rating, RatingSegment
-from .parsers.studies_config import load_studies_config
+from .parsers.studies_config import load_studies_config, resolve_localized_text
 from .settings import settings
 import logging
 from datetime import datetime
@@ -34,7 +34,7 @@ def create_config_file_studies(config_path: str):
                 new_study = Study(
                     name=study_cfg.name,
                     name_short=study_cfg.name_short,
-                    description=study_cfg.description,
+                    description=resolve_localized_text(study_cfg.description, study_cfg.default_language),
                     allow_unlisted_participants=study_cfg.allow_unlisted_participants,
                     data_collection_start=study_cfg.data_collection_start,
                     data_collection_end=study_cfg.data_collection_end
@@ -87,9 +87,9 @@ def create_config_file_studies(config_path: str):
                         logger.info(f"Using existing song: {song_cfg.media_url}")
                     else:
                         song = Song(
-                            display_name=song_cfg.display_name,
+                            display_name=resolve_localized_text(song_cfg.display_name, study_cfg.default_language),
                             media_url=song_cfg.media_url,
-                            description=song_cfg.description
+                            description=resolve_localized_text(song_cfg.description, study_cfg.default_language)
                         )
                         session.add(song)
                         session.commit()
@@ -131,7 +131,7 @@ def create_config_file_studies(config_path: str):
                             minimal_value=dimension_cfg.minimal_value,
                             default_value=dimension_cfg.default_value,
                             dimension_order=dim_index,
-                            description=dimension_cfg.description
+                            description=resolve_localized_text(dimension_cfg.description, study_cfg.default_language)
                         )
                         session.add(new_dimension)
                         logger.info(f"Added rating dimension: {dimension_cfg.dimension_title}")

@@ -49,6 +49,7 @@ logger = logging.getLogger(__name__)
 from .settings import settings
 from .models import Participant, Study, Song, Rating, StudyParticipantLink, StudySongLink, StudyRatingDimension, RatingSegment, RatingSegmentBase
 from .database import get_session, create_db_and_tables
+from .parsers.studies_config import load_studies_config
 from pydantic import field_validator
 
 
@@ -1211,44 +1212,29 @@ async def get_study_config(
                     detail=f"Participant '{participant_id}' is not authorized to access study '{study_name}'"
                 )
 
-        # Get all songs linked to this study (ordered by song_index)
-        song_links = session.exec(
-            select(StudySongLink, Song)
-            .join(Song, StudySongLink.song_id == Song.id)
-            .where(StudySongLink.study_id == study.id)
-            .order_by(StudySongLink.song_index)
-        ).all()
+        # Load config from studies config file to preserve multilingual text objects
+        cfg = load_studies_config(settings.studies_config_path)
+        cfg_study = next((s for s in cfg.studies if s.name_short == study.name_short), None)
 
-        # Get all rating dimensions for this study (ordered by dimension_order)
-        rating_dims = session.exec(
-            select(StudyRatingDimension)
-            .where(StudyRatingDimension.study_id == study.id)
-            .order_by(StudyRatingDimension.dimension_order)
-        ).all()
+        if cfg_study is None:
+            logger.warning(
+                f"Study '{study.name_short}' exists in database but was not found in config file '{settings.studies_config_path}'"
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Study configuration inconsistency: study missing in config file"
+            )
 
-        # Build the response - FILTERED (no sensitive information)
+        # Build response from config file (multilingual), but keep DB-controlled access/date fields
         study_config = {
-            "name": study.name,
-            "name_short": study.name_short,
-            "description": study.description,
-            "songs_to_rate": [
-                {
-                    "media_url": song.media_url,
-                    "display_name": song.display_name,
-                    "description": song.description
-                }
-                for _, song in song_links  # song_links is tuple of (StudySongLink, Song)
-            ],
-            "rating_dimensions": [
-                {
-                    "dimension_title": dim.dimension_title,
-                    "num_values": dim.num_values,
-                    "minimal_value": dim.minimal_value,
-                    "default_value": dim.default_value,
-                    "description": dim.description
-                }
-                for dim in rating_dims
-            ],
+            "name": cfg_study.name,
+            "name_short": cfg_study.name_short,
+            "default_language": cfg_study.default_language,
+            "description": cfg_study.description,
+            "custom_text_instructions": cfg_study.custom_text_instructions,
+            "custom_text_thank_you": cfg_study.custom_text_thank_you,
+            "songs_to_rate": [song.model_dump() for song in cfg_study.songs_to_rate],
+            "rating_dimensions": [dim.model_dump() for dim in cfg_study.rating_dimensions],
             "allow_unlisted_participants": study.allow_unlisted_participants,
             "data_collection_start": study.data_collection_start.isoformat(),
             "data_collection_end": study.data_collection_end.isoformat()
@@ -1256,7 +1242,7 @@ async def get_study_config(
 
         logger.info(
             f"Returning config for study '{study_name}' to participant '{participant_id}' "
-            f"with {len(song_links)} songs and {len(rating_dims)} dimensions"
+            f"with {len(cfg_study.songs_to_rate)} songs and {len(cfg_study.rating_dimensions)} dimensions"
         )
 
         return study_config

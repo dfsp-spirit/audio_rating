@@ -29,6 +29,7 @@ const INTERNAL_FALLBACK_STUDY_CONFIG = {
 export class StudyCoordinator {
   constructor() {
     this.studyConfig = INTERNAL_FALLBACK_STUDY_CONFIG;
+    this.rawStudyConfig = INTERNAL_FALLBACK_STUDY_CONFIG;
     this.currentSongIndex = 0;
     this.uid = this.getOrCreateUID();
     this.studyName = this.getStudyName();
@@ -48,6 +49,61 @@ export class StudyCoordinator {
 
   t(key, params = {}) {
     return i18n.t(key, params);
+  }
+
+  getCurrentLanguage() {
+    return i18n.currentLanguage || 'en';
+  }
+
+  localizeTextValue(value, defaultLanguage = 'en', fallback = '') {
+    if (value === null || value === undefined) {
+      return fallback;
+    }
+
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (typeof value === 'object') {
+      const currentLanguage = this.getCurrentLanguage();
+      return value[currentLanguage]
+        || value[defaultLanguage]
+        || value.en
+        || Object.values(value).find(v => typeof v === 'string' && v.length > 0)
+        || fallback;
+    }
+
+    return String(value);
+  }
+
+  localizeStudyConfig(rawStudyConfig) {
+    if (!rawStudyConfig) {
+      return rawStudyConfig;
+    }
+
+    const defaultLanguage = rawStudyConfig.default_language || 'en';
+
+    return {
+      ...rawStudyConfig,
+      description: this.localizeTextValue(rawStudyConfig.description, defaultLanguage, ''),
+      custom_text_instructions: this.localizeTextValue(rawStudyConfig.custom_text_instructions, defaultLanguage, ''),
+      custom_text_thank_you: this.localizeTextValue(rawStudyConfig.custom_text_thank_you, defaultLanguage, ''),
+      songs_to_rate: (rawStudyConfig.songs_to_rate || []).map(song => ({
+        ...song,
+        display_name: this.localizeTextValue(song.display_name, defaultLanguage, song.media_url || ''),
+        description: this.localizeTextValue(song.description, defaultLanguage, '')
+      })),
+      rating_dimensions: (rawStudyConfig.rating_dimensions || []).map(dim => ({
+        ...dim,
+        display_name: this.localizeTextValue(dim.display_name, defaultLanguage, dim.dimension_title),
+        description: this.localizeTextValue(dim.description, defaultLanguage, this.localizeTextValue(dim.display_name, defaultLanguage, dim.dimension_title))
+      }))
+    };
+  }
+
+  getDimensionDisplayName(dimensionTitle) {
+    const dim = this.studyConfig.rating_dimensions.find(d => d.dimension_title === dimensionTitle);
+    return dim?.display_name || dimensionTitle;
   }
 
   async loadLocalStudyConfig() {
@@ -218,8 +274,9 @@ export class StudyCoordinator {
     if (!result.isComplete) {
         submitBtn.disabled = true;
         if (result.missingDimensions.length > 0) {
+        const missingDimensionNames = result.missingDimensions.map(dim => this.getDimensionDisplayName(dim));
         submitBtn.textContent = this.t('study.submit.stillToRate', {
-          dimensions: result.missingDimensions.join(', ')
+          dimensions: missingDimensionNames.join(', ')
         });
         } else {
         submitBtn.textContent = this.t('study.submit.completeAll');
@@ -328,7 +385,8 @@ export class StudyCoordinator {
 
 
   async init() {
-    this.studyConfig = await this.loadLocalStudyConfig();
+    this.rawStudyConfig = await this.loadLocalStudyConfig();
+    this.studyConfig = this.localizeStudyConfig(this.rawStudyConfig);
 
     await this.checkBackendAvailability();
 
@@ -402,7 +460,7 @@ export class StudyCoordinator {
     const ratingDimensionsListIntro = document.getElementById('rating-dimensions-list-intro');
     this.studyConfig.rating_dimensions.forEach(dim => {
       const li = document.createElement('li');
-      li.textContent = `${dim.dimension_title}: ${dim.description || this.t('study.songIntroDescriptionMissing')}`;
+      li.textContent = `${dim.display_name || dim.dimension_title}: ${dim.description || this.t('study.songIntroDescriptionMissing')}`;
       ratingDimensionsListIntro.appendChild(li);
     });
 
@@ -414,6 +472,28 @@ export class StudyCoordinator {
 
     // Update the page title from "Audio Rating Study" to the specific study name for better user experience
     document.title = `${this.t('study.pageTitlePrefix')}: ${this.studyConfig.name}`;
+
+    const customInstructionsEl = document.getElementById('custom-study-instructions');
+    if (customInstructionsEl) {
+      if (this.studyConfig.custom_text_instructions) {
+        customInstructionsEl.textContent = this.studyConfig.custom_text_instructions;
+        customInstructionsEl.style.display = 'block';
+      } else {
+        customInstructionsEl.textContent = '';
+        customInstructionsEl.style.display = 'none';
+      }
+    }
+
+    const customThankYouEl = document.getElementById('custom-thank-you-text');
+    if (customThankYouEl) {
+      if (this.studyConfig.custom_text_thank_you) {
+        customThankYouEl.textContent = this.studyConfig.custom_text_thank_you;
+        customThankYouEl.style.display = 'block';
+      } else {
+        customThankYouEl.textContent = '';
+        customThankYouEl.style.display = 'none';
+      }
+    }
 
     document.getElementById('total-songs').textContent = this.studyConfig.songs_to_rate.length;
 
@@ -438,7 +518,55 @@ export class StudyCoordinator {
   }
 
   onLanguageChanged() {
+    this.studyConfig = this.localizeStudyConfig(this.rawStudyConfig);
+
     document.title = `${this.t('study.pageTitlePrefix')}: ${this.studyConfig.name}`;
+    document.getElementById('study-name-title').textContent = this.studyConfig.name;
+    document.getElementById('study-name-thanks').textContent = this.studyConfig.name;
+    document.getElementById('study-name-welcome').textContent = this.studyConfig.name + (this.studyConfig.description ? ` - ${this.studyConfig.description}` : '');
+
+    const songListIntro = document.getElementById('song-list-intro');
+    if (songListIntro) {
+      songListIntro.innerHTML = '';
+      for (let song_index = 0; song_index < this.studyConfig.songs_to_rate.length; song_index++) {
+        const song = this.studyConfig.songs_to_rate[song_index];
+        const li = document.createElement('li');
+        li.textContent = `${song.display_name}: ${song.description || this.t('study.songIntroDescriptionMissing')}`;
+        songListIntro.appendChild(li);
+      }
+    }
+
+    const ratingDimensionsListIntro = document.getElementById('rating-dimensions-list-intro');
+    if (ratingDimensionsListIntro) {
+      ratingDimensionsListIntro.innerHTML = '';
+      this.studyConfig.rating_dimensions.forEach(dim => {
+        const li = document.createElement('li');
+        li.textContent = `${dim.display_name || dim.dimension_title}: ${dim.description || this.t('study.songIntroDescriptionMissing')}`;
+        ratingDimensionsListIntro.appendChild(li);
+      });
+    }
+
+    const customInstructionsEl = document.getElementById('custom-study-instructions');
+    if (customInstructionsEl) {
+      if (this.studyConfig.custom_text_instructions) {
+        customInstructionsEl.textContent = this.studyConfig.custom_text_instructions;
+        customInstructionsEl.style.display = 'block';
+      } else {
+        customInstructionsEl.textContent = '';
+        customInstructionsEl.style.display = 'none';
+      }
+    }
+
+    const customThankYouEl = document.getElementById('custom-thank-you-text');
+    if (customThankYouEl) {
+      if (this.studyConfig.custom_text_thank_you) {
+        customThankYouEl.textContent = this.studyConfig.custom_text_thank_you;
+        customThankYouEl.style.display = 'block';
+      } else {
+        customThankYouEl.textContent = '';
+        customThankYouEl.style.display = 'none';
+      }
+    }
 
     if (this.currentSongIndex !== undefined && this.studyConfig?.songs_to_rate?.[this.currentSongIndex]) {
       const songName = this.studyConfig.songs_to_rate[this.currentSongIndex].display_name;
@@ -483,7 +611,8 @@ async loadStudyConfigFromBackend() {
 
       if (response.ok) {
         const studyConfig = await response.json();
-        this.studyConfig = studyConfig;
+        this.rawStudyConfig = studyConfig;
+        this.studyConfig = this.localizeStudyConfig(studyConfig);
 
         for (let i = 0; i < this.studyConfig.songs_to_rate.length; i++) {
           try {
