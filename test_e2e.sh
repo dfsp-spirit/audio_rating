@@ -18,4 +18,10 @@ if [ ! -d "frontend/tests/e2e" ]; then
     exit 1
 fi
 
+# You could also run a single test headed or 10 times with commands like:
+#
+# cd frontend/ && npx playwright test tests/e2e/study_page.spec.js --headed --project=chromium
+# cd frontend/ && npx playwright test tests/e2e/study_page.spec.js --repeat-each=10
+# cd frontend && npm run test:e2e -- --repeat-each=10
+
 cd frontend && npm run test:e2e
