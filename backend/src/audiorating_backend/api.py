@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Request, status, Response, Depends, Query
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
@@ -779,6 +780,66 @@ def _generate_csv_response(segments_data: List[dict], study_name: str, with_ids:
     )
 
 
+@app.get("/api/admin/export/studies-runtime-config")
+async def export_runtime_studies_config(
+    study_name: Optional[str] = Query(None, description="Optional study short name to export only one study"),
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Export runtime study config plus logged ratings as JSON.
+
+    Response format:
+    - `studies_config`: studies-config-compatible structure with runtime participant IDs
+    - `logged_ratings`: ratings grouped by study name short, then participant, then song
+    """
+    cfg = load_studies_config(settings.studies_config_path)
+    cfg_studies_by_name = {study_cfg.name_short: study_cfg for study_cfg in cfg.studies}
+
+    study_query = select(Study).order_by(Study.name_short)
+    if study_name:
+        study_query = study_query.where(Study.name_short == study_name)
+
+    studies = session.exec(study_query).all()
+    if study_name and not studies:
+        raise HTTPException(status_code=404, detail=f"Study '{study_name}' not found")
+
+    exported_studies = []
+    logged_ratings_by_study = {}
+
+    for study in studies:
+        cfg_study = cfg_studies_by_name.get(study.name_short)
+        exported_studies.append(_build_runtime_study_config_export(study, session, cfg_study))
+        logged_ratings_by_study[study.name_short] = _build_logged_ratings_export_for_study(study, session)
+
+    logger.info(
+        "Admin '%s' exported runtime studies config%s",
+        current_admin,
+        f" for study '{study_name}'" if study_name else " for all studies",
+    )
+
+    response_payload = {
+        "studies_config": {
+            "studies": exported_studies,
+        },
+        "logged_ratings": logged_ratings_by_study,
+        "audiorating_backend_version": ar_version,
+    }
+
+    export_date = utc_now().strftime("%Y-%m-%d")
+    filename = (
+        f"studies_runtime_config_{study_name}_{export_date}.json"
+        if study_name
+        else f"studies_runtime_config_{export_date}.json"
+    )
+
+    return JSONResponse(
+        content=jsonable_encoder(response_payload),
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        },
+    )
+
+
 @app.get("/api/admin/datasets/download", name="admin_download")
 async def admin_download(
     study_name: str = Query(..., description="Name of the study to download ratings for"),
@@ -1262,6 +1323,131 @@ async def get_study_config(
 
 
 logger = logging.getLogger(__name__)
+
+
+def _build_runtime_study_config_export(study: Study, session: Session, cfg_study=None) -> dict:
+    participant_links = session.exec(
+        select(StudyParticipantLink)
+        .where(StudyParticipantLink.study_id == study.id)
+        .order_by(StudyParticipantLink.participant_id)
+    ).all()
+    participant_ids = [link.participant_id for link in participant_links]
+
+    if cfg_study is not None:
+        return {
+            "name": cfg_study.name,
+            "name_short": cfg_study.name_short,
+            "default_language": cfg_study.default_language,
+            "description": cfg_study.description,
+            "custom_text_instructions": cfg_study.custom_text_instructions,
+            "custom_text_thank_you": cfg_study.custom_text_thank_you,
+            "songs_to_rate": [song.model_dump() for song in cfg_study.songs_to_rate],
+            "rating_dimensions": [dim.model_dump() for dim in cfg_study.rating_dimensions],
+            "study_participant_ids": participant_ids,
+            "allow_unlisted_participants": study.allow_unlisted_participants,
+            "data_collection_start": study.data_collection_start,
+            "data_collection_end": study.data_collection_end,
+        }
+
+    song_links = session.exec(
+        select(StudySongLink, Song)
+        .join(Song, StudySongLink.song_id == Song.id)
+        .where(StudySongLink.study_id == study.id)
+        .order_by(StudySongLink.song_index)
+    ).all()
+    rating_dimensions = session.exec(
+        select(StudyRatingDimension)
+        .where(StudyRatingDimension.study_id == study.id)
+        .order_by(StudyRatingDimension.dimension_order)
+    ).all()
+
+    return {
+        "name": study.name,
+        "name_short": study.name_short,
+        "default_language": "en",
+        "description": study.description,
+        "custom_text_instructions": None,
+        "custom_text_thank_you": None,
+        "songs_to_rate": [
+            {
+                "media_url": song.media_url,
+                "display_name": song.display_name,
+                "description": song.description,
+            }
+            for _, song in song_links
+        ],
+        "rating_dimensions": [
+            {
+                "dimension_title": dim.dimension_title,
+                "display_name": dim.dimension_title,
+                "num_values": dim.num_values,
+                "minimal_value": dim.minimal_value,
+                "default_value": dim.default_value,
+                "description": dim.description,
+            }
+            for dim in rating_dimensions
+        ],
+        "study_participant_ids": participant_ids,
+        "allow_unlisted_participants": study.allow_unlisted_participants,
+        "data_collection_start": study.data_collection_start,
+        "data_collection_end": study.data_collection_end,
+    }
+
+
+def _build_logged_ratings_export_for_study(study: Study, session: Session) -> dict:
+    rating_rows = session.exec(
+        select(Rating, Song, RatingSegment)
+        .join(Song, Rating.song_id == Song.id)
+        .join(RatingSegment, RatingSegment.rating_id == Rating.id, isouter=True)
+        .where(Rating.study_id == study.id)
+        .order_by(Rating.participant_id, Song.media_url, Rating.rating_name, RatingSegment.segment_order)
+    ).all()
+
+    song_index_by_id = {
+        song_id: song_index
+        for song_id, song_index in session.exec(
+            select(StudySongLink.song_id, StudySongLink.song_index)
+            .where(StudySongLink.study_id == study.id)
+        ).all()
+    }
+
+    logged_ratings: Dict[str, Dict[str, dict]] = {}
+
+    for rating, song, segment in rating_rows:
+        participant_entry = logged_ratings.setdefault(rating.participant_id, {})
+        song_key = str(song_index_by_id.get(song.id, -1))
+        song_entry = participant_entry.setdefault(
+            song_key,
+            {
+                "song_index": song_index_by_id.get(song.id),
+                "song_url": song.media_url,
+                "song_display_name": song.display_name,
+                "ratings": {},
+            },
+        )
+
+        rating_entry = song_entry["ratings"].setdefault(
+            rating.rating_name,
+            {
+                "rating_id": rating.id,
+                "timestamp": rating.timestamp,
+                "created_at": rating.created_at,
+                "segments": [],
+            },
+        )
+
+        if segment is not None:
+            rating_entry["segments"].append(
+                {
+                    "start": segment.start_time,
+                    "end": segment.end_time,
+                    "value": segment.value,
+                    "segment_order": segment.segment_order,
+                    "segment_id": segment.id,
+                }
+            )
+
+    return logged_ratings
 
 # Pydantic model for the request
 class AssignParticipantsRequest(BaseModel):

@@ -139,3 +139,34 @@ async def test_study_config_unknown_study_returns_not_found_json():
     data = response.json()
     assert "detail" in data
     assert "not found" in str(data["detail"]).lower()
+
+
+@pytest.mark.asyncio
+async def test_admin_runtime_studies_export_returns_expected_top_level_shape():
+    """Smoke-test authenticated runtime studies export endpoint and response shape."""
+    url = f"{BASE_URL}/api/admin/export/studies-runtime-config"
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, auth=(settings.admin_username, settings.admin_password))
+
+    assert response.status_code == 200
+    assert "attachment; filename=" in response.headers.get("Content-Disposition", "")
+
+    data = response.json()
+    assert "studies_config" in data
+    assert "logged_ratings" in data
+    assert "audiorating_backend_version" in data
+    assert isinstance(data["studies_config"], dict)
+    assert isinstance(data["studies_config"].get("studies"), list)
+    assert isinstance(data["logged_ratings"], dict)
+
+    if data["studies_config"]["studies"]:
+        first_study = data["studies_config"]["studies"][0]
+        assert "name" in first_study
+        assert "name_short" in first_study
+        assert "songs_to_rate" in first_study
+        assert "rating_dimensions" in first_study
+        assert "study_participant_ids" in first_study
+        assert "allow_unlisted_participants" in first_study
+
+        assert first_study["name_short"] in data["logged_ratings"]

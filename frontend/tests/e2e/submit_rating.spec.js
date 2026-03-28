@@ -46,8 +46,15 @@ test('submit rating after editing all dimensions', async ({ page }) => {
   const uid = `pw_submit_rating_${Date.now()}`;
   await page.goto(`http://localhost:3000/rate/study.html?study_name=default&uid=${uid}&lang=en`);
 
+  await expect.poll(async () => page.evaluate(() => {
+    const studyReady = Boolean(window.study?.studyConfig?.songs_to_rate?.length);
+    const beginButton = document.getElementById('begin-study');
+    const totalSongsText = document.getElementById('total-songs')?.textContent?.trim();
+    return studyReady && beginButton && !beginButton.disabled && Boolean(totalSongsText);
+  })).toBeTruthy();
+
   await page.locator('#begin-study').click();
-  await expect(page.locator('#rating-phase')).toHaveClass(/active/);
+  await expect(page.locator('#rating-phase')).toBeVisible();
 
   const songButtons = page.locator('#song-list .song-nav');
   await expect(songButtons.nth(0)).toHaveClass(/active/);
