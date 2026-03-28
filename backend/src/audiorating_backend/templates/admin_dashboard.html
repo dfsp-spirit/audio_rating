@@ -95,16 +95,28 @@
 
         {% set has_ratings = study.active_participants and study.active_participants|selectattr('songs_rated_count', 'greaterthan', 0)|list|length > 0 %}
 
-        {% if has_ratings %}
-            <a href="{{ request.scope.root_path }}/api/admin/datasets/download?study_name={{ study.name_short }}&format=csv"
-            class="btn btn-primary" target="_blank">
-                ⬇️ Download CSV Data
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;">
+            {% if has_ratings %}
+                <a href="{{ request.scope.root_path }}/api/admin/datasets/download?study_name={{ study.name_short }}&format=csv"
+                class="btn btn-primary" target="_blank">
+                    ⬇️ Download CSV Data
+                </a>
+            {% else %}
+                <button class="btn btn-primary" style="opacity: 0.5; cursor: not-allowed;" disabled title="No ratings data available for this study">
+                    ⬇️ Download CSV Data
+                </button>
+            {% endif %}
+
+            <a
+                id="download-runtime-config-{{ study.name_short }}"
+                href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}"
+                download="studies_runtime_config_{{ study.name_short }}_{{ current_time.strftime('%Y-%m-%d') }}.json"
+                class="btn"
+                style="background: #4f46e5; color: white;"
+            >
+                📥 Download Runtime Config JSON
             </a>
-        {% else %}
-            <button class="btn btn-primary" style="opacity: 0.5; cursor: not-allowed;" disabled title="No ratings data available for this study">
-                ⬇️ Download CSV Data
-            </button>
-        {% endif %}
+        </div>
 
         {% if study.active_participants %}
         <table>
@@ -195,6 +207,22 @@
         {% endif %}
     </div>
     {% endfor %}
+
+    <div class="card" style="margin-top: 24px;">
+        <h2 style="font-size: 20px; margin-bottom: 8px;">Runtime Config Export</h2>
+        <p style="margin-bottom: 16px; color: var(--text-secondary);">
+            Download the current server runtime configuration for one or all studies, including runtime participant assignments and logged ratings.
+        </p>
+        <a
+            id="download-runtime-config-all"
+            href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config"
+            download="studies_runtime_config_{{ current_time.strftime('%Y-%m-%d') }}.json"
+            class="btn"
+            style="background: #4f46e5; color: white;"
+        >
+            📥 Download Runtime Config JSON (All Studies)
+        </a>
+    </div>
 
     <div style="text-align: center; color: var(--text-secondary); font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-color);">
         Page generated on {{ current_time.strftime('%Y-%m-%d at %H:%M:%S') }} |

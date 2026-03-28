@@ -1,4 +1,7 @@
 const { test, expect } = require('@playwright/test');
+const fs = require('node:fs/promises');
+const os = require('node:os');
+const path = require('node:path');
 
 test('admin interface study dashboard and participant management', async ({ page }) => {
   const adminUrl = 'http://localhost:3000/ar_backend/admin';
@@ -89,4 +92,54 @@ test('admin interface study dashboard and participant management', async ({ page
   // ===== VERIFY PARTICIPANT WAS REMOVED =====
   const participantRowAfterRemoval = page.locator('tr[data-participant-id="bernd_das_brot"]');
   await expect(participantRowAfterRemoval).toHaveCount(0);
+});
+
+
+test('admin runtime config download buttons export JSON', async ({ page }) => {
+  const adminUrl = 'http://localhost:3000/ar_backend/admin';
+  const username = 'audiorating_api_admin';
+  const password = 'audiorating_api_admin_password';
+
+  await page.context().setHTTPCredentials({
+    username,
+    password,
+  });
+
+  await page.goto(adminUrl);
+  await expect(page.locator('#download-runtime-config-default')).toBeVisible();
+  await expect(page.locator('#download-runtime-config-all')).toBeVisible();
+
+  const singleStudyDownloadPromise = page.waitForEvent('download');
+  await page.locator('#download-runtime-config-default').click();
+  const singleStudyDownload = await singleStudyDownloadPromise;
+
+  expect(singleStudyDownload.suggestedFilename()).toMatch(/studies_runtime_config_default_.*\.json$/);
+
+  const singleStudyFile = path.join(os.tmpdir(), singleStudyDownload.suggestedFilename());
+  await singleStudyDownload.saveAs(singleStudyFile);
+  const singleStudyContent = JSON.parse(await fs.readFile(singleStudyFile, 'utf8'));
+
+  expect(singleStudyContent).toHaveProperty('studies_config');
+  expect(singleStudyContent).toHaveProperty('logged_ratings');
+  expect(singleStudyContent.studies_config.studies).toHaveLength(1);
+  expect(singleStudyContent.studies_config.studies[0].name_short).toBe('default');
+  expect(singleStudyContent.logged_ratings).toHaveProperty('default');
+
+  const allStudiesDownloadPromise = page.waitForEvent('download');
+  await page.locator('#download-runtime-config-all').click();
+  const allStudiesDownload = await allStudiesDownloadPromise;
+
+  expect(allStudiesDownload.suggestedFilename()).toMatch(/studies_runtime_config_.*\.json$/);
+
+  const allStudiesFile = path.join(os.tmpdir(), allStudiesDownload.suggestedFilename());
+  await allStudiesDownload.saveAs(allStudiesFile);
+  const allStudiesContent = JSON.parse(await fs.readFile(allStudiesFile, 'utf8'));
+
+  expect(allStudiesContent).toHaveProperty('studies_config');
+  expect(allStudiesContent).toHaveProperty('logged_ratings');
+  expect(Array.isArray(allStudiesContent.studies_config.studies)).toBeTruthy();
+  expect(allStudiesContent.studies_config.studies.length).toBeGreaterThan(0);
+
+  const studyNames = allStudiesContent.studies_config.studies.map((study) => study.name_short);
+  expect(studyNames).toContain('default');
 });
