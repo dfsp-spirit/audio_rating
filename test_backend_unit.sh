@@ -1,9 +1,9 @@
 #!/bin/sh
 #
-# Finish dev installation before running this, and have the backend running via './run_dev_nginx_both.bash' in another terminal before starting this...
+# Finish dev installation before running this. There is no need to run services for the unit tests.
 
 echo "Running backend unit tests"
-echo "IMPORTANT: Make sure the backend is running via './run_dev_nginx_both.bash' in another terminal before starting this..."
+
 
 if [ ! -d "backend/tests/unit" ]; then
     echo "Error: This script must be run from the root directory of the project."
