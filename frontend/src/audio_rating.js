@@ -1093,6 +1093,31 @@ _drawAll() {
     return null;
   }
 
+  _hitTestRatingLine(x, y) {
+    const currentDim = this._getCurrentDimension();
+    if (!currentDim) return null;
+
+    const h = this.overlay.getBoundingClientRect().height;
+    const minValue = currentDim.minimal_value || 0;
+    const maxValue = minValue + currentDim.num_values - 1;
+    const ratingLineHit = 5;
+
+    for (let i = 0; i < this.segments.length; i++) {
+      const seg = this.segments[i];
+      const x1 = this._timeToX(seg.start);
+      const x2 = this._timeToX(seg.end);
+      if (x < x1 || x > x2) continue;
+
+      const normalizedValue = (seg.value - minValue) / (maxValue - minValue);
+      const ratingLineY = (1 - normalizedValue) * h;
+      if (Math.abs(y - ratingLineY) <= ratingLineHit) {
+        return { i };
+      }
+    }
+
+    return null;
+  }
+
   _onPointerDown(ev) {
     ev.preventDefault();
     if (document.activeElement !== this.root) {
@@ -1141,7 +1166,14 @@ _drawAll() {
     this.hoverPointerY = y;
     this.hoverSegIndex = this._findSegmentIndexAtTime(this._xToTime(x));
     const handle = this._hitTestHandle(x);
-    this.overlay.style.cursor = handle ? 'ew-resize' : 'default';
+    const ratingLine = this._hitTestRatingLine(x, y);
+    if (handle || this.activeHandle) {
+      this.overlay.style.cursor = 'ew-resize';
+    } else if (ratingLine || this.activeSegIndex != null) {
+      this.overlay.style.cursor = 'ns-resize';
+    } else {
+      this.overlay.style.cursor = 'default';
+    }
 
     if (!this.pointerDown) {
       if (this.hoverSegIndex >= 0) {
@@ -1196,7 +1228,9 @@ _drawAll() {
     this.hoverPointerX = x;
     this.hoverPointerY = y;
     this.hoverSegIndex = this._findSegmentIndexAtTime(this._xToTime(x));
-    this.overlay.style.cursor = this._hitTestHandle(x) ? 'ew-resize' : 'default';
+    const handle = this._hitTestHandle(x);
+    const ratingLine = this._hitTestRatingLine(x, y);
+    this.overlay.style.cursor = handle ? 'ew-resize' : (ratingLine ? 'ns-resize' : 'default');
     try { this.overlay.releasePointerCapture(ev.pointerId); } catch {}
     this._drawAll();
   }
