@@ -694,6 +694,8 @@ _drawAll() {
   ctx.clearRect(0, 0, w, h);
 
   // Draw horizontal grid lines with correct labels
+  let lastDrawnYAxisLabelY = null;
+  const minYAxisLabelDistance = 11;
   for (let i = 0; i < num_steps; i++) {
     const value = min_value + i;
     const y = h - (i / (num_steps - 1)) * h;
@@ -706,9 +708,13 @@ _drawAll() {
     ctx.stroke();
 
     // Draw value label
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.font = '12px system-ui, Arial';
-    ctx.fillText(String(value), 6, Math.max(12, y - 4));
+    const labelY = Math.max(11, Math.min(h - 2, y - 4));
+    if (lastDrawnYAxisLabelY == null || Math.abs(lastDrawnYAxisLabelY - labelY) >= minYAxisLabelDistance) {
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.font = '12px system-ui, Arial';
+      ctx.fillText(String(value), 6, labelY);
+      lastDrawnYAxisLabelY = labelY;
+    }
   }
 
   const marginRight = 0;
