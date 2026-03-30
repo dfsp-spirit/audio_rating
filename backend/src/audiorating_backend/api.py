@@ -782,7 +782,7 @@ def _generate_csv_response(segments_data: List[dict], study_name: str, with_ids:
 
 @app.get("/api/admin/export/studies-runtime-config")
 async def export_runtime_studies_config(
-    study_name: Optional[str] = Query(None, description="Optional study short name to export only one study"),
+    study_name: Optional[str] = None,
     current_admin: str = Depends(verify_admin),
     session: Session = Depends(get_session),
 ):

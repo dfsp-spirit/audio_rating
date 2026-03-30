@@ -244,4 +244,9 @@ def load_studies_config(config_path: str) -> CfgFileStudiesConfig:
     else:
         raise ValueError(f"Unsupported config file format: {config_path.suffix}")
 
+    # Add support for directly using the wrapped config, as returned by API endpoint api.export_runtime_studies_config(),
+    # where the study data is nested under "studies_config", because there are also other fields such as "logged_ratings" at the top level
+    if isinstance(data, dict) and "studies_config" in data and isinstance(data["studies_config"], dict):
+        data = data["studies_config"]
+
     return CfgFileStudiesConfig(**data)
