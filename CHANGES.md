@@ -1,8 +1,14 @@
 ## audio_rating ChangeLog
 
 
-Current WIP
------------
+Version 0.7.0 -- i18n and major UI/UX improvements
+----------------------------------------------------
+* NEW: Internationalization (i18n) Support: Added multi-language support with translations for ES, FR, SV; study-specific text can now be defined per language in the configuration file
+* NEW: Improved Audio & Rating UI: Added backspace key to reset audio playback, improved Y-axis labeling to prevent overlap, moved rating display to the right side of segments, and optimized screen space usage for large monitors
+* NEW: Study Submission & Navigation: Added confirmation modal for study submission, improved button labels to clarify the difference between the two save buttons, and moved the submit button lower on the page
+* NEW: Accessibility & Keyboard Support: Enhanced keyboard navigation and accessibility across the application
+* NEW: Admin & Configuration Features: Added runtime study config export to admin dashboard, new admin endpoint for config export, and support for minimal_value in studies_config file
+* NEW: Testing Infrastructure: Added comprehensive end-to-end (E2E) tests for rating flows, admin interface, and API endpoints; added unit and integration test badges
 
 
 Version 0.6.4 -- QOL and small fixes
