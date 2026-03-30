@@ -72,6 +72,14 @@ async def test_runtime_export_file_can_be_reloaded_by_create_config_file_studies
         assert len(song_links) == 2
         assert len(rating_dimensions) == 4
 
+        arousal_dimension = next(
+            (dimension for dimension in rating_dimensions if dimension.dimension_title == "arousal"),
+            None,
+        )
+        assert arousal_dimension is not None
+        assert arousal_dimension.minimal_value == -2
+        assert arousal_dimension.num_values == 5
+
         song_ids = [link.song_id for link in song_links]
         songs = session.exec(select(Song).where(Song.id.in_(song_ids))).all()
         song_urls = sorted(song.media_url for song in songs)
