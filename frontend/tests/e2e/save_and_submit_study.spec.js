@@ -94,7 +94,7 @@ test('save ratings for both songs and submit study', async ({ page }) => {
 
   // Button should reflect either "Already Saved to Server" or stay "Save to Server" depending on backend availability
   const btnText1 = await submitRatingButton.textContent();
-  console.log('Button text after first save:', btnText1);
+
 
   // ===== RATE SONG 2 =====
   await page.locator('#song-list .song-nav', { hasText: '2. Demo Song 2' }).click();
@@ -113,7 +113,6 @@ test('save ratings for both songs and submit study', async ({ page }) => {
   await page.waitForTimeout(1500);
 
   const btnText2 = await submitRatingButton.textContent();
-  console.log('Button text after second save:', btnText2);
 
   // Verify submit study button state
   const submitStudyButton = page.locator('#submit-study');
@@ -121,13 +120,11 @@ test('save ratings for both songs and submit study', async ({ page }) => {
 
   // Log the current completion status for debugging
   const statusText = await completionStatus.textContent();
-  console.log('Study completion status:', statusText);
 
   // Try to submit the study if button is enabled (backend connected and all songs synced)
   const isSubmitEnabled = await submitStudyButton.isEnabled();
 
   if (isSubmitEnabled) {
-    console.log('Submit button is enabled, attempting to submit study');
     await submitStudyButton.click();
 
     // Verify we see the completion phase with "Ratings submitted" heading
