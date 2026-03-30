@@ -96,7 +96,7 @@ async def test_study_config_endpoint_structure_with_valid_study():
     """
     Test that /api/participants/{participant_id}/studies/{study_name}/config
     returns expected configuration structure for a valid study.
-    
+
     Uses 'default' study name which is typically available in test setups.
     """
     # Use the 'default' study which is commonly available
@@ -191,7 +191,7 @@ async def test_admin_runtime_export_endpoint_structure():
 @pytest.mark.asyncio
 async def test_admin_runtime_export_per_study_endpoint_structure():
     """
-    Test that /api/admin/export/studies-runtime-config?study_name=... 
+    Test that /api/admin/export/studies-runtime-config?study_name=...
     returns expected export structure for a single study (if it exists).
     Requires authentication.
     """

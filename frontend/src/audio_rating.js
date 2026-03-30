@@ -59,6 +59,9 @@ export class AudioRatingWidget {
     this.lastPointerX = 0;
     this.lastPointerY = 0;
     this.HANDLE_HIT = 8;
+    this.hoverSegIndex = null;
+    this.hoverPointerX = 0;
+    this.hoverPointerY = 0;
 
     // DOM refs (filled in _buildDOM)
     this.root = null;
@@ -489,6 +492,7 @@ _updateDimensionDescription() {
     this.overlay.addEventListener('pointerdown', (ev) => this._onPointerDown(ev));
     this.overlay.addEventListener('pointermove', (ev) => this._onPointerMove(ev));
     this.overlay.addEventListener('pointerup',   (ev) => this._onPointerUp(ev));
+    this.overlay.addEventListener('pointerleave', () => this._onPointerLeave());
     this.overlay.addEventListener('dblclick',    (ev) => this._onDblClick(ev));
     this.overlay.addEventListener('contextmenu', (ev) => this._onContextMenu(ev));
   }
@@ -707,9 +711,33 @@ _drawAll() {
     ctx.strokeRect(x1 + 0.5, heightFromTop + 0.5, Math.max(1, x2 - x1 - 1), h - heightFromTop - 1);
 
     // Draw value text inside segment
-    ctx.fillStyle = 'rgba(0,0,0,0.85)';
-    ctx.font = '12px system-ui, Arial';
-    ctx.fillText(`${seg.value}`, x1 + 6, Math.max(12, heightFromTop + 12));
+    const valueText = `${seg.value}`;
+    ctx.font = '600 12px system-ui, Arial';
+    const textWidth = Math.ceil(ctx.measureText(valueText).width);
+    const labelPaddingX = 4;
+    const labelPaddingY = 2;
+    const labelX = x1 + 6;
+    const labelY = Math.max(12, heightFromTop + 12);
+    const labelHeight = 14;
+    const labelWidth = textWidth + labelPaddingX * 2;
+
+    ctx.fillStyle = 'rgba(250, 252, 255, 0.72)';
+    ctx.fillRect(
+      labelX - labelPaddingX,
+      labelY - labelHeight + labelPaddingY,
+      labelWidth,
+      labelHeight
+    );
+    ctx.strokeStyle = 'rgba(43, 76, 117, 0.25)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(
+      labelX - labelPaddingX + 0.5,
+      labelY - labelHeight + labelPaddingY + 0.5,
+      Math.max(1, labelWidth - 1),
+      Math.max(1, labelHeight - 1)
+    );
+    ctx.fillStyle = 'rgba(25, 47, 74, 0.95)';
+    ctx.fillText(valueText, labelX, labelY - 1);
 
     // Draw segment boundaries
     if (idx > 0) {
@@ -718,6 +746,52 @@ _drawAll() {
       ctx.fillRect(hx - 1, 0, 2, h);
     }
   });
+
+  if (this.hoverSegIndex != null && this.hoverSegIndex >= 0 && this.hoverSegIndex < this.segments.length) {
+    const seg = this.segments[this.hoverSegIndex];
+    const duration = this._durationOrOne();
+    const segmentStart = Math.max(0, seg.start);
+    const segmentEnd = Math.max(segmentStart, Math.min(seg.end, duration));
+    const segmentLengthSec = segmentEnd - segmentStart;
+
+    const tooltipLines = [
+      `segment #${this.hoverSegIndex + 1}`,
+      `${segmentLengthSec.toFixed(1)} seconds length`,
+      `rating ${seg.value}`
+    ];
+
+    ctx.font = '12px system-ui, Arial';
+    const tooltipPadding = 7;
+    const lineHeight = 16;
+    const tooltipWidth = Math.max(
+      ...tooltipLines.map((line) => Math.ceil(ctx.measureText(line).width))
+    ) + tooltipPadding * 2;
+    const tooltipHeight = tooltipLines.length * lineHeight + tooltipPadding * 2 - 2;
+
+    let tooltipX = this.hoverPointerX + 10;
+    let tooltipY = this.hoverPointerY + 10;
+
+    if (tooltipX + tooltipWidth > w - 4) {
+      tooltipX = this.hoverPointerX - tooltipWidth - 10;
+    }
+    if (tooltipY + tooltipHeight > h - 4) {
+      tooltipY = this.hoverPointerY - tooltipHeight - 10;
+    }
+
+    tooltipX = Math.max(4, tooltipX);
+    tooltipY = Math.max(4, tooltipY);
+
+    ctx.fillStyle = 'rgba(22, 29, 41, 0.82)';
+    ctx.fillRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
+    ctx.strokeStyle = 'rgba(170, 192, 229, 0.55)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(tooltipX + 0.5, tooltipY + 0.5, tooltipWidth - 1, tooltipHeight - 1);
+
+    ctx.fillStyle = 'rgba(244, 248, 255, 0.98)';
+    tooltipLines.forEach((line, index) => {
+      ctx.fillText(line, tooltipX + tooltipPadding, tooltipY + tooltipPadding + 11 + index * lineHeight);
+    });
+  }
 
   // Update slider
   if (this.wavesurfer) this.timeSlider.value = this.wavesurfer.getCurrentTime();
@@ -739,6 +813,9 @@ _drawAll() {
     const y = ev.clientY - rect.top;
     this.lastPointerX = x;
     this.lastPointerY = y;
+    this.hoverPointerX = x;
+    this.hoverPointerY = y;
+    this.hoverSegIndex = this._findSegmentIndexAtTime(this._xToTime(x));
     this.pointerDown = true;
 
     const handle = this._hitTestHandle(x);
@@ -758,12 +835,19 @@ _drawAll() {
   }
 
   _onPointerMove(ev) {
-    if (!this.pointerDown) return;
     const rect = this.overlay.getBoundingClientRect();
     const x = ev.clientX - rect.left;
     const y = ev.clientY - rect.top;
     this.lastPointerX = x;
     this.lastPointerY = y;
+    this.hoverPointerX = x;
+    this.hoverPointerY = y;
+    this.hoverSegIndex = this._findSegmentIndexAtTime(this._xToTime(x));
+
+    if (!this.pointerDown) {
+      this._drawAll();
+      return;
+    }
 
     if (this.activeHandle) {
       const time = this._xToTime(x);
@@ -804,7 +888,19 @@ _drawAll() {
     this.pointerDown = false;
     this.activeSegIndex = null;
     this.activeHandle = null;
+    const rect = this.overlay.getBoundingClientRect();
+    const x = ev.clientX - rect.left;
+    const y = ev.clientY - rect.top;
+    this.hoverPointerX = x;
+    this.hoverPointerY = y;
+    this.hoverSegIndex = this._findSegmentIndexAtTime(this._xToTime(x));
     try { this.overlay.releasePointerCapture(ev.pointerId); } catch {}
+    this._drawAll();
+  }
+
+  _onPointerLeave() {
+    if (this.pointerDown) return;
+    this.hoverSegIndex = null;
     this._drawAll();
   }
 
