@@ -9,6 +9,12 @@
   user-select: none;
 }
 
+.arw:focus,
+.arw:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 
 /* Dimension buttons */
 .arw .arw-section-box {

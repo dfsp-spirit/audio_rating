@@ -56,6 +56,7 @@ export class AudioRatingWidget {
     this.pointerDown = false;
     this.activeSegIndex = null;
     this.activeHandle = null;
+    this.keyboardSegIndex = null;
     this.lastPointerX = 0;
     this.lastPointerY = 0;
     this.HANDLE_HIT = 8;
@@ -136,6 +137,101 @@ export class AudioRatingWidget {
     this._updateStopButtonA11y();
   }
 
+  _getSelectedSegmentIndex() {
+    if (!Array.isArray(this.segments) || this.segments.length === 0) return null;
+    if (this.keyboardSegIndex == null || this.keyboardSegIndex < 0 || this.keyboardSegIndex >= this.segments.length) {
+      this.keyboardSegIndex = 0;
+    }
+    return this.keyboardSegIndex;
+  }
+
+  _setSelectedSegmentIndex(index) {
+    if (!Array.isArray(this.segments) || this.segments.length === 0) {
+      this.keyboardSegIndex = null;
+      return;
+    }
+    this.keyboardSegIndex = Math.max(0, Math.min(this.segments.length - 1, index));
+  }
+
+  _splitSelectedSegmentAtMidpoint() {
+    const si = this._getSelectedSegmentIndex();
+    if (si == null) return;
+
+    const seg = this.segments[si];
+    const midpoint = (seg.start + seg.end) / 2;
+    const minSeg = 0.08;
+    if ((midpoint - seg.start) < minSeg || (seg.end - midpoint) < minSeg) return;
+
+    const right = { start: midpoint, end: seg.end, value: seg.value };
+    seg.end = midpoint;
+    this.segments.splice(si + 1, 0, right);
+    this._drawAll();
+    this._emitChange('segment_added');
+  }
+
+  _deleteSelectedSegmentRightBoundary() {
+    const si = this._getSelectedSegmentIndex();
+    if (si == null || si >= this.segments.length - 1) return;
+
+    const left = this.segments[si];
+    const right = this.segments[si + 1];
+    left.end = right.end;
+    left.value = right.value;
+    this.segments.splice(si + 1, 1);
+    this._setSelectedSegmentIndex(si);
+    this._drawAll();
+    this._emitChange('segment_deleted');
+  }
+
+  _moveSelectedSegmentRightBoundary(direction) {
+    const si = this._getSelectedSegmentIndex();
+    if (si == null || si >= this.segments.length - 1) return;
+
+    const leftSeg = this.segments[si];
+    const rightSeg = this.segments[si + 1];
+    const epsilon = 0.02;
+    const stepSeconds = 0.1;
+    const candidate = leftSeg.end + (direction * stepSeconds);
+    const newBoundary = Math.max(leftSeg.start + epsilon, Math.min(rightSeg.end - epsilon, candidate));
+    if (Math.abs(newBoundary - leftSeg.end) < 1e-9) return;
+
+    leftSeg.end = newBoundary;
+    rightSeg.start = newBoundary;
+    this._drawAll();
+    this._emitChange('boundary_moved');
+  }
+
+  _adjustSelectedSegmentRating(delta) {
+    const si = this._getSelectedSegmentIndex();
+    if (si == null) return;
+
+    const currentDim = this._getCurrentDimension();
+    if (!currentDim) return;
+    const { min, max } = this._getValueRange(currentDim);
+
+    const seg = this.segments[si];
+    const nextValue = Math.max(min, Math.min(max, seg.value + delta));
+    if (nextValue === seg.value) return;
+
+    seg.value = nextValue;
+    this._drawAll();
+    this._emitChange('rating_changed');
+  }
+
+  _selectPreviousSegment() {
+    const si = this._getSelectedSegmentIndex();
+    if (si == null) return;
+    this._setSelectedSegmentIndex(si - 1);
+    this._drawAll();
+  }
+
+  _selectNextSegment() {
+    const si = this._getSelectedSegmentIndex();
+    if (si == null) return;
+    this._setSelectedSegmentIndex(si + 1);
+    this._drawAll();
+  }
+
   setDimensions(rating_dimensions) {
     this.rating_dimensions = rating_dimensions;
 
@@ -156,6 +252,7 @@ export class AudioRatingWidget {
                 this.dimensionData[this.currentDimension] = JSON.parse(JSON.stringify(this.segments));
                 this.currentDimension = btn.dataset.dim;
                 this.segments = this.dimensionData[this.currentDimension];
+              this._setSelectedSegmentIndex(0);
                 this._updateLegend();
                 this._updateActiveButton();
                 this._updateDimensionDescription(); // ADD THIS LINE
@@ -355,7 +452,11 @@ export class AudioRatingWidget {
 
   if (this.rating_dimensions.length > 0 && !this.currentDimension) {
     this.currentDimension = this.rating_dimensions[0].dimension_title;
+  }
+
+  if (this.currentDimension && this.dimensionData[this.currentDimension]) {
     this.segments = this.dimensionData[this.currentDimension];
+    this._setSelectedSegmentIndex(0);
   }
 }
 
@@ -527,13 +628,62 @@ _updateDimensionDescription() {
     };
     window.addEventListener('i18n:languageChanged', this._onLanguageChanged);
 
-    // Spacebar handling (only when widget (root) is focused)
+    // Keyboard controls (only when widget (root) is focused)
     this._onKeyDown = (ev) => {
       const tag = document.activeElement?.tagName;
       const inTextInput = tag === 'INPUT' || tag === 'TEXTAREA';
       if (inTextInput) return;
       const widgetFocused = document.activeElement === this.root || this.root.contains(document.activeElement);
       if (!widgetFocused) return;
+      const editingFocused = document.activeElement === this.root || document.activeElement === this.overlay;
+
+      if (editingFocused && ev.code === 'Enter') {
+        ev.preventDefault();
+        this._splitSelectedSegmentAtMidpoint();
+        return;
+      }
+
+      if (editingFocused && ev.code === 'Delete') {
+        ev.preventDefault();
+        this._deleteSelectedSegmentRightBoundary();
+        return;
+      }
+
+      if (editingFocused && ev.code === 'ArrowLeft') {
+        ev.preventDefault();
+        this._moveSelectedSegmentRightBoundary(-1);
+        return;
+      }
+
+      if (editingFocused && ev.code === 'ArrowRight') {
+        ev.preventDefault();
+        this._moveSelectedSegmentRightBoundary(1);
+        return;
+      }
+
+      if (editingFocused && ev.code === 'ArrowUp') {
+        ev.preventDefault();
+        this._adjustSelectedSegmentRating(1);
+        return;
+      }
+
+      if (editingFocused && ev.code === 'ArrowDown') {
+        ev.preventDefault();
+        this._adjustSelectedSegmentRating(-1);
+        return;
+      }
+
+      if (editingFocused && ev.code === 'PageUp') {
+        ev.preventDefault();
+        this._selectPreviousSegment();
+        return;
+      }
+
+      if (editingFocused && ev.code === 'PageDown') {
+        ev.preventDefault();
+        this._selectNextSegment();
+        return;
+      }
 
       if (ev.code === 'Space') {
         ev.preventDefault();
@@ -563,6 +713,7 @@ _updateDimensionDescription() {
         this.dimensionData[this.currentDimension] = JSON.parse(JSON.stringify(this.segments));
         this.currentDimension = btn.dataset.dim;
         this.segments = this.dimensionData[this.currentDimension];
+        this._setSelectedSegmentIndex(0);
         this._updateLegend();
         this._updateActiveButton();
         this._updateDimensionDescription();
@@ -865,6 +1016,17 @@ _drawAll() {
     }
   });
 
+  const widgetFocused = document.activeElement === this.root || this.root.contains(document.activeElement);
+  const selectedIndex = this._getSelectedSegmentIndex();
+  if (widgetFocused && selectedIndex != null) {
+    const selectedSeg = this.segments[selectedIndex];
+    const sx1 = this._timeToX(selectedSeg.start);
+    const sx2 = Math.min(this._timeToX(selectedSeg.end), w - marginRight);
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(sx1 + 0.5, 0.5, Math.max(1, sx2 - sx1 - 1), Math.max(1, h - 1));
+  }
+
   if (this.hoverSegIndex != null && this.hoverSegIndex >= 0 && this.hoverSegIndex < this.segments.length) {
     const seg = this.segments[this.hoverSegIndex];
     const duration = this._durationOrOne();
@@ -927,6 +1089,13 @@ _drawAll() {
 
   _onPointerDown(ev) {
     ev.preventDefault();
+    if (document.activeElement !== this.root) {
+      try {
+        this.root.focus({ preventScroll: true });
+      } catch {
+        this.root.focus();
+      }
+    }
     const rect = this.overlay.getBoundingClientRect();
     const x = ev.clientX - rect.left;
     const y = ev.clientY - rect.top;
@@ -940,7 +1109,9 @@ _drawAll() {
     const handle = this._hitTestHandle(x);
     if (handle) {
       this.activeHandle = { index: handle.i, startSeg: handle.i - 1, endSeg: handle.i };
+      this._setSelectedSegmentIndex(handle.i - 1);
       this.overlay.setPointerCapture(ev.pointerId);
+      this._drawAll();
       return;
     }
 
@@ -948,6 +1119,7 @@ _drawAll() {
     const si = this._findSegmentIndexAtTime(time);
     if (si >= 0) {
       this.activeSegIndex = si;
+      this._setSelectedSegmentIndex(si);
       this.overlay.setPointerCapture(ev.pointerId);
     }
     this._drawAll();
@@ -964,6 +1136,9 @@ _drawAll() {
     this.hoverSegIndex = this._findSegmentIndexAtTime(this._xToTime(x));
 
     if (!this.pointerDown) {
+      if (this.hoverSegIndex >= 0) {
+        this._setSelectedSegmentIndex(this.hoverSegIndex);
+      }
       this._drawAll();
       return;
     }
@@ -1036,6 +1211,7 @@ _drawAll() {
     const right = { start: time, end: seg.end, value: seg.value };
     seg.end = time;
     this.segments.splice(si + 1, 0, right);
+    this._setSelectedSegmentIndex(si);
     this._drawAll();
     this._emitChange('segment_added');
   }
@@ -1051,6 +1227,7 @@ _drawAll() {
       const right = this.segments[i];
       left.end = right.end;
       this.segments.splice(i, 1);
+      this._setSelectedSegmentIndex(i - 1);
       this._drawAll();
       this._emitChange('segment_deleted');
     }
