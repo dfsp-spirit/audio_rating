@@ -4,23 +4,26 @@ class I18n {
     this.translations = {};
     this.isLoaded = false;
     this.loadPromise = null;
+    this.supportedLanguages = ['en', 'de', 'es', 'fr', 'sv'];
   }
 
   detectLanguage() {
     const params = new URLSearchParams(window.location.search);
     const urlLang = params.get('lang');
-    if (urlLang && ['en', 'de'].includes(urlLang)) {
+    if (urlLang && this.supportedLanguages.includes(urlLang)) {
       return urlLang;
     }
 
     const storedLang = localStorage.getItem('ar_lang');
-    if (storedLang && ['en', 'de'].includes(storedLang)) {
+    if (storedLang && this.supportedLanguages.includes(storedLang)) {
       return storedLang;
     }
 
     const browserLang = (navigator.language || 'en').toLowerCase();
-    if (browserLang.startsWith('de')) {
-      return 'de';
+    for (const lang of this.supportedLanguages) {
+      if (browserLang.startsWith(lang)) {
+        return lang;
+      }
     }
 
     return 'en';

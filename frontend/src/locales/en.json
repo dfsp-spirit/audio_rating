@@ -4,7 +4,10 @@
 		"close": "Close",
 		"languageLabel": "Language",
 		"languageOptionEnglish": "English",
-		"languageOptionGerman": "Deutsch"
+		"languageOptionGerman": "German",
+		"languageOptionSpanish": "Spanish",
+		"languageOptionFrench": "French",
+		"languageOptionSwedish": "Swedish"
 	},
 	"index": {
 		"title": "Music Research - Please use your invitation",

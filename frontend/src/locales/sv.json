@@ -4,7 +4,10 @@
 		"close": "Stäng",
 		"languageLabel": "Språk",
 		"languageOptionEnglish": "Engelska",
-		"languageOptionGerman": "Tyska"
+		"languageOptionGerman": "Tyska",
+		"languageOptionSpanish": "Spanska",
+		"languageOptionFrench": "Franska",
+		"languageOptionSwedish": "Svenska"
 	},
 	"index": {
 		"title": "Musikforskning - Använd din inbjudan",

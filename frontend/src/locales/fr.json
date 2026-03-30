@@ -4,7 +4,10 @@
 		"close": "Fermer",
 		"languageLabel": "Langue",
 		"languageOptionEnglish": "Anglais",
-		"languageOptionGerman": "Allemand"
+		"languageOptionGerman": "Allemand",
+		"languageOptionSpanish": "Espagnol",
+		"languageOptionFrench": "Français",
+		"languageOptionSwedish": "Suédois"
 	},
 	"index": {
 		"title": "Recherche Musicale - Veuillez utiliser votre invitation",

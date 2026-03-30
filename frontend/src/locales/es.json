@@ -4,7 +4,10 @@
 		"close": "Cerrar",
 		"languageLabel": "Idioma",
 		"languageOptionEnglish": "Inglés",
-		"languageOptionGerman": "Alemán"
+		"languageOptionGerman": "Alemán",
+		"languageOptionSpanish": "Español",
+		"languageOptionFrench": "Francés",
+		"languageOptionSwedish": "Sueco"
 	},
 	"index": {
 		"title": "Investigación Musical - Use su invitación",

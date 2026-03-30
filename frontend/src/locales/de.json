@@ -4,7 +4,10 @@
 		"close": "Schließen",
 		"languageLabel": "Sprache",
 		"languageOptionEnglish": "Englisch",
-		"languageOptionGerman": "Deutsch"
+		"languageOptionGerman": "Deutsch",
+		"languageOptionSpanish": "Spanisch",
+		"languageOptionFrench": "Französisch",
+		"languageOptionSwedish": "Schwedisch"
 	},
 	"index": {
 		"title": "Musikstudie - Bitte nutzen Sie Ihre Einladung",
