@@ -1,7 +1,13 @@
+import os
 import json
 
 import pytest
 from sqlmodel import SQLModel, Session, create_engine, select
+
+os.environ.setdefault("AR_DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("AR_ALLOWED_ORIGINS", '["http://localhost:3000"]')
+os.environ.setdefault("AR_API_ADMIN_USERNAME", "test_admin")
+os.environ.setdefault("AR_API_ADMIN_PASSWORD", "test_password")
 
 from audiorating_backend import api as api_module
 from audiorating_backend import database as database_module
