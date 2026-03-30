@@ -332,6 +332,14 @@ _updateDimensionDescription() {
       insertPosition: 'beforebegin',
       timeInterval: 0.2,
       primaryLabelInterval: 5,
+      formatTimeCallback: (seconds) => {
+        if (Math.abs(seconds) < 0.001) return '';
+        if (seconds / 60 > 1) {
+          const remainingSeconds = Math.round(seconds % 60);
+          return `${Math.floor(seconds / 60)}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+        }
+        return `${Math.round(seconds * 1000) / 1000}`;
+      },
       //secondaryLabelInterval: 1,
       style: {
         fontSize: '20px',
@@ -728,7 +736,9 @@ _drawAll() {
     const textWidth = Math.ceil(ctx.measureText(valueText).width);
     const labelPaddingX = 4;
     const labelPaddingY = 2;
-    const labelX = x1 + 6;
+    let labelX = x2 - textWidth - labelPaddingX - 4;
+    labelX = Math.max(x1 + 2, labelX);
+    labelX = Math.min(labelX, w - textWidth - labelPaddingX - 2);
     const labelY = Math.max(12, heightFromTop + 12);
     const labelHeight = 14;
     const labelWidth = textWidth + labelPaddingX * 2;
