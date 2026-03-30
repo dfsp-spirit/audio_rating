@@ -536,12 +536,36 @@ export class StudyCoordinator {
     document.getElementById('submit-rating').addEventListener('click', () => this.submitRating());
     document.getElementById('download-data').addEventListener('click', () => this.downloadAllRatings());
 
-    // Add event listener for the submit study button
+    // Add event listener for the submit study button - show confirmation modal first
     document.getElementById('submit-study').addEventListener('click', () => {
-    if (this.areAllSongsSavedToServer()) {
-      this.completeStudy();
-    }
-  });
+      this.showSubmitConfirmationModal();
+    });
+
+    // Wire up modal buttons
+    document.getElementById('modal-confirm-btn').addEventListener('click', () => {
+      this.hideSubmitConfirmationModal();
+      if (this.areAllSongsSavedToServer()) {
+        this.completeStudy();
+      }
+    });
+    document.getElementById('modal-cancel-btn').addEventListener('click', () => {
+      this.hideSubmitConfirmationModal();
+    });
+
+    // Close modal when clicking the overlay (outside the modal box)
+    document.querySelector('.modal-overlay')?.addEventListener('click', () => {
+      this.hideSubmitConfirmationModal();
+    });
+
+    // Close modal on Escape key
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const modal = document.getElementById('submit-confirmation-modal');
+        if (modal && modal.classList.contains('show')) {
+          this.hideSubmitConfirmationModal();
+        }
+      }
+    });
 
     this.showPhase('instructions-phase');
     this.updateBackendStatus();
@@ -1289,4 +1313,36 @@ showBackendError(error, statusCode = null, ui_message = null) {
     shouldDisableStudy: shouldDisableStudy
   });
 }
+
+  showSubmitConfirmationModal() {
+    const modal = document.getElementById('submit-confirmation-modal');
+    const songsList = document.getElementById('modal-songs-list');
+
+    // Clear and populate the songs list
+    songsList.innerHTML = '';
+
+    this.studyConfig.songs_to_rate.forEach(song => {
+      const li = document.createElement('li');
+      const isSynced = this.songSyncStatus[song.display_name] === 'synced';
+      li.className = isSynced ? 'synced' : 'unsaved';
+      li.textContent = song.display_name;
+      songsList.appendChild(li);
+    });
+
+    // Show modal with fade-in
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden'; // Prevent scrolling
+  }
+
+  hideSubmitConfirmationModal() {
+    const modal = document.getElementById('submit-confirmation-modal');
+    modal.classList.remove('show');
+    document.body.style.overflow = ''; // Restore scrolling
+
+    // Return focus to submit button
+    const submitBtn = document.getElementById('submit-study');
+    if (submitBtn) {
+      submitBtn.focus();
+    }
+  }
 }

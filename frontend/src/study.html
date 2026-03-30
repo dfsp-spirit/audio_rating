@@ -443,6 +443,100 @@
       font-size: 0.75rem;
       line-height: 1.2;
     }
+
+    /* Submission confirmation modal */
+    #submit-confirmation-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1000;
+    }
+    #submit-confirmation-modal.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    .modal-content {
+      position: relative;
+      z-index: 1001;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 24px;
+    }
+    .modal-content h3 {
+      margin: 0 0 16px 0;
+      color: #1f2937;
+      font-size: 1.25em;
+      font-weight: 600;
+    }
+    .modal-songs-summary {
+      margin: 16px 0;
+      padding: 12px;
+      background: #f8fafc;
+      border-radius: 6px;
+    }
+    .modal-songs-summary p {
+      margin: 0 0 8px 0;
+      color: #4b5563;
+      font-size: 0.95em;
+      line-height: 1.5;
+    }
+    #modal-songs-list {
+      list-style: disc;
+      padding-left: 20px;
+      margin: 8px 0;
+    }
+    #modal-songs-list li {
+      padding: 4px 0;
+      color: #475569;
+      font-size: 0.9em;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+    .modal-actions button {
+      padding: 10px 20px;
+      border-radius: 6px;
+      border: 1px solid #bbb;
+      background: #fff;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      font-size: 0.95em;
+    }
+    .modal-actions button:hover:not(:disabled) {
+      background: #e0e0e0;
+    }
+    .modal-actions button.confirm {
+      background: #10b981;
+      color: white;
+      border-color: #059669;
+    }
+    .modal-actions button.confirm:hover:not(:disabled) {
+      background: #059669;
+    }
+    .modal-actions button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -554,6 +648,22 @@
       </div>
 
       <div class="loading-shade" id="loading-overlay" data-i18n="common.loading">Loading...</div>
+
+      <!-- Submit Confirmation Modal -->
+      <div id="submit-confirmation-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+          <h3 data-i18n="study.submitStudyConfirm">Are you sure you want to submit your study?</h3>
+          <div class="modal-songs-summary">
+            <p><strong data-i18n="study.submitStudySaved">Songs saved to server</strong></p>
+            <ul id="modal-songs-list"></ul>
+          </div>
+          <div class="modal-actions">
+            <button id="modal-cancel-btn" data-i18n="study.submitStudyCancelButton">Cancel</button>
+            <button id="modal-confirm-btn" class="confirm" data-i18n="study.submitStudyConfirmButton">Yes, Submit Study</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Completion Phase -->

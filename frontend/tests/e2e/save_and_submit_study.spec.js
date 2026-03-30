@@ -127,6 +127,13 @@ test('save ratings for both songs and submit study', async ({ page }) => {
   if (isSubmitEnabled) {
     await submitStudyButton.click();
 
+    // Wait for modal to appear
+    const confirmButton = page.locator('#modal-confirm-btn');
+    await expect(confirmButton).toBeVisible({ timeout: 3000 });
+
+    // Click confirm in modal
+    await confirmButton.click();
+
     // Verify we see the completion phase with "Ratings submitted" heading
     await expect(page.locator('#completion-phase')).toHaveClass(/active/);
     await expect(page.locator('text=Ratings submitted')).toBeVisible();
