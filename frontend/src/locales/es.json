@@ -112,6 +112,8 @@
 		"stepLevels": "Niveles de paso:",
 		"downloadCsv": "Descargar CSV",
 		"audioControls": "Controles de Audio: Haga clic en los botones de abajo o presione la barra espaciadora para alternar Reproducir/Pausar. Haga clic o arrastre el control deslizante de abajo para buscar.",
+		"playPauseShortcutHint": "Consejo: Presione Espacio para Reproducir/Pausar",
+		"seekPosition": "Posición de reproducción",
 		"zoomIn": "Zoom +",
 		"zoomOut": "Zoom −",
 		"zoomReset": "Restablecer Zoom",

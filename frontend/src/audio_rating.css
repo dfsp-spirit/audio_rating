@@ -57,6 +57,68 @@
 }
 .arw .arw-dimension-buttons button:active { transform: translateY(1px); }
 
+.arw button:focus-visible,
+.arw input[type="range"]:focus-visible,
+.arw .arw-overlay:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+/* Visual tooltip for play button shortcut hint */
+.arw .arw-play {
+  position: relative;
+}
+
+.arw .arw-play::after {
+  content: attr(data-hint);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 9px;
+  background: #4b5563;
+  color: #f0f0f0;
+  font-size: 11px;
+  white-space: nowrap;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.1s ease, visibility 0.1s ease;
+}
+
+.arw .arw-play::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid #4b5563;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.1s ease, visibility 0.1s ease;
+}
+
+.arw .arw-play:hover::after,
+.arw .arw-play:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+.arw .arw-play:hover::before,
+.arw .arw-play:focus-visible::before {
+  opacity: 1;
+  visibility: visible;
+}
+
 /* Waveform + overlay */
 .arw .arw-container {
   position: relative;

@@ -75,6 +75,7 @@ export class AudioRatingWidget {
     this.stopBtn = null;
     this.statusEl = null;
     this.timeSlider = null;
+    this.volumeSlider = null;
 
     // WaveSurfer instance
     this.wavesurfer = null;
@@ -94,6 +95,21 @@ export class AudioRatingWidget {
 
   t(key, params = {}) {
     return i18n.t(key, params);
+  }
+
+  _getPlayPauseShortcutHint() {
+    return this.t('widget.playPauseShortcutHint');
+  }
+
+  _updatePlayButtonA11y() {
+    if (!this.playBtn) return;
+    const isPlaying = this.wavesurfer && this.wavesurfer.isPlaying();
+    const actionLabel = isPlaying ? this.t('widget.pause') : this.t('widget.play');
+    const shortcutHint = this._getPlayPauseShortcutHint();
+    const combined = `${actionLabel} — ${shortcutHint}`;
+    this.playBtn.removeAttribute('title');
+    this.playBtn.setAttribute('aria-label', combined);
+    this.playBtn.setAttribute('data-hint', shortcutHint);
   }
 
   setDimensions(rating_dimensions) {
@@ -190,6 +206,10 @@ export class AudioRatingWidget {
     const root = document.createElement('div');
     root.className = 'arw';
     root.tabIndex = 0; // allow focus for spacebar handling
+    root.setAttribute('role', 'region');
+    root.setAttribute('aria-label', (typeof this.title === 'string' && this.title.trim().length > 0)
+      ? this.title
+      : this.t('widget.title'));
 
     // Conditionally show instructions based on with_instructions
     const titleHtml = (typeof this.title === 'string' && this.title.trim().length > 0)
@@ -237,22 +257,22 @@ export class AudioRatingWidget {
       ${this.with_instructions ? `<div class="arw-info"><span class="arw-audio-manual">${this.t('widget.audioControls')}</span></div>` : ''}
 
       <div class="arw-slider">
-          <input type="range" class="arw-time-slider" min="0" max="1" step="0.001" value="0">
+          <input type="range" class="arw-time-slider" min="0" max="1" step="0.001" value="0" aria-label="${this.t('widget.seekPosition')}">
       </div>
 
       <div class="arw-audio-controls">
-        <button class="arw-play">${this.t('widget.play')}</button>
-        <button class="arw-stop">${this.t('widget.stop')}</button>
+        <button class="arw-play" type="button">${this.t('widget.play')}</button>
+        <button class="arw-stop" type="button" aria-label="${this.t('widget.stop')}">${this.t('widget.stop')}</button>
           ${this.with_volume_slider ? `
           <div class="arw-volume-control">
           <label class="arw-volume-label">${this.t('widget.volume')} </label>
-              <input type="range" class="arw-volume-slider" min="0" max="1" step="0.01" value="1">
+              <input type="range" class="arw-volume-slider" min="0" max="1" step="0.01" value="1" aria-label="${this.t('widget.volume')}">
           </div>
           ` : ''}
       </div>
 
       <div class="arw-info">
-        <span class="arw-status">${this.t('widget.statusLoading')}</span>
+        <span class="arw-status" role="status" aria-live="polite">${this.t('widget.statusLoading')}</span>
       </div>
     </div>
     `;
@@ -272,6 +292,7 @@ export class AudioRatingWidget {
     this.stopBtn = root.querySelector('.arw-stop');
     this.statusEl = root.querySelector('.arw-status');
     this.timeSlider = root.querySelector('.arw-time-slider');
+    this.volumeSlider = root.querySelector('.arw-volume-slider');
 
     // Zoom buttons
     this.zoomInBtn = root.querySelector('.arw-zoom-in');
@@ -286,6 +307,8 @@ export class AudioRatingWidget {
       b.dataset.dim = dim.dimension_title;
       this.dimButtonsWrap.appendChild(b);
     }
+
+    this._updatePlayButtonA11y();
 }
 
   _getCurrentDimension() {
@@ -413,15 +436,27 @@ _updateDimensionDescription() {
         // Ensure default px/sec captured after decode/draw
         this._defaultMinPxPerSec = this.wavesurfer.params?.minPxPerSec ?? this._defaultMinPxPerSec;
         this._updateZoomButtonStates();
+
+        // Auto-focus widget root so spacebar works immediately
+        if (!this.root.contains(document.activeElement)) {
+          this.root.focus();
+        }
     });
 
     this.wavesurfer.on('finish', () => {
       this.playBtn.textContent = this.t('widget.play');
+      this._updatePlayButtonA11y();
     });
 
     // Button state driven by real events
-    this.wavesurfer.on('play', () => { this.playBtn.textContent = this.t('widget.pause'); });
-    this.wavesurfer.on('pause', () => { this.playBtn.textContent = this.t('widget.play'); });
+    this.wavesurfer.on('play', () => {
+      this.playBtn.textContent = this.t('widget.pause');
+      this._updatePlayButtonA11y();
+    });
+    this.wavesurfer.on('pause', () => {
+      this.playBtn.textContent = this.t('widget.play');
+      this._updatePlayButtonA11y();
+    });
 
     // Update current time during playback
     this.wavesurfer.on('timeupdate', () => {
@@ -676,11 +711,16 @@ _applyI18nTexts() {
   if (volumeLabel) volumeLabel.textContent = `${this.t('widget.volume')} `;
 
   if (this.stopBtn) this.stopBtn.textContent = this.t('widget.stop');
+  if (this.stopBtn) this.stopBtn.setAttribute('aria-label', this.t('widget.stop'));
+
+  if (this.timeSlider) this.timeSlider.setAttribute('aria-label', this.t('widget.seekPosition'));
+  if (this.volumeSlider) this.volumeSlider.setAttribute('aria-label', this.t('widget.volume'));
 
   if (this.playBtn) {
     this.playBtn.textContent = this.wavesurfer && this.wavesurfer.isPlaying()
       ? this.t('widget.pause')
       : this.t('widget.play');
+    this._updatePlayButtonA11y();
   }
 }
 

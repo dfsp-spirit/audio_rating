@@ -112,6 +112,8 @@
 		"stepLevels": "Step levels:",
 		"downloadCsv": "Download CSV",
 		"audioControls": "Audio Controls: Click the buttons below or press the space key to toggle Play/Pause. Click or drag the slider below to seek.",
+		"playPauseShortcutHint": "Tip: Press Space to Play/Pause",
+		"seekPosition": "Playback position",
 		"zoomIn": "Zoom +",
 		"zoomOut": "Zoom −",
 		"zoomReset": "Reset Zoom",

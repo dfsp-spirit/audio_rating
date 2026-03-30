@@ -112,6 +112,8 @@
 		"stepLevels": "Stegnivåer:",
 		"downloadCsv": "Ladda ner CSV",
 		"audioControls": "Ljudkontroller: Klicka på knapparna nedan eller tryck på mellanslagstangenten för att växla mellan Spela/Paus. Klicka eller dra reglaget nedan för att söka.",
+		"playPauseShortcutHint": "Tips: Tryck på mellanslag för Spela/Paus",
+		"seekPosition": "Uppspelningsposition",
 		"zoomIn": "Zooma +",
 		"zoomOut": "Zooma −",
 		"zoomReset": "Återställ zoom",

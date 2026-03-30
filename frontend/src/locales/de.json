@@ -112,6 +112,8 @@
 		"stepLevels": "Bewertungsstufen:",
 		"downloadCsv": "CSV herunterladen",
 		"audioControls": "Audiosteuerung: Klicken Sie auf die Schaltflächen unten oder drücken Sie die Leertaste, um Play/Pause umzuschalten. Klicken oder ziehen Sie den Schieberegler unten zum Springen.",
+		"playPauseShortcutHint": "Tipp: Mit Leertaste Play/Pause umschalten",
+		"seekPosition": "Wiedergabeposition",
 		"zoomIn": "Zoom +",
 		"zoomOut": "Zoom −",
 		"zoomReset": "Zoom zurücksetzen",

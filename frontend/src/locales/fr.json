@@ -112,6 +112,8 @@
 		"stepLevels": "Niveaux de pas :",
 		"downloadCsv": "Télécharger CSV",
 		"audioControls": "Contrôles Audio : Cliquez sur les boutons ci-dessous ou appuyez sur la barre d'espace pour basculer Lecture/Pause. Cliquez ou faites glisser le curseur ci-dessous pour naviguer.",
+		"playPauseShortcutHint": "Astuce : Appuyez sur Espace pour Lecture/Pause",
+		"seekPosition": "Position de lecture",
 		"zoomIn": "Zoom +",
 		"zoomOut": "Zoom −",
 		"zoomReset": "Réinitialiser le Zoom",
