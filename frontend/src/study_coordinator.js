@@ -268,11 +268,29 @@ export class StudyCoordinator {
     this.updateSubmitStudyButton();
   }
 
+  getCurrentSongName() {
+    const song = this.studyConfig?.songs_to_rate?.[this.currentSongIndex];
+    if (song?.display_name) {
+      return song.display_name;
+    }
+    return `Song ${this.currentSongIndex + 1}`;
+  }
+
+  getSaveCurrentSongActionLabel() {
+    const song = this.getCurrentSongName();
+    if (this.backendAvailable) {
+      return this.t('study.submit.saveToServerSong', { song });
+    }
+    return this.t('study.submit.saveLocallySong', { song });
+  }
+
   // In study_coordinator.js, update the updateSubmitButtonState method:
 
   updateSubmitButtonState() {
     const submitBtn = document.getElementById('submit-rating');
     if (!submitBtn) return;
+
+    const saveActionText = this.getSaveCurrentSongActionLabel();
 
     if (!this.backendAvailable) {
         submitBtn.disabled = true;
@@ -294,11 +312,11 @@ export class StudyCoordinator {
         submitBtn.disabled = true;
         if (result.missingDimensions.length > 0) {
         const missingDimensionNames = result.missingDimensions.map(dim => this.getDimensionDisplayName(dim));
-        submitBtn.textContent = `${this.t('study.submit.saveToServer')} — ${this.t('study.submit.stillToRate', {
+        submitBtn.textContent = `${saveActionText} — ${this.t('study.submit.stillToRate', {
           dimensions: missingDimensionNames.join(', ')
         })}`;
         } else {
-        submitBtn.textContent = `${this.t('study.submit.saveToServer')} — ${this.t('study.submit.completeAll')}`;
+        submitBtn.textContent = `${saveActionText} — ${this.t('study.submit.completeAll')}`;
         }
         return;
     }
@@ -309,7 +327,7 @@ export class StudyCoordinator {
       submitBtn.textContent = this.t('study.submit.alreadySaved');
     } else {
         submitBtn.disabled = false;
-      submitBtn.textContent = this.t('study.submit.saveToServer');
+      submitBtn.textContent = saveActionText;
     }
   }
 
@@ -1024,7 +1042,7 @@ async loadStudyConfigFromBackend() {
 
     const submitBtn = document.getElementById('submit-rating');
     if (submitBtn) {
-      submitBtn.textContent = this.t('study.submit.saveLocally');
+      submitBtn.textContent = this.getSaveCurrentSongActionLabel();
     }
   }
 
@@ -1046,7 +1064,7 @@ async loadStudyConfigFromBackend() {
     if (submitBtn) {
       submitBtn.disabled = loading;
       submitBtn.textContent = loading ? this.t('study.submit.saving') :
-        (this.backendAvailable ? this.t('study.submit.saveToServer') : this.t('study.submit.saveLocally'));
+        this.getSaveCurrentSongActionLabel();
     }
 
     if (loadingOverlay) {

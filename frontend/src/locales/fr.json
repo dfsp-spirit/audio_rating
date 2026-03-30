@@ -47,7 +47,7 @@
 		"beginButton": "Commencer l'Étude",
 		"songOfTotal": "Chanson {{current}} sur {{total}}",
 		"selectSong": "Sélectionnez une chanson :",
-		"submitStudy": "Soumettre l'Étude",
+		"submitStudy": "Soumettre l'Étude Complète",
 		"completionInitial": "Complétez et sauvegardez toutes les chansons pour soumettre l'étude",
 		"saveRating": "Sauvegarder l'Évaluation",
 		"completionTitle": "Évaluations soumises -- Merci !",
@@ -65,7 +65,9 @@
 			"stillToRate": "Encore à évaluer : {{dimensions}}",
 			"completeAll": "Complétez toutes les évaluations pour sauvegarder",
 			"alreadySaved": "Déjà Sauvegardé sur le Serveur",
+			"saveToServerSong": "Sauvegarder {{song}} sur le Serveur",
 			"saveToServer": "Sauvegarder sur le Serveur",
+			"saveLocallySong": "Sauvegarder {{song}} Localement",
 			"saveLocally": "Sauvegarder Localement",
 			"saving": "Sauvegarde en cours..."
 		},

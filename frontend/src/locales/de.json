@@ -47,7 +47,7 @@
 		"beginButton": "Studie beginnen",
 		"songOfTotal": "Lied {{current}} von {{total}}",
 		"selectSong": "Lied auswählen:",
-		"submitStudy": "Studie absenden",
+		"submitStudy": "Gesamte Studie absenden",
 		"completionInitial": "Zum Absenden der Studie alle Lieder vollständig bewerten und speichern",
 		"saveRating": "Bewertung speichern",
 		"completionTitle": "Bewertungen übermittelt -- Vielen Dank!",
@@ -65,7 +65,9 @@
 			"stillToRate": "Noch zu bewerten: {{dimensions}}",
 			"completeAll": "Bitte alle Bewertungen abschließen, um zu speichern",
 			"alreadySaved": "Bereits auf Server gespeichert",
+			"saveToServerSong": "{{song}} auf Server speichern",
 			"saveToServer": "Auf Server speichern",
+			"saveLocallySong": "{{song}} lokal speichern",
 			"saveLocally": "Lokal speichern",
 			"saving": "Speichert..."
 		},

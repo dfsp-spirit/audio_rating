@@ -47,7 +47,7 @@
 		"beginButton": "Begin Study",
 		"songOfTotal": "Song {{current}} of {{total}}",
 		"selectSong": "Select a song:",
-		"submitStudy": "Submit Study",
+		"submitStudy": "Submit Entire Study",
 		"completionInitial": "Complete and save all songs to submit study",
 		"saveRating": "Save Rating",
 		"completionTitle": "Ratings submitted -- Thank You!",
@@ -65,7 +65,9 @@
 			"stillToRate": "Still to rate: {{dimensions}}",
 			"completeAll": "Complete all ratings to save",
 			"alreadySaved": "Already Saved to Server",
+			"saveToServerSong": "Save {{song}} to Server",
 			"saveToServer": "Save to Server",
+			"saveLocallySong": "Save {{song}} Locally",
 			"saveLocally": "Save Locally",
 			"saving": "Saving..."
 		},

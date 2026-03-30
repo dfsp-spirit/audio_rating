@@ -47,7 +47,7 @@
 		"beginButton": "Påbörja studie",
 		"songOfTotal": "Låt {{current}} av {{total}}",
 		"selectSong": "Välj en låt:",
-		"submitStudy": "Skicka in studie",
+		"submitStudy": "Skicka in hela studien",
 		"completionInitial": "Slutför och spara alla låtar för att skicka in studien",
 		"saveRating": "Spara bedömning",
 		"completionTitle": "Bedömningar inskickade -- Tack!",
@@ -65,7 +65,9 @@
 			"stillToRate": "Återstår att bedöma: {{dimensions}}",
 			"completeAll": "Slutför alla bedömningar för att spara",
 			"alreadySaved": "Redan sparad på servern",
+			"saveToServerSong": "Spara {{song}} på servern",
 			"saveToServer": "Spara på server",
+			"saveLocallySong": "Spara {{song}} lokalt",
 			"saveLocally": "Spara lokalt",
 			"saving": "Sparar..."
 		},

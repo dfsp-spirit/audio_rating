@@ -47,7 +47,7 @@
 		"beginButton": "Comenzar Estudio",
 		"songOfTotal": "Canción {{current}} de {{total}}",
 		"selectSong": "Seleccione una canción:",
-		"submitStudy": "Enviar Estudio",
+		"submitStudy": "Enviar Estudio Completo",
 		"completionInitial": "Complete y guarde todas las canciones para enviar el estudio",
 		"saveRating": "Guardar Calificación",
 		"completionTitle": "Calificaciones enviadas -- ¡Gracias!",
@@ -65,7 +65,9 @@
 			"stillToRate": "Falta calificar: {{dimensions}}",
 			"completeAll": "Complete todas las calificaciones para guardar",
 			"alreadySaved": "Ya Guardado en el Servidor",
+			"saveToServerSong": "Guardar {{song}} en el Servidor",
 			"saveToServer": "Guardar en el Servidor",
+			"saveLocallySong": "Guardar {{song}} Localmente",
 			"saveLocally": "Guardar Localmente",
 			"saving": "Guardando..."
 		},
