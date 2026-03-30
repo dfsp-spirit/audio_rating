@@ -87,6 +87,7 @@ export class AudioRatingWidget {
     this._defaultMinPxPerSec = null;
     this.visibleStart = 0; // seconds - start of currently visible window
     this.visibleEnd = null; // seconds - end of currently visible window
+    this._lastTimelineDensityKey = null;
 
     // Event system
     this._listeners = {
@@ -488,14 +489,58 @@ _updateDimensionDescription() {
     this.zoomOutBtn.disabled = (currentZoom <= defaultZoom * 1.05);
   }
 
-  async _initWaveSurfer() {
-    const WaveSurfer = AudioRatingWidget._WaveSurfer;
+  _getVisibleDuration() {
+    if (!this.wavesurfer) return this._durationOrOne();
 
-    const topTimeline = TimelinePlugin.create({
+    const duration = this._durationOrOne();
+    const contentEl = this.wavesurfer.getWrapper?.();
+    const scrollEl = contentEl?.parentElement || null;
+
+    if (scrollEl && contentEl) {
+      const scrollWidth = contentEl.scrollWidth || scrollEl.scrollWidth || scrollEl.clientWidth || 1;
+      const clientWidth = scrollEl.clientWidth || contentEl.clientWidth || scrollWidth;
+      const widthRatio = Math.min(1, Math.max(0, clientWidth / scrollWidth));
+      const visibleByWidth = duration * widthRatio;
+      if (visibleByWidth > 0 && isFinite(visibleByWidth)) {
+        return Math.max(0.1, visibleByWidth);
+      }
+    }
+
+    const visibleRange = (this.visibleEnd ?? 0) - (this.visibleStart ?? 0);
+    if (visibleRange > 0 && isFinite(visibleRange)) {
+      return visibleRange;
+    }
+
+    return duration;
+  }
+
+  _timelineTimeInterval(visibleDurationSec) {
+    if (visibleDurationSec <= 10) return 1;
+    if (visibleDurationSec <= 30) return 2;
+    if (visibleDurationSec <= 75) return 5;
+    if (visibleDurationSec <= 180) return 10;
+    if (visibleDurationSec <= 600) return 30;
+    return 60;
+  }
+
+  _timelinePrimaryLabelInterval(visibleDurationSec) {
+    if (visibleDurationSec <= 30) return 1;
+    if (visibleDurationSec <= 180) return 2;
+    return 1;
+  }
+
+  _timelineSecondaryLabelInterval(visibleDurationSec) {
+    // Keep a single visual tier by aligning secondary with primary.
+    return this._timelinePrimaryLabelInterval(visibleDurationSec);
+  }
+
+  _createTimelinePlugin(timeInterval, primaryLabelInterval, secondaryLabelInterval) {
+    return TimelinePlugin.create({
       height: 20,
       insertPosition: 'beforebegin',
-      timeInterval: 0.2,
-      primaryLabelInterval: 5,
+      timeInterval,
+      primaryLabelInterval,
+      secondaryLabelInterval,
       formatTimeCallback: (seconds) => {
         if (Math.abs(seconds) < 0.001) return '';
         if (seconds / 60 > 1) {
@@ -504,12 +549,48 @@ _updateDimensionDescription() {
         }
         return `${Math.round(seconds * 1000) / 1000}`;
       },
-      //secondaryLabelInterval: 1,
       style: {
         fontSize: '20px',
         color: '#2D5B88',
       },
-    })
+    });
+  }
+
+  _rebuildTimeline(timeInterval, primaryLabelInterval, secondaryLabelInterval) {
+    if (!this.wavesurfer) return;
+
+    try { this.topTimeline?.destroy(); } catch {}
+
+    this.topTimeline = this._createTimelinePlugin(timeInterval, primaryLabelInterval, secondaryLabelInterval);
+    this.topTimeline.init(this.wavesurfer);
+
+    const duration = this.wavesurfer.getDuration();
+    if (duration && isFinite(duration)) {
+      this.topTimeline.initTimeline(duration);
+    }
+  }
+
+  _applyTimelineDensity() {
+    if (!this.wavesurfer) return;
+    const visibleDuration = this._getVisibleDuration();
+    const timeInterval = this._timelineTimeInterval(visibleDuration);
+    const primaryLabelInterval = this._timelinePrimaryLabelInterval(visibleDuration);
+    const secondaryLabelInterval = this._timelineSecondaryLabelInterval(visibleDuration);
+    const densityKey = `${timeInterval}|${primaryLabelInterval}|${secondaryLabelInterval}`;
+
+    if (densityKey === this._lastTimelineDensityKey) {
+      return;
+    }
+
+    this._rebuildTimeline(timeInterval, primaryLabelInterval, secondaryLabelInterval);
+    this._lastTimelineDensityKey = densityKey;
+  }
+
+  async _initWaveSurfer() {
+    const WaveSurfer = AudioRatingWidget._WaveSurfer;
+
+    const topTimeline = this._createTimelinePlugin(5, 1, 1)
+    this.topTimeline = topTimeline;
 
     this.wavesurfer = WaveSurfer.create({
       container: this.waveformEl,
@@ -566,6 +647,7 @@ _updateDimensionDescription() {
 
         // Ensure default px/sec captured after decode/draw
         this._defaultMinPxPerSec = this.wavesurfer.params?.minPxPerSec ?? this._defaultMinPxPerSec;
+        this._applyTimelineDensity();
         this._updateZoomButtonStates();
 
         // Auto-focus widget root so spacebar works immediately
@@ -598,6 +680,8 @@ _updateDimensionDescription() {
     this.wavesurfer.on('zoom', (minPxPerSec) => {
       // update our cached current px/sec
       this._currentPxPerSec = (minPxPerSec || null);
+      requestAnimationFrame(() => this._applyTimelineDensity());
+      setTimeout(() => this._applyTimelineDensity(), 80);
       // wavesurfer will usually emit a 'scroll' event after zooming; ensure we redraw
       this._drawAll();
       this._updateZoomButtonStates();
