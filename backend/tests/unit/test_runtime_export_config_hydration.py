@@ -1,5 +1,6 @@
 import os
 import json
+from pathlib import Path
 
 import pytest
 from sqlmodel import SQLModel, Session, create_engine, select
@@ -12,6 +13,10 @@ os.environ.setdefault("AR_API_ADMIN_PASSWORD", "test_password")
 from audiorating_backend import api as api_module
 from audiorating_backend import database as database_module
 from audiorating_backend.models import Participant, Song, Study, StudyParticipantLink, StudyRatingDimension, StudySongLink
+
+
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+STUDIES_CONFIG_PATH = BACKEND_ROOT / "studies_config.json"
 
 
 @pytest.mark.asyncio
@@ -27,7 +32,7 @@ async def test_runtime_export_file_can_be_reloaded_by_create_config_file_studies
     monkeypatch.setattr(database_module, "engine", source_engine)
     SQLModel.metadata.create_all(source_engine)
 
-    database_module.create_config_file_studies("/home/ts/develop_mpiae/audio_rating/backend/studies_config.json")
+    database_module.create_config_file_studies(str(STUDIES_CONFIG_PATH))
 
     with Session(source_engine) as session:
         default_study = session.exec(select(Study).where(Study.name_short == "default")).first()
