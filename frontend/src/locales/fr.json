@@ -48,7 +48,7 @@
 		"songOfTotal": "Chanson {{current}} sur {{total}}",
 		"selectSong": "Sélectionnez une chanson :",
 		"submitStudy": "Soumettre l'Étude Complète",
-		"submitStudyConfirm": "Êtes-vous sûr de vouloir soumettre votre étude ?",
+		"submitStudyConfirm": "Êtes-vous sûr de vouloir soumettre toutes les évaluations pour cette étude ?",
 		"submitStudySaved": "Chansons sauvegardées sur le serveur",
 		"submitStudyConfirmButton": "Oui, Soumettre l'Étude",
 		"submitStudyCancelButton": "Annuler",

@@ -48,7 +48,7 @@
 		"songOfTotal": "Canción {{current}} de {{total}}",
 		"selectSong": "Seleccione una canción:",
 		"submitStudy": "Enviar Estudio Completo",
-		"submitStudyConfirm": "¿Está seguro de que desea enviar su estudio?",
+		"submitStudyConfirm": "¿Está seguro de que desea enviar todas las valoraciones de este estudio?",
 		"submitStudySaved": "Canciones guardadas en el servidor",
 		"submitStudyConfirmButton": "Sí, Enviar Estudio",
 		"submitStudyCancelButton": "Cancelar",

@@ -48,7 +48,7 @@
 		"songOfTotal": "Låt {{current}} av {{total}}",
 		"selectSong": "Välj en låt:",
 		"submitStudy": "Skicka in hela studien",
-		"submitStudyConfirm": "Är du säker på att du vill skicka in din studie?",
+		"submitStudyConfirm": "Är du säker på att du vill skicka in alla bedömningar för denna studie?",
 		"submitStudySaved": "Låtar sparade på servern",
 		"submitStudyConfirmButton": "Ja, skicka in studien",
 		"submitStudyCancelButton": "Avbryt",
