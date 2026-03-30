@@ -429,6 +429,15 @@
     body.top-banner-visible {
       padding-top: 46px;
     }
+    .app-version-footer {
+      margin-top: 24px;
+      padding-top: 10px;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+      color: #9ca3af;
+      font-size: 0.75rem;
+      line-height: 1.2;
+    }
   </style>
 </head>
 <body>
@@ -555,10 +564,20 @@
     </div>
   </div>
 
+  <footer class="app-version-footer">
+    <span id="frontend-version-footer"></span>
+  </footer>
+
   <script src="./settings/ar_settings.js"></script>
   <script type="module">
     import i18n from './i18n.js';
     import { StudyCoordinator } from './study_coordinator.js';
+    import { AR_FRONTEND_VERSION } from './constants.js';
+
+    const versionFooter = document.getElementById('frontend-version-footer');
+    if (versionFooter) {
+      versionFooter.textContent = `Audio Rating version ${AR_FRONTEND_VERSION}`;
+    }
 
     const languageSelect = document.getElementById('language-select');
 
