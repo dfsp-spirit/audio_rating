@@ -294,11 +294,11 @@ export class StudyCoordinator {
         submitBtn.disabled = true;
         if (result.missingDimensions.length > 0) {
         const missingDimensionNames = result.missingDimensions.map(dim => this.getDimensionDisplayName(dim));
-        submitBtn.textContent = this.t('study.submit.stillToRate', {
+        submitBtn.textContent = `${this.t('study.submit.saveToServer')} — ${this.t('study.submit.stillToRate', {
           dimensions: missingDimensionNames.join(', ')
-        });
+        })}`;
         } else {
-        submitBtn.textContent = this.t('study.submit.completeAll');
+        submitBtn.textContent = `${this.t('study.submit.saveToServer')} — ${this.t('study.submit.completeAll')}`;
         }
         return;
     }

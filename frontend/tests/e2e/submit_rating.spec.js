@@ -67,7 +67,7 @@ test('submit rating after editing all dimensions', async ({ page }) => {
 
   const submitRatingButton = page.locator('#submit-rating');
   await expect(submitRatingButton).toBeDisabled();
-  await expect(submitRatingButton).toHaveText('Still to rate: Valence, Arousal, Enjoyment, Is Cool');
+  await expect(submitRatingButton).toHaveText('Save to Server — Still to rate: Valence, Arousal, Enjoyment, Is Cool');
 
   const overlay = page.locator('.arw-overlay');
   await expect(overlay).toBeVisible();
@@ -82,7 +82,7 @@ test('submit rating after editing all dimensions', async ({ page }) => {
   await dragSegmentToValue(page, overlay, 0.50, 2);
   await dragSegmentToValue(page, overlay, 0.84, 8);
 
-  await expect(submitRatingButton).toHaveText('Still to rate: Arousal, Enjoyment, Is Cool');
+  await expect(submitRatingButton).toHaveText('Save to Server — Still to rate: Arousal, Enjoyment, Is Cool');
   await expect(submitRatingButton).toBeDisabled();
 
   const dimensionsToFinish = ['arousal', 'enjoyment', 'is_cool'];
