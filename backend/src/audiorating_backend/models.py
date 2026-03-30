@@ -124,15 +124,15 @@ class Rating(SQLModel, table=True):
                         name='uq_participant_study_song_rating'),
     )
 
-# Update forward references (new syntax)
-StudyParticipantLink.update_forward_refs()
-StudySongLink.update_forward_refs()
-StudyRatingDimension.update_forward_refs()
-RatingSegment.update_forward_refs()  # NEW
-Participant.update_forward_refs()
-Study.update_forward_refs()
-Song.update_forward_refs()
-Rating.update_forward_refs()
+# Resolve forward references for Pydantic v2
+StudyParticipantLink.model_rebuild()
+StudySongLink.model_rebuild()
+StudyRatingDimension.model_rebuild()
+RatingSegment.model_rebuild()
+Participant.model_rebuild()
+Study.model_rebuild()
+Song.model_rebuild()
+Rating.model_rebuild()
 
 # Pydantic models for API requests/responses - KEEP THESE FOR API
 class RatingSegmentBase(SQLModel):
