@@ -199,6 +199,7 @@ export class AudioRatingWidget {
     ${titleHtml}
     ${this.with_instructions ? `<div class="arw-info"><span class="arw-dimensions-manual">${this.t('widget.selectDimension')}</span></div>` : ''}
 
+    <h4 class="arw-section-label arw-dimension-select-label">${this.t('widget.selectRatingDimension')}</h4>
     <div class="arw-dimension-buttons"></div>
     <div class="arw-dimension-description"></div>
 
@@ -563,6 +564,14 @@ _xToTime(x) {
   return time;
 }
 
+  _formatTimeLabel(seconds) {
+    const safeSeconds = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
+    const whole = Math.round(safeSeconds);
+    const minutes = Math.floor(whole / 60);
+    const secs = whole % 60;
+    return `${minutes}:${String(secs).padStart(2, '0')}`;
+  }
+
 
   _findSegmentIndexAtTime(time) {
     for (let i = 0; i < this.segments.length; i++) {
@@ -622,6 +631,9 @@ _applyI18nTexts() {
 
   const ratingsManual = root.querySelector('.arw-ratings-manual');
   if (ratingsManual) ratingsManual.textContent = this.t('widget.ratingControls');
+
+  const dimensionSelectLabel = root.querySelector('.arw-dimension-select-label');
+  if (dimensionSelectLabel) dimensionSelectLabel.textContent = this.t('widget.selectRatingDimension');
 
   const stepLevelsLabel = root.querySelector('.arw-step-levels-label');
   if (stepLevelsLabel) stepLevelsLabel.textContent = this.t('widget.stepLevels');
@@ -757,6 +769,7 @@ _drawAll() {
     const tooltipLines = [
       `segment #${this.hoverSegIndex + 1}`,
       `${segmentLengthSec.toFixed(1)} seconds length`,
+      `from ${this._formatTimeLabel(segmentStart)} to ${this._formatTimeLabel(segmentEnd)}`,
       `rating ${seg.value}`
     ];
 
@@ -781,7 +794,7 @@ _drawAll() {
     tooltipX = Math.max(4, tooltipX);
     tooltipY = Math.max(4, tooltipY);
 
-    ctx.fillStyle = 'rgba(22, 29, 41, 0.82)';
+    ctx.fillStyle = 'rgba(22, 29, 41, 0.56)';
     ctx.fillRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
     ctx.strokeStyle = 'rgba(170, 192, 229, 0.55)';
     ctx.lineWidth = 1;

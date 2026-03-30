@@ -100,6 +100,7 @@
 	},
 	"widget": {
 		"title": "Please rate this song",
+		"selectRatingDimension": "Select Rating Dimension:",
 		"selectDimension": "Select the dimension to rate:",
 		"ratingControls": "Rating Controls: Please split the audio into segments and rate each segment. Double-click on the waveform to split a segment. Drag inside a segment vertically to change its rating. Drag segment boundaries horizontally to move them. Right-click a segment boundary to delete it.",
 		"stepLevels": "Step levels:",

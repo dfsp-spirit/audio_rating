@@ -73,8 +73,15 @@
       border-radius: 6px;
       background: #fff;
       cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    button:hover:not(:disabled):not(.primary):not(.active) {
+      background: #e0e0e0;
     }
     button.primary { background: #2563eb; color: white; border-color: #1e40af; }
+    button.primary:hover:not(:disabled) {
+      background: #1d4ed8;
+    }
     button:disabled {
       opacity: 0.5;
       cursor: not-allowed;
@@ -209,6 +216,9 @@
       background: #2563eb;
       color: white;
       border-color: #1e40af;
+    }
+    .song-nav:hover:not(.active):not(:disabled) {
+      background: #e0e0e0;
     }
 
     /* Updated Completion Status Styles */

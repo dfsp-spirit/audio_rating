@@ -17,12 +17,22 @@
   gap: 6px;
   flex-wrap: wrap;
 }
+.arw .arw-section-label {
+  margin: 0 0 10px 0;
+  color: #475569;
+  font-size: 1em;
+  font-weight: 600;
+}
 .arw .arw-dimension-buttons button {
   padding: 6px 10px;
   border-radius: 6px;
   border: 1px solid #bbb;
   background: #fff;
   cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.arw .arw-dimension-buttons button:hover:not(.active):not(:disabled) {
+  background: #e0e0e0;
 }
 .arw .arw-dimension-buttons button.active {
   background: #2563eb;
@@ -77,6 +87,10 @@
   border: 1px solid #bbb;
   background: #fff;
   cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.arw .arw-controls button:hover:not(:disabled) {
+  background: #e0e0e0;
 }
 .arw .arw-controls button:active { transform: translateY(1px); }
 
@@ -98,6 +112,10 @@
   border: 1px solid #bbb;
   background: #fff;
   cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.arw .arw-audio-controls button:hover:not(:disabled) {
+  background: #e0e0e0;
 }
 .arw .arw-audio-controls button:active { transform: translateY(1px); }
 
@@ -159,9 +177,10 @@
     border: 1px solid #ccc;
     border-radius: 3px;
     cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
-.arw-zoom-controls button:hover {
+.arw-zoom-controls button:hover:not(:disabled) {
     background: #e0e0e0;
 }
 

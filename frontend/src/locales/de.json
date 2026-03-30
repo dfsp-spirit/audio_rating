@@ -100,6 +100,7 @@
 	},
 	"widget": {
 		"title": "Bitte bewerten Sie dieses Lied",
+		"selectRatingDimension": "Bewertungsdimension auswählen:",
 		"selectDimension": "Wählen Sie die zu bewertende Dimension:",
 		"ratingControls": "Bewertungssteuerung: Bitte teilen Sie das Audio in Abschnitte und bewerten Sie jeden Abschnitt. Doppelklicken Sie auf die Wellenform, um einen Abschnitt zu teilen. Ziehen Sie innerhalb eines Abschnitts vertikal, um die Bewertung zu ändern. Ziehen Sie Abschnittsgrenzen horizontal, um sie zu verschieben. Rechtsklicken Sie auf eine Abschnittsgrenze, um sie zu löschen.",
 		"stepLevels": "Bewertungsstufen:",
