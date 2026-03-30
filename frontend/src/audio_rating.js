@@ -1028,7 +1028,7 @@ _drawAll() {
     const selectedSeg = this.segments[selectedIndex];
     const sx1 = this._timeToX(selectedSeg.start);
     const sx2 = Math.min(this._timeToX(selectedSeg.end), w - marginRight);
-    ctx.strokeStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.strokeStyle = 'rgba(75, 85, 99, 0.5)';
     ctx.lineWidth = 1;
     ctx.strokeRect(sx1 + 0.5, 0.5, Math.max(1, sx2 - sx1 - 1), Math.max(1, h - 1));
   }
@@ -1140,6 +1140,8 @@ _drawAll() {
     this.hoverPointerX = x;
     this.hoverPointerY = y;
     this.hoverSegIndex = this._findSegmentIndexAtTime(this._xToTime(x));
+    const handle = this._hitTestHandle(x);
+    this.overlay.style.cursor = handle ? 'ew-resize' : 'default';
 
     if (!this.pointerDown) {
       if (this.hoverSegIndex >= 0) {
@@ -1194,6 +1196,7 @@ _drawAll() {
     this.hoverPointerX = x;
     this.hoverPointerY = y;
     this.hoverSegIndex = this._findSegmentIndexAtTime(this._xToTime(x));
+    this.overlay.style.cursor = this._hitTestHandle(x) ? 'ew-resize' : 'default';
     try { this.overlay.releasePointerCapture(ev.pointerId); } catch {}
     this._drawAll();
   }
@@ -1201,6 +1204,7 @@ _drawAll() {
   _onPointerLeave() {
     if (this.pointerDown) return;
     this.hoverSegIndex = null;
+    this.overlay.style.cursor = 'default';
     this._drawAll();
   }
 
