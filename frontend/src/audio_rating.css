@@ -65,12 +65,14 @@
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }
 
-/* Visual tooltip for play button shortcut hint */
-.arw .arw-play {
+/* Visual tooltip for playback shortcut hints */
+.arw .arw-play,
+.arw .arw-stop {
   position: relative;
 }
 
-.arw .arw-play::after {
+.arw .arw-play::after,
+.arw .arw-stop::after {
   content: attr(data-hint);
   position: absolute;
   bottom: calc(100% + 8px);
@@ -90,7 +92,8 @@
   transition: opacity 0.1s ease, visibility 0.1s ease;
 }
 
-.arw .arw-play::before {
+.arw .arw-play::before,
+.arw .arw-stop::before {
   content: '';
   position: absolute;
   bottom: calc(100% + 2px);
@@ -108,13 +111,17 @@
 }
 
 .arw .arw-play:hover::after,
-.arw .arw-play:focus-visible::after {
+.arw .arw-play:focus-visible::after,
+.arw .arw-stop:hover::after,
+.arw .arw-stop:focus-visible::after {
   opacity: 1;
   visibility: visible;
 }
 
 .arw .arw-play:hover::before,
-.arw .arw-play:focus-visible::before {
+.arw .arw-play:focus-visible::before,
+.arw .arw-stop:hover::before,
+.arw .arw-stop:focus-visible::before {
   opacity: 1;
   visibility: visible;
 }

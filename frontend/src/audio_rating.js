@@ -101,6 +101,10 @@ export class AudioRatingWidget {
     return this.t('widget.playPauseShortcutHint');
   }
 
+  _getStopShortcutHint() {
+    return this.t('widget.stopShortcutHint');
+  }
+
   _updatePlayButtonA11y() {
     if (!this.playBtn) return;
     const isPlaying = this.wavesurfer && this.wavesurfer.isPlaying();
@@ -110,6 +114,26 @@ export class AudioRatingWidget {
     this.playBtn.removeAttribute('title');
     this.playBtn.setAttribute('aria-label', combined);
     this.playBtn.setAttribute('data-hint', shortcutHint);
+  }
+
+  _updateStopButtonA11y() {
+    if (!this.stopBtn) return;
+    const actionLabel = this.t('widget.stop');
+    const shortcutHint = this._getStopShortcutHint();
+    const combined = `${actionLabel} — ${shortcutHint}`;
+    this.stopBtn.removeAttribute('title');
+    this.stopBtn.setAttribute('aria-label', combined);
+    this.stopBtn.setAttribute('data-hint', shortcutHint);
+  }
+
+  _stopPlaybackToStart() {
+    if (!this.wavesurfer) return;
+    this.wavesurfer.stop();
+    if (this.playBtn) {
+      this.playBtn.textContent = this.t('widget.play');
+    }
+    this._updatePlayButtonA11y();
+    this._updateStopButtonA11y();
   }
 
   setDimensions(rating_dimensions) {
@@ -309,6 +333,7 @@ export class AudioRatingWidget {
     }
 
     this._updatePlayButtonA11y();
+    this._updateStopButtonA11y();
 }
 
   _getCurrentDimension() {
@@ -493,7 +518,7 @@ _updateDimensionDescription() {
 
     // Play / Stop buttons
     this.playBtn.addEventListener('click', () => { this.wavesurfer.playPause(); });
-    this.stopBtn.addEventListener('click', () => { this.wavesurfer.stop(); this.playBtn.textContent = this.t('widget.play'); });
+    this.stopBtn.addEventListener('click', () => { this._stopPlaybackToStart(); });
 
     this._onLanguageChanged = () => {
       this._applyI18nTexts();
@@ -507,9 +532,18 @@ _updateDimensionDescription() {
       const tag = document.activeElement?.tagName;
       const inTextInput = tag === 'INPUT' || tag === 'TEXTAREA';
       if (inTextInput) return;
-      if (ev.code === 'Space' && (document.activeElement === this.root || this.root.contains(document.activeElement))) {
+      const widgetFocused = document.activeElement === this.root || this.root.contains(document.activeElement);
+      if (!widgetFocused) return;
+
+      if (ev.code === 'Space') {
         ev.preventDefault();
         this.wavesurfer.playPause();
+        return;
+      }
+
+      if (ev.code === 'Backspace') {
+        ev.preventDefault();
+        this._stopPlaybackToStart();
       }
     };
     window.addEventListener('keydown', this._onKeyDown);
@@ -711,7 +745,7 @@ _applyI18nTexts() {
   if (volumeLabel) volumeLabel.textContent = `${this.t('widget.volume')} `;
 
   if (this.stopBtn) this.stopBtn.textContent = this.t('widget.stop');
-  if (this.stopBtn) this.stopBtn.setAttribute('aria-label', this.t('widget.stop'));
+  this._updateStopButtonA11y();
 
   if (this.timeSlider) this.timeSlider.setAttribute('aria-label', this.t('widget.seekPosition'));
   if (this.volumeSlider) this.volumeSlider.setAttribute('aria-label', this.t('widget.volume'));
