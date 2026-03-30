@@ -420,6 +420,11 @@ export class AudioRatingWidget {
     this.zoomOutBtn = root.querySelector('.arw-zoom-out');
     this.zoomResetBtn = root.querySelector('.arw-zoom-reset');
 
+    if (this.overlay) {
+      this.overlay.tabIndex = 0;
+      this.overlay.setAttribute('aria-label', this.t('widget.audioVisualization'));
+    }
+
     // Build dimension buttons
     for (const dim of this.rating_dimensions) {
       const b = document.createElement('button');
@@ -900,6 +905,7 @@ _applyI18nTexts() {
 
   if (this.timeSlider) this.timeSlider.setAttribute('aria-label', this.t('widget.seekPosition'));
   if (this.volumeSlider) this.volumeSlider.setAttribute('aria-label', this.t('widget.volume'));
+  if (this.overlay) this.overlay.setAttribute('aria-label', this.t('widget.audioVisualization'));
 
   if (this.playBtn) {
     this.playBtn.textContent = this.wavesurfer && this.wavesurfer.isPlaying()
