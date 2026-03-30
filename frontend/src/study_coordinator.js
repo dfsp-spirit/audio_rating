@@ -1004,18 +1004,27 @@ async loadStudyConfigFromBackend() {
   if (!this.backendChecked) {
     statusEl.className = 'backend-status connecting';
     statusEl.textContent = this.t('study.backendStatus.checking');
-    if (storageEl) storageEl.textContent = this.t('study.backendStatus.checkingConnection');
+    if (storageEl) {
+      storageEl.textContent = '';
+      storageEl.style.display = 'none';
+    }
     return;
   }
 
   if (this.backendAvailable) {
     statusEl.className = 'backend-status online';
     statusEl.textContent = this.t('study.backendStatus.connected');
-    if (storageEl) storageEl.textContent = this.t('study.backendStatus.saveToServer');
+    if (storageEl) {
+      storageEl.textContent = '';
+      storageEl.style.display = 'none';
+    }
   } else {
     statusEl.className = 'backend-status offline';
     statusEl.textContent = this.t('study.backendStatus.offline');
-    if (storageEl) storageEl.textContent = this.t('study.backendStatus.saveLocalOnly');
+    if (storageEl) {
+      storageEl.style.display = 'block';
+      storageEl.textContent = this.t('study.backendStatus.saveLocalOnly');
+    }
   }
 }
 
