@@ -192,58 +192,68 @@ export class AudioRatingWidget {
     root.tabIndex = 0; // allow focus for spacebar handling
 
     // Conditionally show instructions based on with_instructions
-    const titleHtml = "<div class='arw-title'>" + this.title + "</div>";
+    const titleHtml = (typeof this.title === 'string' && this.title.trim().length > 0)
+      ? `<div class='arw-title'>${this.title}</div>`
+      : '';
 
     // Create the main HTML structure in one go
     root.innerHTML = `
     ${titleHtml}
     ${this.with_instructions ? `<div class="arw-info"><span class="arw-dimensions-manual">${this.t('widget.selectDimension')}</span></div>` : ''}
 
-    <h4 class="arw-section-label arw-dimension-select-label">${this.t('widget.selectRatingDimension')}</h4>
-    <div class="arw-dimension-buttons"></div>
-    <div class="arw-dimension-description"></div>
-
-    ${this.with_instructions ? `<div class="arw-info"><span class="arw-ratings-manual">${this.t('widget.ratingControls')}</span></div>` : ''}
-
-    <div class="arw-container">
-        <div class="arw-waveform"></div>
-        <canvas class="arw-overlay"></canvas>
+    <div class="arw-section-box arw-dimension-navigation">
+      <h4 class="arw-section-label arw-dimension-select-label">${this.t('widget.selectRatingDimension')}</h4>
+      <div class="arw-dimension-buttons"></div>
+      <div class="arw-dimension-description"></div>
     </div>
 
-    <div class="arw-controls">
+    <div class="arw-section-box arw-visualization-section">
+      <h4 class="arw-section-label arw-audio-visualization-label">${this.t('widget.audioVisualization')}</h4>
+      ${this.with_instructions ? `<div class="arw-info"><span class="arw-ratings-manual">${this.t('widget.ratingControls')}</span></div>` : ''}
 
-        ${this.show_download_button ? '' : '<style>.arw-export { display: none; }</style>'}
+      <div class="arw-container">
+          <div class="arw-waveform"></div>
+          <canvas class="arw-overlay"></canvas>
+      </div>
 
-        ${this.with_step_labels_legend ?
-        `<label><span class="arw-step-levels-label">${this.t('widget.stepLevels')}</span> <strong class="arw-steps-label"></strong></label><div class="arw-legend"></div>` : ''}
-        <button class="arw-export">${this.t('widget.downloadCsv')}</button>
+      <div class="arw-controls">
+
+          ${this.show_download_button ? '' : '<style>.arw-export { display: none; }</style>'}
+
+          ${this.with_step_labels_legend ?
+          `<label><span class="arw-step-levels-label">${this.t('widget.stepLevels')}</span> <strong class="arw-steps-label"></strong></label><div class="arw-legend"></div>` : ''}
+          <button class="arw-export">${this.t('widget.downloadCsv')}</button>
+      </div>
+
+      <div class="arw-zoom-controls">
+          <button class="arw-zoom-in" type="button">${this.t('widget.zoomIn')}</button>
+          <button class="arw-zoom-out" type="button">${this.t('widget.zoomOut')}</button>
+          <button class="arw-zoom-reset" type="button">${this.t('widget.zoomReset')}</button>
+      </div>
     </div>
 
+    <div class="arw-section-box arw-playback-section">
+      <h4 class="arw-section-label arw-playback-controls-label">${this.t('widget.playbackControls')}</h4>
       ${this.with_instructions ? `<div class="arw-info"><span class="arw-audio-manual">${this.t('widget.audioControls')}</span></div>` : ''}
 
-    <div class="arw-zoom-controls">
-        <button class="arw-zoom-in" type="button">${this.t('widget.zoomIn')}</button>
-        <button class="arw-zoom-out" type="button">${this.t('widget.zoomOut')}</button>
-        <button class="arw-zoom-reset" type="button">${this.t('widget.zoomReset')}</button>
-    </div>
+      <div class="arw-slider">
+          <input type="range" class="arw-time-slider" min="0" max="1" step="0.001" value="0">
+      </div>
 
-    <div class="arw-slider">
-        <input type="range" class="arw-time-slider" min="0" max="1" step="0.001" value="0">
-    </div>
+      <div class="arw-audio-controls">
+        <button class="arw-play">${this.t('widget.play')}</button>
+        <button class="arw-stop">${this.t('widget.stop')}</button>
+          ${this.with_volume_slider ? `
+          <div class="arw-volume-control">
+          <label class="arw-volume-label">${this.t('widget.volume')} </label>
+              <input type="range" class="arw-volume-slider" min="0" max="1" step="0.01" value="1">
+          </div>
+          ` : ''}
+      </div>
 
-    <div class="arw-audio-controls">
-      <button class="arw-play">${this.t('widget.play')}</button>
-      <button class="arw-stop">${this.t('widget.stop')}</button>
-        ${this.with_volume_slider ? `
-        <div class="arw-volume-control">
-        <label class="arw-volume-label">${this.t('widget.volume')} </label>
-            <input type="range" class="arw-volume-slider" min="0" max="1" step="0.01" value="1">
-        </div>
-        ` : ''}
-    </div>
-
-    <div class="arw-info">
-      <span class="arw-status">${this.t('widget.statusLoading')}</span>
+      <div class="arw-info">
+        <span class="arw-status">${this.t('widget.statusLoading')}</span>
+      </div>
     </div>
     `;
 
@@ -642,6 +652,12 @@ _applyI18nTexts() {
 
   const dimensionSelectLabel = root.querySelector('.arw-dimension-select-label');
   if (dimensionSelectLabel) dimensionSelectLabel.textContent = this.t('widget.selectRatingDimension');
+
+  const audioVisualizationLabel = root.querySelector('.arw-audio-visualization-label');
+  if (audioVisualizationLabel) audioVisualizationLabel.textContent = this.t('widget.audioVisualization');
+
+  const playbackControlsLabel = root.querySelector('.arw-playback-controls-label');
+  if (playbackControlsLabel) playbackControlsLabel.textContent = this.t('widget.playbackControls');
 
   const stepLevelsLabel = root.querySelector('.arw-step-levels-label');
   if (stepLevelsLabel) stepLevelsLabel.textContent = this.t('widget.stepLevels');

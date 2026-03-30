@@ -582,14 +582,6 @@ export class StudyCoordinator {
     this.updateDynamicStudyTranslations();
     i18n.applyTranslations(document);
 
-    if (this.currentSongIndex !== undefined && this.studyConfig?.songs_to_rate?.[this.currentSongIndex]) {
-      const songName = this.studyConfig.songs_to_rate[this.currentSongIndex].display_name;
-      const songStatusEl = document.getElementById('song-status');
-      if (songStatusEl) {
-        songStatusEl.textContent = this.t('study.songStatusCurrent', { song: songName });
-      }
-    }
-
     this.updateBackendStatus();
     this.updateAllUI();
 
@@ -770,7 +762,6 @@ async loadStudyConfigFromBackend() {
     const song = this.studyConfig.songs_to_rate[songIndex];
 
     document.getElementById('current-song-number').textContent = songIndex + 1;
-    document.getElementById('song-status').textContent = this.t('study.songStatusCurrent', { song: song.display_name });
 
     this.updateSongNavigationUI();
     this.clearStatusMessages();
@@ -792,7 +783,7 @@ async loadStudyConfigFromBackend() {
         with_step_labels_legend: true,
         show_download_button: false,
         show_timeline: true,
-        title: song.display_name
+        title: ''
       });
 
       const songKey = `${this.studyName}_song_${songIndex}`;

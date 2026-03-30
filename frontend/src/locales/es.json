@@ -56,7 +56,6 @@
 		"resultsSaved": "Sus resultados han sido guardados. Ya puede cerrar esta pestaña del navegador.",
 		"downloadAllRatings": "Descargar Todas las Calificaciones",
 		"saveFileHint": "Guarde este archivo para conservar sus calificaciones.",
-		"songStatusCurrent": "Calificando actualmente: {{song}}",
 		"songDescriptionMissing": "No hay descripción de la canción disponible.",
 		"songIntroDescriptionMissing": "No hay descripción disponible.",
 		"ratingLoadingError": "Error al cargar la canción \"{{song}}\" desde el archivo \"{{url}}\". Por favor, intente de nuevo.",
@@ -104,6 +103,8 @@
 	"widget": {
 		"title": "Por favor, califique esta canción",
 		"selectRatingDimension": "Seleccione la Dimensión de Calificación:",
+		"audioVisualization": "Visualización de Audio",
+		"playbackControls": "Controles de Reproducción",
 		"selectDimension": "Seleccione la dimensión a calificar:",
 		"ratingControls": "Controles de Calificación: Divida el audio en segmentos y califique cada segmento. Haga doble clic en la forma de onda para dividir un segmento. Arrastre verticalmente dentro de un segmento para cambiar su calificación. Arrastre los límites de los segmentos horizontalmente para moverlos. Haga clic derecho en un límite de segmento para eliminarlo.",
 		"stepLevels": "Niveles de paso:",

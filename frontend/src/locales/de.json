@@ -56,7 +56,6 @@
 		"resultsSaved": "Ihre Ergebnisse wurden gespeichert. Sie können diesen Browser-Tab jetzt schließen.",
 		"downloadAllRatings": "Alle Bewertungen herunterladen",
 		"saveFileHint": "Speichern Sie diese Datei, um Ihre Bewertungen zu sichern.",
-		"songStatusCurrent": "Aktuell bewertet: {{song}}",
 		"songDescriptionMissing": "Keine Liedbeschreibung verfügbar.",
 		"songIntroDescriptionMissing": "Keine Beschreibung verfügbar.",
 		"ratingLoadingError": "Fehler beim Laden des Lieds \"{{song}}\" aus Datei \"{{url}}\". Bitte versuchen Sie es erneut.",
@@ -104,6 +103,8 @@
 	"widget": {
 		"title": "Bitte bewerten Sie dieses Lied",
 		"selectRatingDimension": "Bewertungsdimension auswählen:",
+		"audioVisualization": "Audio-Visualisierung",
+		"playbackControls": "Wiedergabesteuerung",
 		"selectDimension": "Wählen Sie die zu bewertende Dimension:",
 		"ratingControls": "Bewertungssteuerung: Bitte teilen Sie das Audio in Abschnitte und bewerten Sie jeden Abschnitt. Doppelklicken Sie auf die Wellenform, um einen Abschnitt zu teilen. Ziehen Sie innerhalb eines Abschnitts vertikal, um die Bewertung zu ändern. Ziehen Sie Abschnittsgrenzen horizontal, um sie zu verschieben. Rechtsklicken Sie auf eine Abschnittsgrenze, um sie zu löschen.",
 		"stepLevels": "Bewertungsstufen:",

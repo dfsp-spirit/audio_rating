@@ -56,7 +56,6 @@
 		"resultsSaved": "Dina resultat har sparats. Du kan nu stänga den här webbläsarfliken.",
 		"downloadAllRatings": "Ladda ner alla bedömningar",
 		"saveFileHint": "Spara den här filen för att bevara dina bedömningar.",
-		"songStatusCurrent": "Bedömer för närvarande: {{song}}",
 		"songDescriptionMissing": "Ingen låtbeskrivning tillgänglig.",
 		"songIntroDescriptionMissing": "Ingen beskrivning tillgänglig.",
 		"ratingLoadingError": "Fel vid laddning av låten \"{{song}}\" från filen \"{{url}}\". Försök igen.",
@@ -104,6 +103,8 @@
 	"widget": {
 		"title": "Vänligen bedöm den här låten",
 		"selectRatingDimension": "Välj bedömningsdimension:",
+		"audioVisualization": "Ljudvisualisering",
+		"playbackControls": "Uppspelningskontroller",
 		"selectDimension": "Välj dimensionen att bedöma:",
 		"ratingControls": "Bedömningskontroller: Dela upp ljudet i segment och bedöm varje segment. Dubbelklicka på vågformen för att dela ett segment. Dra vertikalt inuti ett segment för att ändra dess bedömning. Dra segmentgränser horisontellt för att flytta dem. Högerklicka på en segmentgräns för att ta bort den.",
 		"stepLevels": "Stegnivåer:",

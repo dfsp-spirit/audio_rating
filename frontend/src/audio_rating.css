@@ -11,14 +11,30 @@
 
 
 /* Dimension buttons */
+.arw .arw-section-box {
+  margin: 15px 0;
+  padding: 15px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+.arw .arw-dimension-navigation {
+  margin-top: 0;
+}
+.arw .arw-visualization-section {
+  margin-top: 0;
+}
+.arw .arw-playback-section {
+  margin-top: 12px;
+}
 .arw .arw-dimension-buttons {
-  margin-bottom: 8px;
+  margin-bottom: 0;
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
 }
 .arw .arw-section-label {
-  margin: 0 0 10px 0;
+  margin: 0 0 12px 0;
   color: #475569;
   font-size: 1em;
   font-weight: 600;
@@ -58,7 +74,7 @@
 
 /* Controls row */
 .arw .arw-controls {
-  margin-top: 8px;
+  margin-top: 10px;
   display: flex;
   gap: 8px;
   align-items: center;
@@ -95,12 +111,12 @@
 .arw .arw-controls button:active { transform: translateY(1px); }
 
 /* Slider row */
-.arw .arw-slider { width: 100%; margin-top: 6px; }
+.arw .arw-slider { width: 100%; margin-top: 0; }
 .arw .arw-slider input[type="range"] { width: 100%; }
 
 /* Audio controls */
 .arw .arw-audio-controls {
-  margin-top: 8px;
+  margin-top: 10px;
   display: flex;
   gap: 8px;
   align-items: center;

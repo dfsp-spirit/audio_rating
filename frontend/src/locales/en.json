@@ -56,7 +56,6 @@
 		"resultsSaved": "Your results have been saved. You can now close this browser tab.",
 		"downloadAllRatings": "Download All Ratings",
 		"saveFileHint": "Save this file to preserve your ratings.",
-		"songStatusCurrent": "Currently rating: {{song}}",
 		"songDescriptionMissing": "No song description available.",
 		"songIntroDescriptionMissing": "No description available.",
 		"ratingLoadingError": "Error loading song \"{{song}}\" from file \"{{url}}\". Please try again.",
@@ -104,6 +103,8 @@
 	"widget": {
 		"title": "Please rate this song",
 		"selectRatingDimension": "Select Rating Dimension:",
+		"audioVisualization": "Audio Visualization",
+		"playbackControls": "Playback Controls",
 		"selectDimension": "Select the dimension to rate:",
 		"ratingControls": "Rating Controls: Please split the audio into segments and rate each segment. Double-click on the waveform to split a segment. Drag inside a segment vertically to change its rating. Drag segment boundaries horizontally to move them. Right-click a segment boundary to delete it.",
 		"stepLevels": "Step levels:",

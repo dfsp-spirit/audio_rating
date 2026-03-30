@@ -56,7 +56,6 @@
 		"resultsSaved": "Vos résultats ont été sauvegardés. Vous pouvez maintenant fermer cet onglet du navigateur.",
 		"downloadAllRatings": "Télécharger Toutes les Évaluations",
 		"saveFileHint": "Sauvegardez ce fichier pour préserver vos évaluations.",
-		"songStatusCurrent": "Évaluation en cours : {{song}}",
 		"songDescriptionMissing": "Aucune description de chanson disponible.",
 		"songIntroDescriptionMissing": "Aucune description disponible.",
 		"ratingLoadingError": "Erreur lors du chargement de la chanson \"{{song}}\" depuis le fichier \"{{url}}\". Veuillez réessayer.",
@@ -104,6 +103,8 @@
 	"widget": {
 		"title": "Veuillez évaluer cette chanson",
 		"selectRatingDimension": "Sélectionnez la Dimension d'Évaluation :",
+		"audioVisualization": "Visualisation Audio",
+		"playbackControls": "Contrôles de Lecture",
 		"selectDimension": "Sélectionnez la dimension à évaluer :",
 		"ratingControls": "Contrôles d'Évaluation : Divisez l'audio en segments et évaluez chaque segment. Double-cliquez sur la forme d'onde pour diviser un segment. Faites glisser verticalement à l'intérieur d'un segment pour modifier son évaluation. Faites glisser les limites des segments horizontalement pour les déplacer. Cliquez droit sur une limite de segment pour la supprimer.",
 		"stepLevels": "Niveaux de pas :",

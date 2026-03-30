@@ -44,6 +44,13 @@
       line-height: 1.5;
       color: #334155;
     }
+    .current-song-workspace {
+      margin: 12px 0;
+      padding: 10px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
     .arw-dimension-description {
     margin: 2px 0 12px 0;
     padding: 6px;
@@ -517,7 +524,6 @@
     <div id="rating-phase" class="study-phase">
       <div class="progress-info">
         <h3 style="margin: 0;">Song <span id="current-song-number">1</span> of <span id="total-songs">1</span></h3>
-        <div id="song-status" style="font-size: 0.9em; color: #666;"></div>
       </div>
 
       <div class="song-navigation">
@@ -526,15 +532,17 @@
         <div id="current-song-description"></div>
       </div>
 
-      <div id="rating-widget-container"></div>
+      <div class="current-song-workspace">
+        <div id="rating-widget-container"></div>
 
 
-      <div style="margin-top: 20px; text-align: center;">
-        <button id="submit-rating" class="primary" data-i18n="study.saveRating">Save Rating</button>
+        <div style="margin-top: 12px; text-align: center;">
+          <button id="submit-rating" class="primary" data-i18n="study.saveRating">Save Rating</button>
+        </div>
+        <div id="storage-status" style="margin-top: 8px; font-size: 0.9em; color: #666;"></div>
+
+        <div id="status-messages" style="margin-top: 10px;"></div>
       </div>
-      <div id="storage-status" style="margin-top: 10px; font-size: 0.9em; color: #666;"></div>
-
-      <div id="status-messages" style="margin-top: 10px;"></div>
 
       <div style="margin: 15px 0; text-align: center; padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
         <button id="submit-study" class="primary" disabled style="padding: 12px 24px; font-size: 1.1em;" data-i18n="study.submitStudy">
