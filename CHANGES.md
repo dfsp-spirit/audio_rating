@@ -1,6 +1,18 @@
 ## audio_rating ChangeLog
 
 
+Version 0.7.1 -- UX polish
+---------------------------
+* NEW: better error messages on study not found, no access for user
+* NEW: show proper error page instead of study info when no such study available
+* NEW: Keep audio scrollbar visible all the time if zoomed in
+* NEW: support deleting segment separators on long press, needed for mobile
+* NEW: make x axis ticks dynamic based on zoom level
+* NEW: switch to move up/down cursor on hovering rating horizontal line
+* NEW: switch to resize cursor on hovering segment border, adapt colors slightly
+* NEW: allow full keyboard control
+
+
 Version 0.7.0 -- i18n and major UI/UX improvements
 ----------------------------------------------------
 * NEW: Internationalization (i18n) Support: Added multi-language support with translations for ES, FR, SV; study-specific text can now be defined per language in the configuration file
