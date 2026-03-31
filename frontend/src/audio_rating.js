@@ -64,6 +64,16 @@ export class AudioRatingWidget {
     this.hoverPointerX = 0;
     this.hoverPointerY = 0;
 
+    // Long-press-to-delete state (works for both mouse and touch)
+    this.LONG_PRESS_DURATION     = 1200; // ms to hold on a handle to delete it
+    this.LONG_PRESS_VISUAL_DELAY = 400;  // ms grace before the red arc appears
+    this.LONG_PRESS_MOVE_PX      = 6;   // px of movement that cancels the press
+    this._longPressTimer     = null;
+    this._longPressHandleI   = null;
+    this._longPressStartTime = 0;
+    this._longPressStartX    = 0;
+    this._longPressStartY    = 0;
+
     // DOM refs (filled in _buildDOM)
     this.root = null;
     this.dimButtonsWrap = null;
@@ -1106,6 +1116,31 @@ _drawAll() {
     }
   });
 
+  // Long-press progress arc over the targeted handle.
+  // Only drawn after LONG_PRESS_VISUAL_DELAY ms so a quick drag never shows red.
+  if (this._longPressTimer && this._longPressHandleI != null
+      && this._longPressHandleI < this.segments.length) {
+    const elapsed = Date.now() - this._longPressStartTime;
+    const visualWindow = this.LONG_PRESS_DURATION - this.LONG_PRESS_VISUAL_DELAY;
+    const progress = Math.min(1, (elapsed - this.LONG_PRESS_VISUAL_DELAY) / visualWindow);
+    if (progress > 0) {
+      const hx = this._timeToX(this.segments[this._longPressHandleI].start);
+      const cy = h / 2;
+      const r  = 16;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(hx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(220, 38, 38, 0.15)';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(hx, cy, r, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
+      ctx.strokeStyle = 'rgba(220, 38, 38, 0.9)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
   const widgetFocused = document.activeElement === this.root || this.root.contains(document.activeElement);
   const selectedIndex = this._getSelectedSegmentIndex();
   if (widgetFocused && selectedIndex != null) {
@@ -1169,6 +1204,14 @@ _drawAll() {
 }
   // ===== Interactions =====
 
+  _cancelLongPress() {
+    if (this._longPressTimer) {
+      clearTimeout(this._longPressTimer);
+      this._longPressTimer   = null;
+      this._longPressHandleI = null;
+    }
+  }
+
   _hitTestHandle(x) {
     for (let i = 1; i < this.segments.length; i++) {
       const bx = this._timeToX(this.segments[i].start);
@@ -1226,6 +1269,28 @@ _drawAll() {
       this.activeHandle = { index: handle.i, startSeg: handle.i - 1, endSeg: handle.i };
       this._setSelectedSegmentIndex(handle.i - 1);
       this.overlay.setPointerCapture(ev.pointerId);
+
+      // Start long-press timer — fires if pointer stays still long enough.
+      this._longPressHandleI   = handle.i;
+      this._longPressStartTime = Date.now();
+      this._longPressStartX    = x;
+      this._longPressStartY    = y;
+      this._longPressTimer = setTimeout(() => {
+        this._longPressTimer   = null;
+        const i = this._longPressHandleI;
+        this._longPressHandleI = null;
+        if (i != null && i >= 1 && i < this.segments.length) {
+          this.segments[i - 1].end = this.segments[i].end;
+          this.segments.splice(i, 1);
+          this._setSelectedSegmentIndex(Math.min(i - 1, this.segments.length - 1));
+          this.activeHandle  = null;
+          this.pointerDown   = false;
+          try { this.overlay.releasePointerCapture(ev.pointerId); } catch {}
+          this._drawAll();
+          this._emitChange('segment_deleted');
+        }
+      }, this.LONG_PRESS_DURATION);
+
       this._drawAll();
       return;
     }
@@ -1268,6 +1333,15 @@ _drawAll() {
     }
 
     if (this.activeHandle) {
+      // Cancel long-press if the pointer drifted beyond the movement threshold.
+      if (this._longPressTimer) {
+        const dx = x - this._longPressStartX;
+        const dy = y - this._longPressStartY;
+        if (Math.hypot(dx, dy) > this.LONG_PRESS_MOVE_PX) {
+          this._cancelLongPress();
+        }
+      }
+
       const time = this._xToTime(x);
       const leftSeg = this.segments[this.activeHandle.startSeg];
       const rightSeg = this.segments[this.activeHandle.endSeg];
@@ -1303,6 +1377,7 @@ _drawAll() {
   }
 
   _onPointerUp(ev) {
+    this._cancelLongPress();
     this.pointerDown = false;
     this.activeSegIndex = null;
     this.activeHandle = null;
@@ -1320,6 +1395,7 @@ _drawAll() {
   }
 
   _onPointerLeave() {
+    this._cancelLongPress();
     if (this.pointerDown) return;
     this.hoverSegIndex = null;
     this.overlay.style.cursor = 'default';
