@@ -43,7 +43,6 @@ echo "Loading configuration from env file: '$ENV_PATH'"
 source "$ENV_PATH"
 
 
-source ".env"   # Loads environment variables DATABASE_NAME, DATABASE_USER, DATABASE_PASSWORD
 
 AR_DATABASE_HOST=${AR_DATABASE_HOST:-localhost}
 AR_DATABASE_PORT=${AR_DATABASE_PORT:-5432}
