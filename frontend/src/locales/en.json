@@ -96,8 +96,8 @@
 		"errors": {
 			"backendUnexpectedStatus": "Backend is not available, unexpected status code.",
 			"backendRequestFailed": "Backend is not available, request failed.",
-			"accessDeniedConfig": "Access denied. You may not have permission to access this study and its config.",
-			"configNotFound": "The requested study config was not found on the server. It may not exist or may have been removed.",
+			"accessDeniedConfig": "Error: Access denied.\n\nYou do not have permission to access this study on this server.\n\nPlease use the invitation link from your email and access the study within the timeframe stated in the invitation.",
+			"configNotFound": "Error: Study not available.\n\nThe requested study was not found on this server. It may no longer exist or the access period may have ended.\n\nPlease use the invitation link from your email and access the study within the timeframe stated in the invitation.",
 			"beginStudyDisabled": "Study cannot be started",
 			"backend403": "Access denied. You may not have permission to access this information.",
 			"backend404": "Element not found. Could not find the requested resource on the server.",

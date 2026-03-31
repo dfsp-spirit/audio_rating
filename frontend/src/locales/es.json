@@ -96,8 +96,8 @@
 		"errors": {
 			"backendUnexpectedStatus": "El backend no está disponible, código de estado inesperado.",
 			"backendRequestFailed": "El backend no está disponible, falló la solicitud.",
-			"accessDeniedConfig": "Acceso denegado. Es posible que no tenga permiso para acceder a este estudio y su configuración.",
-			"configNotFound": "La configuración del estudio solicitada no se encontró en el servidor. Es posible que no exista o que haya sido eliminada.",
+			"accessDeniedConfig": "Error: acceso denegado.\n\nNo tiene permiso para acceder a este estudio en este servidor.\n\nUtilice el enlace de invitación de su correo electrónico y acceda al estudio dentro del plazo indicado en la invitación.",
+			"configNotFound": "Error: estudio no disponible.\n\nEl estudio solicitado no se encontró en este servidor. Es posible que ya no exista o que el periodo de acceso haya finalizado.\n\nUtilice el enlace de invitación de su correo electrónico y acceda al estudio dentro del plazo indicado en la invitación.",
 			"beginStudyDisabled": "No se puede iniciar el estudio",
 			"backend403": "Acceso denegado. Es posible que no tenga permiso para acceder a esta información.",
 			"backend404": "Elemento no encontrado. No se pudo encontrar el recurso solicitado en el servidor.",

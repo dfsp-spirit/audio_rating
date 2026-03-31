@@ -96,8 +96,8 @@
 		"errors": {
 			"backendUnexpectedStatus": "Backend är inte tillgänglig, oväntad statuskod.",
 			"backendRequestFailed": "Backend är inte tillgänglig, begäran misslyckades.",
-			"accessDeniedConfig": "Åtkomst nekad. Du kanske inte har behörighet att komma åt denna studie och dess konfiguration.",
-			"configNotFound": "Den begärda studiekonfigurationen kunde inte hittas på servern. Den kanske inte existerar eller har tagits bort.",
+			"accessDeniedConfig": "Fel: åtkomst nekad.\n\nDu har inte behörighet att få åtkomst till den här studien på den här servern.\n\nAnvänd inbjudningslänken i ditt e-postmeddelande och öppna studien inom den tidsram som anges i inbjudan.",
+			"configNotFound": "Fel: studien är inte tillgänglig.\n\nDen begärda studien hittades inte på den här servern. Den kan ha tagits bort eller så kan åtkomstperioden ha avslutats.\n\nAnvänd inbjudningslänken i ditt e-postmeddelande och öppna studien inom den tidsram som anges i inbjudan.",
 			"beginStudyDisabled": "Studien kan inte startas",
 			"backend403": "Åtkomst nekad. Du kanske inte har behörighet att komma åt denna information.",
 			"backend404": "Element hittades inte. Kunde inte hitta den begärda resursen på servern.",

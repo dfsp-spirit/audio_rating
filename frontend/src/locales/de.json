@@ -96,8 +96,8 @@
 		"errors": {
 			"backendUnexpectedStatus": "Backend ist nicht verfügbar, unerwarteter Statuscode.",
 			"backendRequestFailed": "Backend ist nicht verfügbar, Anfrage fehlgeschlagen.",
-			"accessDeniedConfig": "Zugriff verweigert. Sie haben möglicherweise keine Berechtigung für diese Studie und deren Konfiguration.",
-			"configNotFound": "Die angeforderte Studienkonfiguration wurde auf dem Server nicht gefunden. Sie existiert möglicherweise nicht oder wurde entfernt.",
+			"accessDeniedConfig": "Fehler: Zugriff verweigert.\n\nSie haben keine Berechtigung, auf diese Studie auf diesem Server zuzugreifen.\n\nBitte verwenden Sie den Einladungslink aus Ihrer E-Mail und greifen Sie innerhalb des in der Einladung genannten Zeitraums auf die Studie zu.",
+			"configNotFound": "Fehler: Studie nicht verfügbar.\n\nDie angeforderte Studie wurde auf diesem Server nicht gefunden. Sie existiert möglicherweise nicht mehr oder der Zugriffszeitraum ist bereits beendet.\n\nBitte verwenden Sie den Einladungslink aus Ihrer E-Mail und greifen Sie innerhalb des in der Einladung genannten Zeitraums auf die Studie zu.",
 			"beginStudyDisabled": "Studie kann nicht gestartet werden",
 			"backend403": "Zugriff verweigert. Sie haben möglicherweise keine Berechtigung für diese Information.",
 			"backend404": "Element nicht gefunden. Die angeforderte Ressource konnte auf dem Server nicht gefunden werden.",

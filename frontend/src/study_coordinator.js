@@ -1326,7 +1326,22 @@ applyBlockedStudyUI(message = null) {
 
   const blockedMessageEl = document.getElementById('study-blocked-message');
   if (blockedMessageEl) {
-    blockedMessageEl.textContent = blockedMessage;
+    blockedMessageEl.textContent = '';
+    const messageParagraphs = String(blockedMessage)
+      .split(/\n\s*\n/)
+      .map((paragraph) => paragraph.trim())
+      .filter(Boolean);
+
+    if (messageParagraphs.length === 0) {
+      blockedMessageEl.textContent = blockedMessage;
+    } else {
+      messageParagraphs.forEach((paragraph) => {
+        const paragraphEl = document.createElement('p');
+        paragraphEl.textContent = paragraph;
+        blockedMessageEl.appendChild(paragraphEl);
+      });
+    }
+
     blockedMessageEl.style.display = '';
   }
 }

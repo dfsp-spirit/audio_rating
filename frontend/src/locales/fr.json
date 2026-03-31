@@ -96,8 +96,8 @@
 		"errors": {
 			"backendUnexpectedStatus": "Le backend n'est pas disponible, code d'état inattendu.",
 			"backendRequestFailed": "Le backend n'est pas disponible, la requête a échoué.",
-			"accessDeniedConfig": "Accès refusé. Vous n'avez peut-être pas la permission d'accéder à cette étude et à sa configuration.",
-			"configNotFound": "La configuration de l'étude demandée n'a pas été trouvée sur le serveur. Elle peut ne pas exister ou avoir été supprimée.",
+			"accessDeniedConfig": "Erreur : accès refusé.\n\nVous n'avez pas l'autorisation d'accéder à cette étude sur ce serveur.\n\nVeuillez utiliser le lien d'invitation reçu par e-mail et accéder à l'étude dans le délai indiqué dans l'invitation.",
+			"configNotFound": "Erreur : étude indisponible.\n\nL'étude demandée est introuvable sur ce serveur. Il est possible qu'elle n'existe plus ou que la période d'accès soit terminée.\n\nVeuillez utiliser le lien d'invitation reçu par e-mail et accéder à l'étude dans le délai indiqué dans l'invitation.",
 			"beginStudyDisabled": "L'étude ne peut pas être démarrée",
 			"backend403": "Accès refusé. Vous n'avez peut-être pas la permission d'accéder à ces informations.",
 			"backend404": "Élément non trouvé. Impossible de trouver la ressource demandée sur le serveur.",
