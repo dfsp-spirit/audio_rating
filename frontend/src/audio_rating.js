@@ -611,6 +611,33 @@ _updateDimensionDescription() {
       plugins: [topTimeline],
     });
 
+    // Inject scrollbar styles directly into WaveSurfer's shadow DOM.
+    // This is the only way to reach the inner .scroll element reliably:
+    // CSS ::part(scroll)::-webkit-scrollbar chains are forbidden by spec,
+    // so external stylesheets can't switch Chrome from overlay to classic mode.
+    // WaveSurfer uses attachShadow({mode:"open"}), so the shadow root is accessible.
+    // The ::-webkit-scrollbar rule is what tells Chrome to use a classic scrollbar
+    // instead of the OS overlay scrollbar (thin, fading, variable height on hover).
+    //
+    // We reach the shadow root via getWrapper().getRootNode(): getWrapper() returns
+    // the .wrapper element *inside* the shadow root, so getRootNode() reliably walks
+    // up to the shadow root regardless of where in the outer DOM WaveSurfer appended itself.
+    {
+      const shadowRoot = this.wavesurfer.getWrapper()?.getRootNode();
+      if (shadowRoot && shadowRoot.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
+        const s = document.createElement('style');
+        s.textContent = [
+          '.scroll { overflow-x: scroll !important;',   // always present; beats WaveSurfer inline style
+          '         scrollbar-color: #94a3b8 #e2e8f0; }', // Firefox
+          '.scroll::-webkit-scrollbar { height: 8px; }', // classic mode + fixed height
+          '.scroll::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 2px; }',
+          '.scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 2px; }',
+          '.scroll::-webkit-scrollbar-thumb:hover { background: #64748b; }',
+        ].join('\n');
+        shadowRoot.appendChild(s);
+      }
+    }
+
     // Store default minPxPerSec for reset purposes
     this._defaultMinPxPerSec = this.wavesurfer.params?.minPxPerSec ?? null;
 
@@ -841,8 +868,8 @@ _resizeOverlay() {
   const rect = this.waveformEl.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
 
-  // Adjust height to leave 16px at the bottom for scrollbar
-  const overlayHeight = this.CANVAS_HEIGHT - 16;
+  // Leave 8px at the bottom for the WaveSurfer scrollbar (classic 8px scrollbar injected into shadow DOM).
+  const overlayHeight = this.CANVAS_HEIGHT - 8;
 
   this.overlay.style.width  = `${Math.max(100, rect.width)}px`;
   this.overlay.style.height = `${overlayHeight}px`;

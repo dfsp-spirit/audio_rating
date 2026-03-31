@@ -288,3 +288,16 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ── Waveform scrollbar ─────────────────────────────────────────────────────
+   WaveSurfer v7 renders inside a Shadow DOM (mode:"open").  Styling the
+   scrollbar via CSS from the outside doesn't work:
+   - ::part(scroll)::pseudo-element chains are forbidden by the CSS spec,
+     so ::-webkit-scrollbar rules never reach the inner .scroll element.
+   - Without a ::-webkit-scrollbar rule Chrome keeps using overlay scrollbars
+     (thin, fading, OS-controlled) regardless of overflow or scrollbar-width.
+
+   The fix is in audio_rating.js _initWaveSurfer(): a <style> tag is injected
+   directly into WaveSurfer's shadow root, where ::-webkit-scrollbar rules
+   work normally and switch Chrome to a classic, always-visible scrollbar.
+   ─────────────────────────────────────────────────────────────────────────── */
