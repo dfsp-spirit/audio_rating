@@ -95,7 +95,179 @@
 
         {% set has_ratings = study.active_participants and study.active_participants|selectattr('songs_rated_count', 'greaterthan', 0)|list|length > 0 %}
 
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;">
+        <div class="study-tabs-nav" style="display: flex; gap: 0; margin-bottom: 16px; border-bottom: 2px solid var(--border-color);">
+            <button class="study-tab" onclick="switchStudyTab('tab-participants-{{ study.name_short }}', this, '{{ study.name_short }}')" style="padding: 12px 16px; border: none; border-bottom: 3px solid var(--primary-color); margin-bottom: -2px; background: none; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--primary-color); transition: all 0.2s;">
+                👥 Participants <span style="opacity: 0.7;">({{ study.active_participants_count }})</span>
+            </button>
+            <button class="study-tab" onclick="switchStudyTab('tab-songs-{{ study.name_short }}', this, '{{ study.name_short }}')" style="padding: 12px 16px; border: none; border-bottom: 3px solid transparent; margin-bottom: -2px; background: none; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--text-secondary); transition: all 0.2s;">
+                🎵 Songs <span style="opacity: 0.7;">({{ study.total_songs }})</span>
+            </button>
+            <button class="study-tab" onclick="switchStudyTab('tab-dimensions-{{ study.name_short }}', this, '{{ study.name_short }}')" style="padding: 12px 16px; border: none; border-bottom: 3px solid transparent; margin-bottom: -2px; background: none; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--text-secondary); transition: all 0.2s;">
+                📊 Rating Dimensions <span style="opacity: 0.7;">({{ study.rating_dimensions|length }})</span>
+            </button>
+        </div>
+
+        <div id="tab-participants-{{ study.name_short }}" class="study-tab-panel" style="display: block;">
+            {% if study.active_participants %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Participant ID</th>
+                        <th>Status</th>
+                        <th>Songs Rated</th>
+                        <th>Progress</th>
+                        <th>Total Segments</th>
+                        <th>Last Activity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for participant in study.active_participants|sort(attribute='last_activity', reverse=true) %}
+                    <tr>
+                        <td>
+                            <span style="font-family: monospace; font-size: 13px;">{{ participant.id[:12] }}...</span>
+                        </td>
+                        <td>
+                            {% if participant.is_pre_listed %}
+                                <span class="badge badge-prelisted">Pre-listed</span>
+                            {% else %}
+                                <span class="badge badge-unlisted">Unlisted</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div style="margin-bottom: 5px;">
+                                {{ participant.songs_rated_count }} of {{ study.total_songs }}
+                            </div>
+                            {% if participant.songs_rated %}
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px;">
+                                {% for song in participant.songs_rated[:3] %}
+                                    <span style="background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 4px; font-size: 12px;">{{ song }}</span>
+                                {% endfor %}
+                                {% if participant.songs_rated_count > 3 %}
+                                    <span style="background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 4px; font-size: 12px;">+{{ participant.songs_rated_count - 3 }} more</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if study.total_songs > 0 %}
+                                {% set progress_percent = (participant.songs_rated_count / study.total_songs * 100)|round|int %}
+                            {% else %}
+                                {% set progress_percent = 0 %}
+                            {% endif %}
+                            <div style="margin-bottom: 5px;">{{ progress_percent }}%</div>
+                            <div style="width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden;">
+                                <div style="height: 100%; background: var(--success-color); border-radius: 4px; width: {{ progress_percent }}%; transition: width 0.3s ease;"></div>
+                            </div>
+                        </td>
+                        <td>
+                            <strong>{{ participant.total_segments }}</strong> segments
+                        </td>
+                        <td class="timestamp">
+                            {% if participant.last_activity %}
+                                {{ participant.last_activity.strftime('%Y-%m-%d %H:%M') }}
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <div style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;">👥</div>
+                <h3 style="margin-bottom: 10px;">No participants yet</h3>
+                <p>No ratings have been submitted for this study.</p>
+                {% if study.pre_listed_participants %}
+                <p class="timestamp" style="margin-top: 10px;">
+                    Pre-listed participants: {{ study.pre_listed_participants|join(', ') }}
+                </p>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div id="tab-songs-{{ study.name_short }}" class="study-tab-panel" style="display: none;">
+            {% if study.songs %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Media URL</th>
+                        <th>Display Name (all languages)</th>
+                        <th>Description (all languages)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for song in study.songs %}
+                    <tr>
+                        <td>{{ song.song_index + 1 }}</td>
+                        <td><span style="font-family: monospace; font-size: 12px;">{{ song.media_url }}</span></td>
+                        <td>
+                            {% if song.display_name_i18n %}
+                                {% for lang, text in song.display_name_i18n|dictsort %}
+                                <div style="margin-bottom: 4px;">
+                                    <span class="timestamp" style="font-weight: 600;">{{ lang }}:</span>
+                                    <span>{{ text }}</span>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <span class="timestamp">(empty)</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if song.description_i18n %}
+                                {% for lang, text in song.description_i18n|dictsort %}
+                                <div style="margin-bottom: 4px;">
+                                    <span class="timestamp" style="font-weight: 600;">{{ lang }}:</span>
+                                    <span>{{ text }}</span>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <span class="timestamp">(empty)</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <div style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;">🎵</div>
+                <h3 style="margin-bottom: 10px;">No songs configured</h3>
+                <p>No songs have been added to this study yet.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div id="tab-dimensions-{{ study.name_short }}" class="study-tab-panel" style="display: none;">
+            {% if study.rating_dimensions %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+                {% for dimension in study.rating_dimensions %}
+                <div style="background: var(--bg-color); border-radius: 8px; padding: 16px; border-left: 4px solid var(--primary-color);">
+                    <h3 style="font-size: 16px; margin-bottom: 10px;">{{ dimension.dimension_title }}</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px; margin-bottom: 10px;">
+                        <div><span class="timestamp">Values:</span> {{ dimension.num_values }}</div>
+                        <div><span class="timestamp">Min:</span> {{ dimension.minimal_value }}</div>
+                        <div><span class="timestamp">Default:</span> {{ dimension.default_value }}</div>
+                        <div><span class="timestamp">Max:</span> {{ dimension.max_value }}</div>
+                    </div>
+                    {% if dimension.description %}
+                    <p class="timestamp" style="margin: 0;">{{ dimension.description }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;">📊</div>
+                <h3 style="margin-bottom: 10px;">No rating dimensions configured</h3>
+                <p>No rating dimensions have been defined for this study.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color);">
             {% if has_ratings %}
                 <a href="{{ request.scope.root_path }}/api/admin/datasets/download?study_name={{ study.name_short }}&format=csv"
                 class="btn btn-primary" target="_blank">
@@ -118,84 +290,6 @@
             </a>
         </div>
 
-        {% if study.active_participants %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Participant ID</th>
-                    <th>Status</th>
-                    <th>Songs Rated</th>
-                    <th>Progress</th>
-                    <th>Total Segments</th>
-                    <th>Last Activity</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for participant in study.active_participants|sort(attribute='last_activity', reverse=true) %}
-                <tr>
-                    <td>
-                        <span style="font-family: monospace; font-size: 13px;">{{ participant.id[:12] }}...</span>
-                    </td>
-                    <td>
-                        {% if participant.is_pre_listed %}
-                            <span class="badge badge-prelisted">Pre-listed</span>
-                        {% else %}
-                            <span class="badge badge-unlisted">Unlisted</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div style="margin-bottom: 5px;">
-                            {{ participant.songs_rated_count }} of {{ study.total_songs }}
-                        </div>
-                        {% if participant.songs_rated %}
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px;">
-                            {% for song in participant.songs_rated[:3] %}
-                                <span style="background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 4px; font-size: 12px;">{{ song }}</span>
-                            {% endfor %}
-                            {% if participant.songs_rated_count > 3 %}
-                                <span style="background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 4px; font-size: 12px;">+{{ participant.songs_rated_count - 3 }} more</span>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if study.total_songs > 0 %}
-                            {% set progress_percent = (participant.songs_rated_count / study.total_songs * 100)|round|int %}
-                        {% else %}
-                            {% set progress_percent = 0 %}
-                        {% endif %}
-                        <div style="margin-bottom: 5px;">{{ progress_percent }}%</div>
-                        <div style="width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden;">
-                            <div style="height: 100%; background: var(--success-color); border-radius: 4px; width: {{ progress_percent }}%; transition: width 0.3s ease;"></div>
-                        </div>
-                    </td>
-                    <td>
-                        <strong>{{ participant.total_segments }}</strong> segments
-                    </td>
-                    <td class="timestamp">
-                        {% if participant.last_activity %}
-                            {{ participant.last_activity.strftime('%Y-%m-%d %H:%M') }}
-                        {% else %}
-                            Never
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div class="empty-state">
-            <div style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;">👥</div>
-            <h3 style="margin-bottom: 10px;">No participants yet</h3>
-            <p>No ratings have been submitted for this study.</p>
-            {% if study.pre_listed_participants %}
-            <p class="timestamp" style="margin-top: 10px;">
-                Pre-listed participants: {{ study.pre_listed_participants|join(', ') }}
-            </p>
-            {% endif %}
-        </div>
-        {% endif %}
-
         {% if study.allow_unlisted_participants %}
         <p class="timestamp" style="margin-top: 15px;">
             ⚠️ This study allows unlisted participants.
@@ -207,6 +301,22 @@
         {% endif %}
     </div>
     {% endfor %}
+
+    <script>
+        function switchStudyTab(tabId, button, studyShortName) {
+            const studyCard = document.getElementById('study-card-' + studyShortName);
+            studyCard.querySelectorAll('.study-tab-panel').forEach((panel) => {
+                panel.style.display = 'none';
+            });
+            studyCard.querySelectorAll('.study-tab').forEach((tab) => {
+                tab.style.color = 'var(--text-secondary)';
+                tab.style.borderBottomColor = 'transparent';
+            });
+            document.getElementById(tabId).style.display = 'block';
+            button.style.color = 'var(--primary-color)';
+            button.style.borderBottomColor = 'var(--primary-color)';
+        }
+    </script>
 
     <div class="card" style="margin-top: 24px;">
         <h2 style="font-size: 20px; margin-bottom: 8px;">Runtime Config Export</h2>

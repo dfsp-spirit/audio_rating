@@ -34,15 +34,27 @@ async def test_runtime_export_file_can_be_reloaded_by_create_config_file_studies
 
     database_module.create_config_file_studies(str(STUDIES_CONFIG_PATH))
 
+    source_config = json.loads(STUDIES_CONFIG_PATH.read_text(encoding="utf-8"))
+    source_studies = source_config["studies"]
+    source_study_name_short = source_studies[0]["name_short"]
+    source_study_song_urls = sorted(
+        song["media_url"] for song in source_studies[0]["songs_to_rate"]
+    )
+    source_study_dimension_count = len(source_studies[0]["rating_dimensions"])
+    arousal_dimension_cfg = next(
+        (dimension for dimension in source_studies[0]["rating_dimensions"] if dimension["dimension_title"] == "arousal"),
+        None,
+    )
+
     with Session(source_engine) as session:
-        default_study = session.exec(select(Study).where(Study.name_short == "default")).first()
-        assert default_study is not None
+        source_study = session.exec(select(Study).where(Study.name_short == source_study_name_short)).first()
+        assert source_study is not None
 
         runtime_participant = Participant(id="runtime_added_participant")
         session.add(runtime_participant)
         session.add(
             StudyParticipantLink(
-                study_id=default_study.id,
+                study_id=source_study.id,
                 participant_id=runtime_participant.id,
             )
         )
@@ -64,39 +76,37 @@ async def test_runtime_export_file_can_be_reloaded_by_create_config_file_studies
         studies = session.exec(select(Study).order_by(Study.name_short)).all()
         assert len(studies) == len(export_payload["studies_config"]["studies"])
 
-        default_study = session.exec(select(Study).where(Study.name_short == "default")).first()
-        assert default_study is not None
+        reloaded_study = session.exec(select(Study).where(Study.name_short == source_study_name_short)).first()
+        assert reloaded_study is not None
 
         participant_links = session.exec(
-            select(StudyParticipantLink).where(StudyParticipantLink.study_id == default_study.id)
+            select(StudyParticipantLink).where(StudyParticipantLink.study_id == reloaded_study.id)
         ).all()
         participant_ids = sorted(link.participant_id for link in participant_links)
         assert "runtime_added_participant" in participant_ids
 
         song_links = session.exec(
-            select(StudySongLink).where(StudySongLink.study_id == default_study.id)
+            select(StudySongLink).where(StudySongLink.study_id == reloaded_study.id)
         ).all()
         rating_dimensions = session.exec(
-            select(StudyRatingDimension).where(StudyRatingDimension.study_id == default_study.id)
+            select(StudyRatingDimension).where(StudyRatingDimension.study_id == reloaded_study.id)
         ).all()
 
-        assert len(song_links) == 2
-        assert len(rating_dimensions) == 4
+        assert len(song_links) == len(source_study_song_urls)
+        assert len(rating_dimensions) == source_study_dimension_count
 
         arousal_dimension = next(
             (dimension for dimension in rating_dimensions if dimension.dimension_title == "arousal"),
             None,
         )
-        assert arousal_dimension is not None
-        assert arousal_dimension.minimal_value == -2
-        assert arousal_dimension.num_values == 5
+        if arousal_dimension_cfg is not None:
+            assert arousal_dimension is not None
+            assert arousal_dimension.minimal_value == arousal_dimension_cfg["minimal_value"]
+            assert arousal_dimension.num_values == arousal_dimension_cfg["num_values"]
 
         song_ids = [link.song_id for link in song_links]
         songs = session.exec(select(Song).where(Song.id.in_(song_ids))).all()
         song_urls = sorted(song.media_url for song in songs)
-        assert song_urls == sorted([
-            "audio_files/default/demo.wav",
-            "audio_files/default/demo2.wav",
-        ])
+        assert song_urls == source_study_song_urls
 
     monkeypatch.setattr(database_module, "engine", original_engine)

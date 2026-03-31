@@ -1044,17 +1044,70 @@ async def admin_dashboard(
     download_url_base = f"{root_path}/api/admin/datasets/download"
 
     try:
+        studies_config = load_studies_config(settings.studies_config_path)
+        studies_config_by_short = {
+            study_cfg.name_short: study_cfg for study_cfg in studies_config.studies
+        }
+
+        def to_i18n_map(value: object, default_language: str) -> Dict[str, str]:
+            if isinstance(value, dict):
+                return {
+                    str(language): str(text)
+                    for language, text in value.items()
+                    if text is not None and str(text) != ""
+                }
+            if value is None:
+                return {}
+            text = str(value)
+            if text == "":
+                return {}
+            return {default_language: text}
+
         # Get all studies with basic info
         studies = session.exec(select(Study).order_by(Study.created_at)).all()
 
         study_stats = []
 
         for study in studies:
+            study_cfg = studies_config_by_short.get(study.name_short)
+            default_language = study_cfg.default_language if study_cfg else "en"
+
             # Get total songs in this study
             song_links = session.exec(
                 select(StudySongLink).where(StudySongLink.study_id == study.id)
             ).all()
             total_songs = len(song_links)
+
+            songs_for_study = session.exec(
+                select(StudySongLink, Song)
+                .join(Song, StudySongLink.song_id == Song.id)
+                .where(StudySongLink.study_id == study.id)
+                .order_by(StudySongLink.song_index, Song.id)
+            ).all()
+
+            songs_cfg_by_media_url = {
+                song_cfg.media_url: song_cfg for song_cfg in study_cfg.songs_to_rate
+            } if study_cfg else {}
+
+            songs_report = []
+            for song_link, song in songs_for_study:
+                song_cfg = songs_cfg_by_media_url.get(song.media_url)
+
+                display_name_source = song_cfg.display_name if song_cfg else song.display_name
+                description_source = song_cfg.description if song_cfg else song.description
+
+                songs_report.append({
+                    "song_index": song_link.song_index,
+                    "media_url": song.media_url,
+                    "display_name": resolve_localized_text(display_name_source, default_language)
+                    if isinstance(display_name_source, dict)
+                    else (display_name_source or ""),
+                    "description": resolve_localized_text(description_source, default_language)
+                    if isinstance(description_source, dict)
+                    else (description_source or ""),
+                    "display_name_i18n": to_i18n_map(display_name_source, default_language),
+                    "description_i18n": to_i18n_map(description_source, default_language),
+                })
 
             # Get all participants linked to this study (pre-listed)
             participant_links = session.exec(
@@ -1083,6 +1136,10 @@ async def admin_dashboard(
             rating_dimensions = session.exec(
                 select(StudyRatingDimension).where(StudyRatingDimension.study_id == study.id)
             ).all()
+
+            dimensions_cfg_by_title = {
+                dimension_cfg.dimension_title: dimension_cfg for dimension_cfg in study_cfg.rating_dimensions
+            } if study_cfg else {}
 
             # Organize data by participant
             participants_data = {}
@@ -1130,9 +1187,22 @@ async def admin_dashboard(
                 {
                     "dimension_title": dim.dimension_title,
                     "num_values": dim.num_values,
-                    "minimal_value": dim.minimal_value,
-                    "default_value": dim.default_value,
-                    "description": resolve_localized_text(dim.description) if isinstance(dim.description, dict) else (dim.description or "")
+                    "minimal_value": (dim.minimal_value if dim.minimal_value is not None else 1),
+                    "default_value": (
+                        dim.default_value
+                        if dim.default_value is not None
+                        else ((dim.minimal_value if dim.minimal_value is not None else 1) + dim.num_values - 1) // 2
+                    ),
+                    "max_value": (dim.minimal_value if dim.minimal_value is not None else 1) + dim.num_values - 1,
+                    "description": resolve_localized_text(dim.description, default_language)
+                    if isinstance(dim.description, dict)
+                    else (dim.description or ""),
+                    "description_i18n": to_i18n_map(
+                        dimensions_cfg_by_title.get(dim.dimension_title).description
+                        if dimensions_cfg_by_title.get(dim.dimension_title)
+                        else dim.description,
+                        default_language
+                    )
                 }
                 for dim in rating_dimensions
             ]
@@ -1152,7 +1222,9 @@ async def admin_dashboard(
                 "name": study.name,
                 "description": study.description,
                 "rating_dimensions": rating_dimensions_report,
+                "songs": songs_report,
                 "total_songs": total_songs,
+                "default_language": default_language,
                 "allow_unlisted_participants": study.allow_unlisted_participants,
                 "pre_listed_participants": pre_listed_participants,
                 "pre_listed_count": len(pre_listed_participants),
@@ -1166,6 +1238,9 @@ async def admin_dashboard(
             })
 
         # Render template manually to avoid Starlette TemplateResponse caching issues with wheel-installed packages
+        # See: https://github.com/encode/starlette/issues/2531
+        # When templates are installed from a wheel, Starlette's TemplateResponse cache fails with "unhashable type: dict"
+        # Using direct Jinja2 rendering bypasses this bug entirely
         context_dict = {
             "request": request,
             "studies": study_stats,

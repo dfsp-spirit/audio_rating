@@ -50,7 +50,7 @@ async def test_admin_dashboard_handles_legacy_localized_dict_fields(monkeypatch)
         data_collection_end=now + timedelta(days=1),
         created_at=now - timedelta(days=2),
     )
-    song_link = SimpleNamespace(song_id="song-1")
+    song_link = SimpleNamespace(song_id="song-1", song_index=0)
     participant_link = SimpleNamespace(participant_id="participant-1")
     participant = SimpleNamespace(id="participant-1", created_at=now - timedelta(hours=2))
     rating = SimpleNamespace(
@@ -61,6 +61,7 @@ async def test_admin_dashboard_handles_legacy_localized_dict_fields(monkeypatch)
     song = SimpleNamespace(
         display_name={"en": "Improvisation 1", "de": "Improvisation 1 DE"},
         media_url="audio_files/legacy/song.mp3",
+        description={"en": "Song description", "de": "Song Beschreibung"},
     )
     dimension = SimpleNamespace(
         dimension_title="flow",
@@ -74,6 +75,7 @@ async def test_admin_dashboard_handles_legacy_localized_dict_fields(monkeypatch)
         [
             [study],
             [song_link],
+            [(song_link, song)],
             [participant_link],
             [participant.id],
             [(rating, participant, song, 2)],
@@ -83,12 +85,13 @@ async def test_admin_dashboard_handles_legacy_localized_dict_fields(monkeypatch)
 
     captured = {}
 
-    def fake_template_response(template_name, context):
-        captured["template_name"] = template_name
-        captured["context"] = context
-        return SimpleNamespace(template_name=template_name, context=context)
+    class FakeTemplate:
+        def render(self, context):
+            captured["template_name"] = "admin_dashboard.html"
+            captured["context"] = context
+            return "<html>ok</html>"
 
-    monkeypatch.setattr(api_module.templates, "TemplateResponse", fake_template_response)
+    monkeypatch.setattr(api_module.templates, "get_template", lambda template_name: FakeTemplate())
 
     request = Request(
         {
@@ -113,7 +116,8 @@ async def test_admin_dashboard_handles_legacy_localized_dict_fields(monkeypatch)
         current_admin="test_admin",
     )
 
-    assert response.template_name == "admin_dashboard.html"
+    assert response.status_code == 200
+    assert captured["template_name"] == "admin_dashboard.html"
     assert captured["context"]["api_base"] == "http://testserver/ar_backend"
 
     studies = captured["context"]["studies"]
@@ -123,5 +127,11 @@ async def test_admin_dashboard_handles_legacy_localized_dict_fields(monkeypatch)
     assert active_participant["songs_rated"] == ["Improvisation 1"]
     assert active_participant["ratings"][0]["song"] == "Improvisation 1"
 
+    songs = studies[0]["songs"]
+    assert songs[0]["display_name_i18n"]["en"] == "Improvisation 1"
+    assert songs[0]["display_name_i18n"]["de"] == "Improvisation 1 DE"
+    assert songs[0]["description_i18n"]["de"] == "Song Beschreibung"
+
     rating_dimensions = studies[0]["rating_dimensions"]
     assert rating_dimensions[0]["description"] == "Flow description"
+    assert rating_dimensions[0]["max_value"] == 5
