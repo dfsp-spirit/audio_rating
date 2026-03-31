@@ -1041,10 +1041,6 @@ async def admin_dashboard(
     else:
         api_base = base_url
 
-    # For debugging
-    print(f"DEBUG - base_url: {base_url}")
-    print(f"DEBUG - root_path: {root_path}")
-    print(f"DEBUG - api_base: {api_base}")
     download_url_base = f"{root_path}/api/admin/datasets/download"
 
     try:
@@ -1081,7 +1077,7 @@ async def admin_dashboard(
                 .join(RatingSegment, RatingSegment.rating_id == Rating.id, isouter=True)
                 .where(Rating.study_id == study.id)
                 .group_by(Rating.id, Participant.id, Song.id)
-                .order_by(Participant.id, Song.display_name, Rating.rating_name)
+                .order_by(Participant.id, Song.id, Rating.rating_name)
             ).all()
 
             rating_dimensions = session.exec(
@@ -1169,19 +1165,22 @@ async def admin_dashboard(
                 "is_currently_active": study.data_collection_start <= utc_now() <= study.data_collection_end
             })
 
-        return templates.TemplateResponse(
-            "admin_dashboard.html",
-            {
-                "request": request,
-                "studies": study_stats,
-                "admin_user": current_admin,
-                "current_time": datetime.now(),
-                "api_base": api_base
-            }
-        )
+        # Render template manually to avoid Starlette TemplateResponse caching issues with wheel-installed packages
+        context_dict = {
+            "request": request,
+            "studies": study_stats,
+            "admin_user": current_admin,
+            "current_time": datetime.now(),
+            "api_base": api_base
+        }
+        template = templates.get_template("admin_dashboard.html")
+        html_content = template.render(context_dict)
+        return HTMLResponse(content=html_content)
 
     except Exception as e:
+        import traceback
         logger.error(f"Error loading admin dashboard: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to load admin dashboard: {str(e)}"

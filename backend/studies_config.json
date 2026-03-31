@@ -1,50 +1,314 @@
 {
-  "studies": [
-    {
-      "name": "Default Study",
-      "name_short": "default",
-      "default_language": "en",
-      "description": { "en": "Default study for music aesthetics research", "de": "Standardstudie zur Erforschung der Musikästhetik", "es": "Estudio predeterminado para la investigación de la estética musical", "fr": "Étude par défaut pour la recherche sur l'esthétique musicale", "sv": "Standardstudie för forskning om musikestetik" },
-      "custom_text_instructions": { "en": "Please listen to each song and rate it on the following dimensions: Valence, Arousal, Enjoyment, and Is Cool. You can split the song into segments and rate each segment separately. Make sure to complete all ratings before submitting.", "de": "Bitte hören Sie sich jedes Lied an und bewerten Sie es anhand der folgenden Dimensionen: Valenz, Erregung, Genuss und Ist Cool. Sie können das Lied in Segmente aufteilen und jedes Segment separat bewerten. Stellen Sie sicher, dass Sie alle Bewertungen abgeschlossen haben, bevor Sie sie absenden.", "es": "Por favor, escuche cada canción y califíquela en las siguientes dimensiones: Valencia, Activación, Disfrute y Es Genial. Puede dividir la canción en segmentos y calificar cada segmento por separado. Asegúrese de completar todas las calificaciones antes de enviar.", "fr": "Veuillez écouter chaque chanson et l'évaluer selon les dimensions suivantes : Valence, Activation, Plaisir et Cool. Vous pouvez diviser la chanson en segments et évaluer chaque segment séparément. Assurez-vous de compléter toutes les évaluations avant de soumettre.", "sv": "Lyssna på varje låt och bedöm den utifrån följande dimensioner: Valens, Aktivering, Njutning och Är Cool. Du kan dela upp låten i segment och bedöma varje segment separat. Se till att slutföra alla bedömningar innan du skickar in." },
-      "custom_text_thank_you": { "en": "Thank you for participating in this study! Your ratings have been saved.", "de": "Vielen Dank für Ihre Teilnahme an dieser Studie! Ihre Bewertungen wurden gespeichert.", "es": "¡Gracias por participar en este estudio! Sus calificaciones se han guardado.", "fr": "Merci d'avoir participé à cette étude ! Vos évaluations ont été enregistrées.", "sv": "Tack för att du deltog i denna studie! Dina bedömningar har sparats." },
-      "songs_to_rate": [
-          { "media_url": "audio_files/default/demo.wav", "display_name": { "en": "Demo Song", "de": "Demo-Song", "es": "Canción de Demostración", "fr": "Chanson Démo", "sv": "Demolåt" }, "description": { "en": "A short demo song for testing purposes.", "de": "Ein kurzes Demo-Lied zu Testzwecken.", "es": "Una canción de demostración corta para fines de prueba.", "fr": "Une courte chanson de démonstration à des fins de test.", "sv": "En kort demolåt för teständamål." } },
-          { "media_url": "audio_files/default/demo2.wav", "display_name": { "en": "Demo Song 2", "de": "Demo-Song 2", "es": "Canción de Demostración 2", "fr": "Chanson Démo 2", "sv": "Demolåt 2" }, "description": { "en": "Another demo song for testing purposes.", "de": "Ein weiteres Demo-Lied zu Testzwecken.", "es": "Otra canción de demostración para fines de prueba.", "fr": "Une autre chanson de démonstration à des fins de test.", "sv": "En annan demolåt för teständamål." } }
-        ],
-      "rating_dimensions": [
-          {"dimension_title": "valence", "display_name": { "en": "Valence", "de": "Valenz", "es": "Valencia", "fr": "Valence", "sv": "Valens" }, "num_values": 8, "description": { "en": "Measures how positive or negative the emotional tone of the audio feels.", "de": "Misst, wie positiv oder negativ der emotionale Ton des Audios wirkt.", "es": "Mide cuán positivo o negativo se percibe el tono emocional del audio.", "fr": "Mesure à quel point la tonalité émotionnelle de l'audio est perçue comme positive ou négative.", "sv": "Mäter hur positiv eller negativ den emotionella tonen i ljudet upplevs." }},
-          {"dimension_title": "arousal", "display_name": { "en": "Arousal", "de": "Erregung", "es": "Activación", "fr": "Activation", "sv": "Aktivering" }, "num_values": 5, "minimal_value": -2, "description": { "en": "Measures the level of energy or activation the audio evokes.", "de": "Misst das Energieniveau oder die Aktivierung, die das Audio hervorruft.", "es": "Mide el nivel de energía o activación que evoca el audio.", "fr": "Mesure le niveau d'énergie ou d'activation évoqué par l'audio.", "sv": "Mäter nivån av energi eller aktivering som ljudet framkallar." }},
-          {"dimension_title": "enjoyment", "display_name": { "en": "Enjoyment", "de": "Genuss", "es": "Disfrute", "fr": "Plaisir", "sv": "Njutning" }, "num_values": 10, "description": { "en": "Measures the personal enjoyment or liking of the audio.", "de": "Misst den persönlichen Genuss oder die Vorliebe für das Audio.", "es": "Mide el disfrute personal o grado de agrado del audio.", "fr": "Mesure le plaisir personnel ou l'appréciation de l'audio.", "sv": "Mäter personligt gillande eller uppskattning av ljudet." }},
-          {"dimension_title": "is_cool", "display_name": { "en": "Is Cool", "de": "Ist Cool", "es": "Es Genial", "fr": "Est Cool", "sv": "Är Cool" }, "num_values": 2, "minimal_value": 0, "description": { "en": "Measures whether the audio is perceived as cool or impressive.", "de": "Misst, ob das Audio als cool oder beeindruckend wahrgenommen wird.", "es": "Mide si el audio se percibe como genial o impresionante.", "fr": "Mesure si l'audio est perçu comme cool ou impressionnant.", "sv": "Mäter om ljudet uppfattas som coolt eller imponerande." }}
-        ],
-      "study_participant_ids": [],
-      "allow_unlisted_participants": true,
-      "data_collection_start": "2024-01-01T00:00:00Z",
-      "data_collection_end": "2026-12-31T23:59:59Z"
-    },
-    {
-      "name": "Custom study",
-      "name_short": "custom_study1",
-      "default_language": "en",
-      "description": { "en": "Study covering classic songs from the 70s and 80s", "de": "Studie über klassische Songs aus den 70er und 80er Jahren", "es": "Estudio sobre canciones clásicas de los años 70 y 80", "fr": "Étude couvrant des chansons classiques des années 70 et 80", "sv": "Studie om klassiska låtar från 70- och 80-talet" },
-      "custom_text_instructions": { "en": "Please listen to each song and rate it on the following dimensions: Valence, Arousal, Enjoyment, and Is Cool. You can split the song into segments and rate each segment separately. Make sure to complete all ratings before submitting.", "de": "Bitte hören Sie sich jedes Lied an und bewerten Sie es anhand der folgenden Dimensionen: Valenz, Erregung, Genuss und Ist Cool. Sie können das Lied in Segmente aufteilen und jedes Segment separat bewerten. Stellen Sie sicher, dass Sie alle Bewertungen abgeschlossen haben, bevor Sie sie absenden.", "es": "Por favor, escuche cada canción y califíquela en las siguientes dimensiones: Valencia, Activación, Disfrute y Es Genial. Puede dividir la canción en segmentos y calificar cada segmento por separado. Asegúrese de completar todas las calificaciones antes de enviar.", "fr": "Veuillez écouter chaque chanson et l'évaluer selon les dimensions suivantes : Valence, Activation, Plaisir et Cool. Vous pouvez diviser la chanson en segments et évaluer chaque segment séparément. Assurez-vous de compléter toutes les évaluations avant de soumettre.", "sv": "Lyssna på varje låt och bedöm den utifrån följande dimensioner: Valens, Aktivering, Njutning och Är Cool. Du kan dela upp låten i segment och bedöma varje segment separat. Se till att slutföra alla bedömningar innan du skickar in." },
-      "custom_text_thank_you": { "en": "Thank you for participating in this study! Your ratings have been saved.", "de": "Vielen Dank für Ihre Teilnahme an dieser Studie! Ihre Bewertungen wurden gespeichert.", "es": "¡Gracias por participar en este estudio! Sus calificaciones se han guardado.", "fr": "Merci d'avoir participé à cette étude ! Vos évaluations ont été enregistrées.", "sv": "Tack för att du deltog i denna studie! Dina bedömningar har sparats." },
-      "songs_to_rate": [
-          { "media_url": "audio_files/custom_study1/eyeofthetiger.wav", "display_name": { "en": "Eye of the Tiger", "de": "Eye of the Tiger", "es": "Eye of the Tiger", "fr": "Eye of the Tiger", "sv": "Eye of the Tiger" } },
-          { "media_url": "audio_files/custom_study1/jet_generation.wav", "display_name": { "en": "Jet Generation by Guitar Wolf", "de": "Jet Generation von Guitar Wolf", "es": "Jet Generation de Guitar Wolf", "fr": "Jet Generation par Guitar Wolf", "sv": "Jet Generation av Guitar Wolf" } },
-          { "media_url": "audio_files/custom_study1/bohemianrhapsody.wav", "display_name": { "en": "Bohemian Rhapsody", "de": "Bohemian Rhapsody", "es": "Bohemian Rhapsody", "fr": "Bohemian Rhapsody", "sv": "Bohemian Rhapsody" } },
-          { "media_url": "audio_files/custom_study1/hotelcalifornia.wav", "display_name": { "en": "Hotel California", "de": "Hotel California", "es": "Hotel California", "fr": "Hotel California", "sv": "Hotel California" } }
-        ],
-      "rating_dimensions": [
-          {"dimension_title": "valence", "display_name": { "en": "Valence", "de": "Valenz", "es": "Valencia", "fr": "Valence", "sv": "Valens" }, "num_values": 8, "description": { "en": "Measures how positive or negative the emotional tone of the audio feels.", "de": "Misst, wie positiv oder negativ der emotionale Ton des Audios wirkt.", "es": "Mide cuán positivo o negativo se percibe el tono emocional del audio.", "fr": "Mesure à quel point la tonalité émotionnelle de l'audio est perçue comme positive ou négative.", "sv": "Mäter hur positiv eller negativ den emotionella tonen i ljudet upplevs." }},
-          {"dimension_title": "arousal", "display_name": { "en": "Arousal", "de": "Erregung", "es": "Activación", "fr": "Activation", "sv": "Aktivering" }, "num_values": 5, "minimal_value": -2, "description": { "en": "Measures the level of energy or activation the audio evokes.", "de": "Misst das Energieniveau oder die Aktivierung, die das Audio hervorruft.", "es": "Mide el nivel de energía o activación que evoca el audio.", "fr": "Mesure le niveau d'énergie ou d'activation évoqué par l'audio.", "sv": "Mäter nivån av energi eller aktivering som ljudet framkallar." }},
-          {"dimension_title": "enjoyment", "display_name": { "en": "Enjoyment", "de": "Genuss", "es": "Disfrute", "fr": "Plaisir", "sv": "Njutning" }, "num_values": 10, "description": { "en": "Measures the personal enjoyment or liking of the audio.", "de": "Misst den persönlichen Genuss oder die Vorliebe für das Audio.", "es": "Mide el disfrute personal o grado de agrado del audio.", "fr": "Mesure le plaisir personnel ou l'appréciation de l'audio.", "sv": "Mäter personligt gillande eller uppskattning av ljudet." }},
-          {"dimension_title": "is_cool", "display_name": { "en": "Is Cool", "de": "Ist Cool", "es": "Es Genial", "fr": "Est Cool", "sv": "Är Cool" }, "num_values": 2, "minimal_value": 0, "description": { "en": "Measures whether the audio is perceived as cool or impressive.", "de": "Misst, ob das Audio als cool oder beeindruckend wahrgenommen wird.", "es": "Mide si el audio se percibe como genial o impresionante.", "fr": "Mesure si l'audio est perçu comme cool ou impressionnant.", "sv": "Mäter om ljudet uppfattas som coolt eller imponerande." } }
-        ],
-      "study_participant_ids": ["bernddasbrot", "annasmith", "john_doe"],
-      "allow_unlisted_participants": false,
-      "data_collection_start": "2024-01-01T00:00:00Z",
-      "data_collection_end": "2026-12-31T23:59:59Z"
-    }
-  ]
+	"studies": [
+		{
+			"name": "Creative musical dialogues between human and machine: a novel approach to studying improvisation and joint action",
+			"name_short": "hmi_dialogues",
+			"default_language": "en",
+			"description": {
+				"en": "Retrospective ratings of Human-AI improvisations: Solo pianist + JHAIMI",
+				"de": "Retrospektive Bewertungen von Mensch-KI-Improvisationen: Solo-Pianist + JHAIMI",
+				"es": "Evaluaciones retrospectivas de improvisaciones humano-IA: pianista solista + JHAIMI",
+				"fr": "Évaluations rétrospectives d'improvisations humain-IA : pianiste solo + JHAIMI",
+				"sv": "Retrospektiva bedömningar av människa-AI-improvisationer: solopianist + JHAIMI"
+			},
+			"custom_text_instructions": {
+				"en": "Please listen to each improvisation and provide ratings on each dimension over time.",
+				"de": "Bitte hören Sie jede Improvisation an und geben Sie im Zeitverlauf Bewertungen für jede Dimension ab.",
+				"es": "Por favor, escuche cada improvisación y proporcione calificaciones en cada dimensión a lo largo del tiempo.",
+				"fr": "Veuillez écouter chaque improvisation et fournir des évaluations pour chaque dimension au fil du temps.",
+				"sv": "Lyssna på varje improvisation och ge bedömningar för varje dimension över tid."
+			},
+			"custom_text_thank_you": {
+				"en": "Thank you for your participation.",
+				"de": "Vielen Dank für Ihre Teilnahme.",
+				"es": "Gracias por su participación.",
+				"fr": "Merci pour votre participation.",
+				"sv": "Tack för ditt deltagande."
+			},
+			"songs_to_rate": [
+				{
+					"media_url": "audio_files/hmi_dialogues/David_ses05_Sept_17_2025.mp3",
+					"display_name": {
+						"en": "Improvisation 1",
+						"de": "Improvisation 1",
+						"es": "Improvisación 1",
+						"fr": "Improvisation 1",
+						"sv": "Improvisation 1"
+					},
+					"description": {
+						"en": "David_Dolan_ses-05_Sept-17_2025",
+						"de": "David_Dolan_ses-05_Sept-17_2025",
+						"es": "David_Dolan_ses-05_Sept-17_2025",
+						"fr": "David_Dolan_ses-05_Sept-17_2025",
+						"sv": "David_Dolan_ses-05_Sept-17_2025"
+					}
+				},
+				{
+					"media_url": "audio_files/hmi_dialogues/David_ses05_Sept_16_2025.mp3",
+					"display_name": {
+						"en": "Improvisation 2",
+						"de": "Improvisation 2",
+						"es": "Improvisación 2",
+						"fr": "Improvisation 2",
+						"sv": "Improvisation 2"
+					},
+					"description": {
+						"en": "David_Dolan_ses-05_Sept-16_2025",
+						"de": "David_Dolan_ses-05_Sept-16_2025",
+						"es": "David_Dolan_ses-05_Sept-16_2025",
+						"fr": "David_Dolan_ses-05_Sept-16_2025",
+						"sv": "David_Dolan_ses-05_Sept-16_2025"
+					}
+				}
+			],
+			"rating_dimensions": [
+				{
+					"dimension_title": "Musical aesthetics",
+					"display_name": {
+						"en": "Musical aesthetics",
+						"de": "Musikalische Ästhetik",
+						"es": "Estética musical",
+						"fr": "Esthétique musicale",
+						"sv": "Musikalisk estetik"
+					},
+					"num_values": 5,
+					"description": {
+						"en": "How artistically compelling the music itself is in this section (ideas, harmony, melody, texture, form), independent of minor execution issues.",
+						"de": "Wie künstlerisch überzeugend die Musik in diesem Abschnitt ist (Ideen, Harmonie, Melodie, Textur, Form), unabhängig von kleineren Ausführungsproblemen.",
+						"es": "Qué tan artísticamente convincente es la música en esta sección (ideas, armonía, melodía, textura, forma), independientemente de pequeños problemas de ejecución.",
+						"fr": "Dans quelle mesure la musique elle-même est artistiquement convaincante dans cette section (idées, harmonie, mélodie, texture, forme), indépendamment de petits problèmes d'exécution.",
+						"sv": "Hur konstnärligt övertygande själva musiken är i detta avsnitt (idéer, harmoni, melodi, textur, form), oberoende av mindre utförandeproblem."
+					}
+				},
+				{
+					"dimension_title": "Performance quality",
+					"display_name": {
+						"en": "Performance quality",
+						"de": "Aufführungsqualität",
+						"es": "Calidad de la interpretación",
+						"fr": "Qualité de l'interprétation",
+						"sv": "Framförandekvalitet"
+					},
+					"num_values": 5,
+					"description": {
+						"en": "How well the music is executed in this section (timing, touch, dynamics, articulation, control/fluency), relative to the performer’s intent.",
+						"de": "Wie gut die Musik in diesem Abschnitt ausgeführt wird (Timing, Anschlag, Dynamik, Artikulation, Kontrolle/Flüssigkeit), bezogen auf die Absicht der Ausführenden.",
+						"es": "Qué tan bien se ejecuta la música en esta sección (tempo, toque, dinámica, articulación, control/fluidez), en relación con la intención del intérprete.",
+						"fr": "Dans quelle mesure la musique est bien exécutée dans cette section (tempo, toucher, dynamique, articulation, contrôle/aisance), par rapport à l'intention de l'interprète.",
+						"sv": "Hur väl musiken utförs i detta avsnitt (tajming, anslag, dynamik, artikulation, kontroll/flyt), i förhållande till musikerns intention."
+					}
+				},
+				{
+					"dimension_title": "Togetherness",
+					"display_name": {
+						"en": "Togetherness",
+						"de": "Zusammenspiel",
+						"es": "Conexión conjunta",
+						"fr": "Synchronie",
+						"sv": "Samspel"
+					},
+					"num_values": 5,
+					"description": {
+						"en": "The sense of real-time musical connection: mutual responsiveness (give-and-take), shared pulse/phrasing, and a feeling of being with the partner rather than alongside them.",
+						"de": "Das Gefühl einer musikalischen Verbindung in Echtzeit: wechselseitige Reaktionsfähigkeit (Geben und Nehmen), gemeinsamer Puls/Phrasierung und das Gefühl, mit dem Partner statt nur neben ihm zu sein.",
+						"es": "La sensación de conexión musical en tiempo real: respuesta mutua (dar y recibir), pulso/fraseo compartidos y la sensación de estar con la pareja más que a su lado.",
+						"fr": "Le sentiment de connexion musicale en temps réel : réactivité mutuelle (aller-retour), pulsation/ phrasé partagés et impression d'être avec le partenaire plutôt qu'à côté de lui.",
+						"sv": "Känslan av musikalisk kontakt i realtid: ömsesidig respons (ge och ta), delad puls/frasering och en känsla av att vara med partnern snarare än bredvid."
+					}
+				},
+				{
+					"dimension_title": "Flow",
+					"display_name": {
+						"en": "Flow",
+						"de": "Flow",
+						"es": "Flujo",
+						"fr": "Flow",
+						"sv": "Flow"
+					},
+					"num_values": 5,
+					"description": {
+						"en": "Feeling fully absorbed and engaged during this section - deeply focused but positive challenge.",
+						"de": "Sich in diesem Abschnitt vollständig vertieft und engagiert fühlen - hoch fokussiert bei positiver Herausforderung.",
+						"es": "Sentirse completamente absorbido y comprometido durante esta sección: concentración profunda con un desafío positivo.",
+						"fr": "Se sentir totalement absorbé et engagé pendant cette section : concentration profonde avec un défi positif.",
+						"sv": "Känslan av att vara helt uppslukad och engagerad under detta avsnitt - djupt fokuserad men positivt utmanad."
+					}
+				}
+			],
+			"study_participant_ids": [
+				"6JD-PWBVwwkpP-TV",
+				"HuFrn_h3aq_BB8jS",
+				"9Tv-X-_7hn3pAbs-",
+				"a95kqttZ__CK7XP5"
+			],
+			"allow_unlisted_participants": false,
+			"data_collection_start": "2026-02-04T00:00:00Z",
+			"data_collection_end": "2026-03-31T23:59:59Z"
+		},
+		{
+			"name": "Creative musical dialogues between humans and machine: a novel approach to studying improvisation and joint action",
+			"name_short": "hhmi_dialogues",
+			"default_language": "en",
+			"description": {
+				"en": "Retrospective ratings of Human-Human-AI improvisations: Duo pianist + JHAIMI",
+				"de": "Retrospektive Bewertungen von Mensch-Mensch-KI-Improvisationen: Klavierduo + JHAIMI",
+				"es": "Evaluaciones retrospectivas de improvisaciones humano-humano-IA: dúo de pianistas + JHAIMI",
+				"fr": "Évaluations rétrospectives d'improvisations humain-humain-IA : duo de pianistes + JHAIMI",
+				"sv": "Retrospektiva bedömningar av människa-människa-AI-improvisationer: pianoduo + JHAIMI"
+			},
+			"custom_text_instructions": {
+				"en": "Please listen to each improvisation and provide ratings on each dimension over time.",
+				"de": "Bitte hören Sie jede Improvisation an und geben Sie im Zeitverlauf Bewertungen für jede Dimension ab.",
+				"es": "Por favor, escuche cada improvisación y proporcione calificaciones en cada dimensión a lo largo del tiempo.",
+				"fr": "Veuillez écouter chaque improvisation et fournir des évaluations pour chaque dimension au fil du temps.",
+				"sv": "Lyssna på varje improvisation och ge bedömningar för varje dimension över tid."
+			},
+			"custom_text_thank_you": {
+				"en": "Thank you for your participation.",
+				"de": "Vielen Dank für Ihre Teilnahme.",
+				"es": "Gracias por su participación.",
+				"fr": "Merci pour votre participation.",
+				"sv": "Tack för ditt deltagande."
+			},
+			"songs_to_rate": [
+				{
+					"media_url": "audio_files/hhmi_dialogues/Duo_27_mixed.mp3",
+					"display_name": {
+						"en": "Improvisation 1",
+						"de": "Improvisation 1",
+						"es": "Improvisación 1",
+						"fr": "Improvisation 1",
+						"sv": "Improvisation 1"
+					},
+					"description": {
+						"en": "Duo_Nr27",
+						"de": "Duo_Nr27",
+						"es": "Duo_Nr27",
+						"fr": "Duo_Nr27",
+						"sv": "Duo_Nr27"
+					}
+				},
+				{
+					"media_url": "audio_files/hhmi_dialogues/Duo_28_mixed.mp3",
+					"display_name": {
+						"en": "Improvisation 2",
+						"de": "Improvisation 2",
+						"es": "Improvisación 2",
+						"fr": "Improvisation 2",
+						"sv": "Improvisation 2"
+					},
+					"description": {
+						"en": "Duo_Nr28",
+						"de": "Duo_Nr28",
+						"es": "Duo_Nr28",
+						"fr": "Duo_Nr28",
+						"sv": "Duo_Nr28"
+					}
+				}
+			],
+			"rating_dimensions": [
+				{
+					"dimension_title": "Musical aesthetics",
+					"display_name": {
+						"en": "Musical aesthetics",
+						"de": "Musikalische Ästhetik",
+						"es": "Estética musical",
+						"fr": "Esthétique musicale",
+						"sv": "Musikalisk estetik"
+					},
+					"num_values": 5,
+					"description": {
+						"en": "How artistically compelling the music itself is in this section (ideas, harmony, melody, texture, form), independent of minor execution issues.",
+						"de": "Wie künstlerisch überzeugend die Musik in diesem Abschnitt ist (Ideen, Harmonie, Melodie, Textur, Form), unabhängig von kleineren Ausführungsproblemen.",
+						"es": "Qué tan artísticamente convincente es la música en esta sección (ideas, armonía, melodía, textura, forma), independientemente de pequeños problemas de ejecución.",
+						"fr": "Dans quelle mesure la musique elle-même est artistiquement convaincante dans cette section (idées, harmonie, mélodie, texture, forme), indépendamment de petits problèmes d'exécution.",
+						"sv": "Hur konstnärligt övertygande själva musiken är i detta avsnitt (idéer, harmoni, melodi, textur, form), oberoende av mindre utförandeproblem."
+					}
+				},
+				{
+					"dimension_title": "Performance quality",
+					"display_name": {
+						"en": "Performance quality",
+						"de": "Aufführungsqualität",
+						"es": "Calidad de la interpretación",
+						"fr": "Qualité de l'interprétation",
+						"sv": "Framförandekvalitet"
+					},
+					"num_values": 5,
+					"description": {
+						"en": "How well the music is executed in this section (timing, touch, dynamics, articulation, control/fluency), relative to the performer’s intent.",
+						"de": "Wie gut die Musik in diesem Abschnitt ausgeführt wird (Timing, Anschlag, Dynamik, Artikulation, Kontrolle/Flüssigkeit), bezogen auf die Absicht der Ausführenden.",
+						"es": "Qué tan bien se ejecuta la música en esta sección (tempo, toque, dinámica, articulación, control/fluidez), en relación con la intención del intérprete.",
+						"fr": "Dans quelle mesure la musique est bien exécutée dans cette section (tempo, toucher, dynamique, articulation, contrôle/aisance), par rapport à l'intention de l'interprète.",
+						"sv": "Hur väl musiken utförs i detta avsnitt (tajming, anslag, dynamik, artikulation, kontroll/flyt), i förhållande till musikerns intention."
+					}
+				},
+				{
+					"dimension_title": "Togetherness",
+					"display_name": {
+						"en": "Togetherness",
+						"de": "Zusammenspiel",
+						"es": "Conexión conjunta",
+						"fr": "Synchronie",
+						"sv": "Samspel"
+					},
+					"num_values": 5,
+					"description": {
+						"en": "The sense of real-time musical connection: mutual responsiveness (give-and-take), shared pulse/phrasing, and a feeling of being with the partner rather than alongside them.",
+						"de": "Das Gefühl einer musikalischen Verbindung in Echtzeit: wechselseitige Reaktionsfähigkeit (Geben und Nehmen), gemeinsamer Puls/Phrasierung und das Gefühl, mit dem Partner statt nur neben ihm zu sein.",
+						"es": "La sensación de conexión musical en tiempo real: respuesta mutua (dar y recibir), pulso/fraseo compartidos y la sensación de estar con la pareja más que a su lado.",
+						"fr": "Le sentiment de connexion musicale en temps réel : réactivité mutuelle (aller-retour), pulsation/ phrasé partagés et impression d'être avec le partenaire plutôt qu'à côté de lui.",
+						"sv": "Känslan av musikalisk kontakt i realtid: ömsesidig respons (ge och ta), delad puls/frasering och en känsla av att vara med partnern snarare än bredvid."
+					}
+				},
+				{
+					"dimension_title": "Flow",
+					"display_name": {
+						"en": "Flow",
+						"de": "Flow",
+						"es": "Flujo",
+						"fr": "Flow",
+						"sv": "Flow"
+					},
+					"num_values": 5,
+					"description": {
+						"en": "Feeling fully absorbed and engaged during this section - deeply focused but positive challenge.",
+						"de": "Sich in diesem Abschnitt vollständig vertieft und engagiert fühlen - hoch fokussiert bei positiver Herausforderung.",
+						"es": "Sentirse completamente absorbido y comprometido durante esta sección: concentración profunda con un desafío positivo.",
+						"fr": "Se sentir totalement absorbé et engagé pendant cette section : concentration profonde avec un défi positif.",
+						"sv": "Känslan av att vara helt uppslukad och engagerad under detta avsnitt - djupt fokuserad men positivt utmanad."
+					}
+				},
+				{
+					"dimension_title": "Lead-follow",
+					"display_name": {
+						"en": "Lead-follow",
+						"de": "Führen-Folgen",
+						"es": "Liderar-seguir",
+						"fr": "Leader-suiveur",
+						"sv": "Leda-följa"
+					},
+					"num_values": 3,
+					"minimal_value": -1,
+					"description": {
+						"en": "Who is currently driving the musical direction (entries, tempo/pulse, phrasing, harmonic turns, density), as perceived in this section.",
+						"de": "Wer in diesem Abschnitt aktuell die musikalische Richtung vorgibt (Einsätze, Tempo/Puls, Phrasierung, harmonische Wendungen, Dichte), wie wahrgenommen.",
+						"es": "Quién está marcando actualmente la dirección musical (entradas, tempo/pulso, fraseo, giros armónicos, densidad), según se percibe en esta sección.",
+						"fr": "Qui dirige actuellement l'orientation musicale (entrées, tempo/pulsation, phrasé, inflexions harmoniques, densité), tel que perçu dans cette section.",
+						"sv": "Vem som för tillfället driver den musikaliska riktningen (insatser, tempo/puls, frasering, harmoniska vändningar, täthet), så som det uppfattas i detta avsnitt."
+					}
+				}
+			],
+			"study_participant_ids": [
+				"98TK5Skw-U-k3Pn5",
+				"5Vmdsdeg6Z_Zo-HE",
+				"p2EvbsZH_t6No4_W",
+				"nEkiTBr_u_2E33Rr",
+				"77hq33-NSgHh-Hix"
+			],
+			"allow_unlisted_participants": false,
+			"data_collection_start": "2026-02-04T00:00:00Z",
+			"data_collection_end": "2026-03-31T23:59:59Z"
+		}
+	]
 }

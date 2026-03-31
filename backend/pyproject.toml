@@ -25,6 +25,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/audiorating_backend"]
+# Include non-Python files from MANIFEST.in
+include-package-data = true
 
 [tool.hatch.version]
 path = "src/audiorating_backend/__init__.py"  # reads __version__ variable from this file
