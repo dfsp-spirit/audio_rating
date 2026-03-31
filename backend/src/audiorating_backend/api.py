@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 from .settings import settings
 from .models import Participant, Study, Song, Rating, StudyParticipantLink, StudySongLink, StudyRatingDimension, RatingSegment, RatingSegmentBase
 from .database import get_session, create_db_and_tables
-from .parsers.studies_config import load_studies_config
+from .parsers.studies_config import load_studies_config, resolve_localized_text
 from pydantic import field_validator
 
 
@@ -1032,33 +1032,11 @@ async def admin_dashboard(
     Main admin dashboard showing all studies and participation statistics.
     Access via: /admin with HTTP Basic Auth
     """
-    print("\n=== ALL REGISTERED NAMED ROUTES ===")
-    for route in app.routes:
-        if hasattr(route, "name") and route.name:
-            print(f"  {route.name}: {route.path}")
-    print("=====================================\n")
-
-    try:
-        test_url = request.url_for('admin_download', study_name='test', format='csv')
-        print(f"✓ SUCCESS: admin_download URL: {test_url}")
-    except Exception as e:
-        print(f"✗ FAILED: admin_download - {e}")
-        # Print the exact error
-        import traceback
-        traceback.print_exc()
-
-    # DEBUG: Check admin_api_stats
-    try:
-        stats_url = request.url_for('admin_api_stats')
-        print(f"✓ SUCCESS: admin_api_stats URL: {stats_url}")
-    except Exception as e:
-        print(f"✗ FAILED: admin_api_stats - {e}")
-
     base_url = str(request.base_url).rstrip('/')  # This gives "http://localhost:8000"
     root_path = request.scope.get("root_path", "")  # This gives "" locally, "/ar_backend" in prod
 
     # Combine them properly
-    if root_path:
+    if root_path and not base_url.endswith(root_path):
         api_base = f"{base_url}{root_path}"
     else:
         api_base = base_url
@@ -1124,9 +1102,10 @@ async def admin_dashboard(
                         "last_activity": rating.timestamp if rating.timestamp else rating.created_at
                     }
 
-                participants_data[participant.id]["songs_rated"].add(song.display_name)
+                song_display_name = resolve_localized_text(song.display_name) if isinstance(song.display_name, dict) else (song.display_name or "")
+                participants_data[participant.id]["songs_rated"].add(song_display_name)
                 participants_data[participant.id]["ratings"].append({
-                    "song": song.display_name,
+                    "song": song_display_name,
                     "song_url": song.media_url,
                     "rating_name": rating.rating_name,
                     "segment_count": segment_count,
@@ -1157,7 +1136,7 @@ async def admin_dashboard(
                     "num_values": dim.num_values,
                     "minimal_value": dim.minimal_value,
                     "default_value": dim.default_value,
-                    "description": dim.description
+                    "description": resolve_localized_text(dim.description) if isinstance(dim.description, dict) else (dim.description or "")
                 }
                 for dim in rating_dimensions
             ]
