@@ -38,6 +38,9 @@ export class StudyCoordinator {
     this.backendAvailable = false;
     this.backendChecked = false;
     this.isLikelyMobileDevice = this.detectLikelyMobileDevice();
+    this.studyAccessBlocked = false;
+    this.studyAccessBlockedStatusCode = null;
+    this.studyAccessBlockedMessage = null;
 
     // Track which songs are synced with server
     this.songSyncStatus = {}; // 'unsaved', 'synced', or 'modified'
@@ -528,6 +531,10 @@ export class StudyCoordinator {
     this.updateDynamicStudyTranslations();
     i18n.applyTranslations(document);
 
+    if (this.studyAccessBlocked) {
+      this.applyBlockedStudyUI();
+    }
+
     document.getElementById('total-songs').textContent = this.studyConfig.songs_to_rate.length;
 
     this.updateSongNavigationUI();
@@ -623,6 +630,11 @@ export class StudyCoordinator {
     }
     this.updateDynamicStudyTranslations();
     i18n.applyTranslations(document);
+
+    if (this.studyAccessBlocked) {
+      this.studyAccessBlockedMessage = this.getBlockedStudyMessage();
+      this.applyBlockedStudyUI();
+    }
 
     this.updateBackendStatus();
     this.updateAllUI();
@@ -1278,11 +1290,51 @@ clearUserMessages(type = null) {
   }
 }
 
+getBlockedStudyMessage() {
+  if (this.studyAccessBlockedStatusCode === 403) {
+    return this.t('study.errors.accessDeniedConfig');
+  }
+
+  if (this.studyAccessBlockedStatusCode === 404) {
+    return this.t('study.errors.configNotFound');
+  }
+
+  if (this.studyAccessBlockedStatusCode === 500) {
+    return this.t('study.errors.backend500');
+  }
+
+  return this.studyAccessBlockedMessage || this.t('study.errors.beginStudyDisabled');
+}
+
+applyBlockedStudyUI(message = null) {
+  const blockedMessage = message || this.getBlockedStudyMessage();
+
+  const titleEl = document.getElementById('study-name-title');
+  if (titleEl) {
+    titleEl.textContent = '';
+  }
+
+  const customInstructionsEl = document.getElementById('custom-study-instructions');
+  if (customInstructionsEl) {
+    customInstructionsEl.style.display = 'none';
+  }
+
+  const introContent = document.getElementById('study-intro-content');
+  if (introContent) {
+    introContent.style.display = 'none';
+  }
+
+  const blockedMessageEl = document.getElementById('study-blocked-message');
+  if (blockedMessageEl) {
+    blockedMessageEl.textContent = blockedMessage;
+    blockedMessageEl.style.display = '';
+  }
+}
+
 // Helper method to show backend errors
 showBackendError(error, statusCode = null, ui_message = null) {
   let message;
   let shouldDisableStudy = false;
-  let disableReason = this.t('study.errors.beginStudyDisabled');
 
   if (statusCode === 403) {
     message = ui_message || this.t('study.errors.backend403');
@@ -1302,7 +1354,14 @@ showBackendError(error, statusCode = null, ui_message = null) {
   this.showUserMessage(message, 'error');
 
   if (shouldDisableStudy) {
-    this.disableBeginStudyButton(disableReason);
+    this.studyAccessBlocked = true;
+    this.studyAccessBlockedStatusCode = statusCode;
+    this.studyAccessBlockedMessage = message;
+    this.applyBlockedStudyUI(message);
+  } else {
+    this.studyAccessBlocked = false;
+    this.studyAccessBlockedStatusCode = null;
+    this.studyAccessBlockedMessage = null;
   }
 
   // Also log for debugging
