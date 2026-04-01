@@ -1,0 +1,73 @@
+name: AR Backend Wheel Smoke Tests
+on: [push, pull_request]
+
+jobs:
+  wheel-smoke-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: audiorating_db
+          POSTGRES_USER: audiorating_user
+          POSTGRES_PASSWORD: audiorating_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Build backend wheel
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip wheel ./backend -w /tmp/ar-wheelhouse --no-deps
+
+      - name: Install wheel into isolated venv
+        run: |
+          python -m venv /tmp/ar-wheel-venv
+          /tmp/ar-wheel-venv/bin/pip install --upgrade pip
+          /tmp/ar-wheel-venv/bin/pip install /tmp/ar-wheelhouse/audiorating_backend-*.whl
+
+      - name: Verify import comes from installed wheel
+        run: |
+          /tmp/ar-wheel-venv/bin/python -c "import audiorating_backend; p=audiorating_backend.__file__; print(p); assert 'site-packages' in p, p"
+
+      - name: Start backend from wheel and test admin pages
+        env:
+          AR_DATABASE_URL: postgresql://audiorating_user:audiorating_password@localhost:5432/audiorating_db
+          AR_ALLOWED_ORIGINS: '["http://localhost:3000", "http://127.0.0.1:3000"]'
+          AR_API_ADMIN_USERNAME: audiorating_api_admin
+          AR_API_ADMIN_PASSWORD: audiorating_api_admin_password
+          AR_ROOTPATH: ""
+          AR_FRONTEND_URL: http://localhost:3000/rate/
+          AR_STUDIES_CONFIG_PATH: ${{ github.workspace }}/backend/studies_config.json
+        run: |
+          /tmp/ar-wheel-venv/bin/uvicorn audiorating_backend.api:app --host 127.0.0.1 --port 8010 > /tmp/ar-wheel-backend.log 2>&1 &
+
+          timeout 90s bash -c 'until curl -fsS http://127.0.0.1:8010/docs > /dev/null; do sleep 2; done'
+
+          curl -fsS -u "$AR_API_ADMIN_USERNAME:$AR_API_ADMIN_PASSWORD" \
+            http://127.0.0.1:8010/admin > /tmp/admin-dashboard.html
+          grep -q "Research Participation Dashboard" /tmp/admin-dashboard.html
+
+          curl -fsS -u "$AR_API_ADMIN_USERNAME:$AR_API_ADMIN_PASSWORD" \
+            http://127.0.0.1:8010/admin/participant-management > /tmp/admin-participants.html
+          grep -q "Participant Management" /tmp/admin-participants.html
+
+      - name: Print backend log on failure
+        if: failure()
+        run: |
+          echo "==== /tmp/ar-wheel-backend.log ===="
+          cat /tmp/ar-wheel-backend.log || true
