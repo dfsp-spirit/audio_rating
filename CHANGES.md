@@ -1,5 +1,12 @@
 ## audio_rating ChangeLog
 
+Version 0.7.2 -- Bug fixes
+---------------------------
+* NEW: extend admin interface with tabs on songs, rating dims
+* FIX: Admin dashboard Jinja2 rendering - bypass Starlette TemplateResponse cache bug for wheel installations. Fixes unhashable type: 'dict' bug when trying to access admin interface.
+* FIX: tooling: fix extra sourcing of local .env file in create DB script
+* NEW: development only: add smoketests that try running from wheel file, as there is a jinja2 template chaching bug that manifests only when run from wheel and will be missed by unit tests
+
 
 Version 0.7.1 -- UX polish
 ---------------------------
