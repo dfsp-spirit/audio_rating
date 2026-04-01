@@ -2035,18 +2035,18 @@ async def admin_participant_management(
                             "rating_count": has_ratings
                         })
 
-        return templates.TemplateResponse(
-            "admin_participant_management.html",
-            {
-                "request": request,
-                "admin_user": current_admin,
-                "studies": studies,
-                "selected_study": selected_study,
-                "current_participants": current_participants,
-                "current_time": datetime.now(),
-                "frontend_url": settings.frontend_url
-            }
-        )
+        context_dict = {
+            "request": request,
+            "admin_user": current_admin,
+            "studies": studies,
+            "selected_study": selected_study,
+            "current_participants": current_participants,
+            "current_time": datetime.now(),
+            "frontend_url": settings.frontend_url
+        }
+        template = templates.get_template("admin_participant_management.html")
+        html_content = template.render(context_dict)
+        return HTMLResponse(content=html_content)
 
     except Exception as e:
         logger.error(f"Error loading participant management page: {str(e)}")
