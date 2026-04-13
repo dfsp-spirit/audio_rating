@@ -23,7 +23,7 @@ jobs:
 
     # Step 2: Install and configure Nginx to serve the frontend and proxy to the backend
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install Nginx
         run: sudo apt-get update && sudo apt-get install -y nginx
