@@ -14,7 +14,9 @@ import json
 import io
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
+from urllib import request as urllib_request
+from urllib import error as urllib_error
 import secrets
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
@@ -1690,6 +1692,86 @@ async def update_study_collection_window(
             "data_collection_end": study.data_collection_end,
         },
         "is_currently_collecting": study.data_collection_start <= utc_now() <= study.data_collection_end,
+    }
+
+
+def _is_song_url_available(url: str, timeout_seconds: float = 5.0) -> Tuple[bool, Optional[int], Optional[str]]:
+    """Best-effort URL availability check for song assets."""
+    try:
+        head_request = urllib_request.Request(url, method="HEAD")
+        with urllib_request.urlopen(head_request, timeout=timeout_seconds) as response:
+            status_code = getattr(response, "status", None)
+            return (status_code is not None and 200 <= status_code < 400), status_code, None
+    except urllib_error.HTTPError as exc:
+        if exc.code == 405:
+            # Some servers do not allow HEAD for static files; retry with GET.
+            try:
+                get_request = urllib_request.Request(url, method="GET")
+                with urllib_request.urlopen(get_request, timeout=timeout_seconds) as response:
+                    status_code = getattr(response, "status", None)
+                    return (status_code is not None and 200 <= status_code < 400), status_code, None
+            except urllib_error.HTTPError as get_exc:
+                return False, get_exc.code, str(get_exc)
+            except Exception as get_exc:
+                return False, None, str(get_exc)
+        return False, exc.code, str(exc)
+    except Exception as exc:
+        return False, None, str(exc)
+
+
+@app.post(
+    "/api/admin/studies/{study_name_short}/songs/check",
+    name="api_check_study_song_availability",
+    dependencies=[Depends(verify_admin)],
+)
+async def check_study_song_availability(
+    study_name_short: str,
+    session: Session = Depends(get_session),
+):
+    """Check whether each configured song URL is reachable for a given study."""
+    study = session.exec(select(Study).where(Study.name_short == study_name_short)).first()
+    if not study:
+        raise HTTPException(status_code=404, detail=f"Study '{study_name_short}' not found")
+
+    songs_for_study = session.exec(
+        select(StudySongLink, Song)
+        .join(Song, StudySongLink.song_id == Song.id)
+        .where(StudySongLink.study_id == study.id)
+        .order_by(StudySongLink.song_index, Song.id)
+    ).all()
+
+    results = []
+    available_count = 0
+    missing_count = 0
+
+    for song_link, song in songs_for_study:
+        media_url = song.media_url
+        check_url = urljoin(settings.frontend_url, media_url)
+        available, status_code, error_message = _is_song_url_available(check_url)
+
+        if available:
+            available_count += 1
+        else:
+            missing_count += 1
+
+        results.append(
+            {
+                "song_index": song_link.song_index,
+                "media_url": media_url,
+                "check_url": check_url,
+                "available": available,
+                "status_code": status_code,
+                "error": error_message,
+            }
+        )
+
+    return {
+        "study_name_short": study_name_short,
+        "frontend_url": settings.frontend_url,
+        "checked": len(results),
+        "available": available_count,
+        "missing": missing_count,
+        "results": results,
     }
 
 # Pydantic model for the response

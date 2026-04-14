@@ -229,11 +229,23 @@
 
         <div id="tab-songs-{{ study.name_short }}" class="study-tab-panel" style="display: none;">
             {% if study.songs %}
+            <div style="margin-bottom: 12px;">
+                <button
+                    id="check-songs-btn-{{ study.name_short }}"
+                    type="button"
+                    class="btn btn-primary"
+                    onclick="checkStudySongs('{{ study.name_short }}')"
+                >
+                    Check songs
+                </button>
+                <span id="check-songs-status-{{ study.name_short }}" style="margin-left: 10px; font-size: 13px; color: var(--text-secondary);"></span>
+            </div>
             <table>
                 <thead>
                     <tr>
                         <th>#</th>
                         <th>Media URL</th>
+                        <th>Song Available</th>
                         <th>Display Name (all languages)</th>
                         <th>Description (all languages)</th>
                     </tr>
@@ -243,6 +255,14 @@
                     <tr>
                         <td>{{ song.song_index + 1 }}</td>
                         <td><span style="font-family: monospace; font-size: 12px;">{{ song.media_url }}</span></td>
+                        <td>
+                            <span
+                                id="song-availability-{{ study.name_short }}-{{ loop.index0 }}"
+                                data-song-media-url="{{ song.media_url }}"
+                                style="font-weight: 700; font-size: 16px; color: #111111;"
+                                title="Not checked yet"
+                            >?</span>
+                        </td>
                         <td>
                             {% if song.display_name_i18n %}
                                 {% for lang, text in song.display_name_i18n|dictsort %}
@@ -429,6 +449,81 @@
             endInput.value = pauseEndDate;
             showWindowStatus(studyId, 'Pause date range prepared. Saving...');
             saveStudyCollectionWindow(studyNameShort, studyId);
+        }
+
+        function updateSongAvailabilityIndicator(studyNameShort, index, available, titleText) {
+            const el = document.getElementById(`song-availability-${studyNameShort}-${index}`);
+            if (!el) {
+                return;
+            }
+
+            if (available === true) {
+                el.textContent = '✓';
+                el.style.color = 'var(--success-color)';
+            } else if (available === false) {
+                el.textContent = 'x';
+                el.style.color = 'var(--danger-color)';
+            } else {
+                el.textContent = '?';
+                el.style.color = '#111111';
+            }
+
+            if (titleText) {
+                el.title = titleText;
+            }
+        }
+
+        async function checkStudySongs(studyNameShort) {
+            const button = document.getElementById(`check-songs-btn-${studyNameShort}`);
+            const status = document.getElementById(`check-songs-status-${studyNameShort}`);
+            if (!button || !status) {
+                return;
+            }
+
+            button.disabled = true;
+            button.style.opacity = '0.7';
+            status.style.color = 'var(--text-secondary)';
+            status.textContent = 'Checking...';
+
+            try {
+                const response = await fetch(
+                    `${ADMIN_ROOT_PATH}/api/admin/studies/${encodeURIComponent(studyNameShort)}/songs/check`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    }
+                );
+
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    status.style.color = 'var(--danger-color)';
+                    status.textContent = errorPayload.detail || 'Song check failed.';
+                    return;
+                }
+
+                const payload = await response.json();
+                const results = payload.results || [];
+
+                results.forEach((result, index) => {
+                    let details = `URL: ${result.check_url}`;
+                    if (result.status_code) {
+                        details += ` | HTTP ${result.status_code}`;
+                    }
+                    if (result.error) {
+                        details += ` | ${result.error}`;
+                    }
+                    updateSongAvailabilityIndicator(studyNameShort, index, result.available, details);
+                });
+
+                status.style.color = 'var(--text-secondary)';
+                status.textContent = `Checked ${payload.checked}: ${payload.available} available, ${payload.missing} missing.`;
+            } catch (error) {
+                status.style.color = 'var(--danger-color)';
+                status.textContent = `Request failed: ${error.message}`;
+            } finally {
+                button.disabled = false;
+                button.style.opacity = '1';
+            }
         }
 
         function switchStudyTab(tabId, button, studyShortName) {
