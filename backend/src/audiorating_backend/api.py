@@ -1237,7 +1237,7 @@ async def admin_dashboard(
                 "data_collection_start": study.data_collection_start,
                 "data_collection_end": study.data_collection_end,
                 "is_currently_active": study.data_collection_start <= utc_now() <= study.data_collection_end
-            })
+             })
 
         # Render template manually to avoid Starlette TemplateResponse caching issues with wheel-installed packages
         # See: https://github.com/encode/starlette/issues/2531
@@ -1527,6 +1527,17 @@ class UpdateStudyCollectionWindowRequest(BaseModel):
     data_collection_end: Optional[datetime] = None
 
 
+class UpdateStudyTypeRequest(BaseModel):
+    allow_unlisted_participants: bool
+
+
+class UpdateStudyTypeResponse(BaseModel):
+    study_name_short: str
+    allow_unlisted_participants: bool
+    study_type: str
+    message: str
+
+
 @app.post(
     "/api/admin/studies",
     name="api_create_study",
@@ -1789,6 +1800,64 @@ class AssignParticipantsResponse(BaseModel):
     study_info: StudyAssignmentInfo
     results: List[ParticipantAssignmentResult]
     summary: Dict[str, int]
+
+
+@app.patch(
+    "/api/admin/studies/{study_name_short}/study-type",
+    name="api_update_study_type",
+    response_model=UpdateStudyTypeResponse,
+    dependencies=[Depends(verify_admin)],
+)
+async def update_study_type(
+    study_name_short: str,
+    request: UpdateStudyTypeRequest,
+    session: Session = Depends(get_session),
+):
+    """Update whether a study is open (allows unlisted participants) or closed."""
+    try:
+        study = session.exec(
+            select(Study).where(Study.name_short == study_name_short)
+        ).first()
+
+        if not study:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Study '{study_name_short}' not found",
+            )
+
+        was_open = study.allow_unlisted_participants
+        target_open = request.allow_unlisted_participants
+
+        if was_open != target_open:
+            study.allow_unlisted_participants = target_open
+            session.add(study)
+            session.commit()
+            session.refresh(study)
+
+        logger.info(
+            f"Admin updated study type for '{study_name_short}' "
+            f"from {'OPEN' if was_open else 'CLOSED'} to {'OPEN' if study.allow_unlisted_participants else 'CLOSED'}"
+        )
+
+        return UpdateStudyTypeResponse(
+            study_name_short=study.name_short,
+            allow_unlisted_participants=study.allow_unlisted_participants,
+            study_type="open" if study.allow_unlisted_participants else "closed",
+            message=(
+                f"Study '{study.name_short}' is now "
+                f"{'open' if study.allow_unlisted_participants else 'closed'}"
+            ),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error updating study type for '{study_name_short}': {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update study type: {str(e)}",
+        )
 
 @app.post("/api/admin/studies/{study_name_short}/assign-participants",
           name="api_assign_participants_to_study",

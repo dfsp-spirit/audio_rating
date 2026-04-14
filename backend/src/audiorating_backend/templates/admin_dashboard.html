@@ -64,12 +64,18 @@
                 <h2 id="study-title-{{ study.name_short }}" style="font-size: 22px; margin-bottom: 5px; color: var(--text-color);">{{ study.name }} (name_short: '{{ study.name_short }}')</h2>
                 <p style="margin-bottom: 5px; color: var(--text-secondary);">{{ study.description or "No description provided" }}</p>
                 <div style="color: var(--text-secondary); font-size: 14px; font-family: monospace; background: var(--bg-color); padding: 2px 8px; border-radius: 4px; display: inline-block;">
-                    Start: {{ study.data_collection_start.strftime('%Y-%m-%d') }} |
-                    End: {{ study.data_collection_end.strftime('%Y-%m-%d') }} |
+                    Start: <span id="study-start-{{ study.name_short }}">{{ study.data_collection_start.strftime('%Y-%m-%d') }}</span> |
+                    End: <span id="study-end-{{ study.name_short }}">{{ study.data_collection_end.strftime('%Y-%m-%d') }}</span> |
                     {% if study.is_currently_active %}
-                        <span id="study-status-{{ study.name_short }}" style="color: var(--success-color); font-weight: 600;">Active</span>
+                        <span id="study-status-{{ study.name_short }}" style="color: var(--success-color); font-weight: 600;">Collection: Active</span>
                     {% else %}
-                        <span id="study-status-{{ study.name_short }}" style="color: var(--error-color); font-weight: 600;">Inactive</span>
+                        <span id="study-status-{{ study.name_short }}" style="color: var(--error-color); font-weight: 600;">Collection: Inactive</span>
+                    {% endif %}
+                    |
+                    {% if study.allow_unlisted_participants %}
+                        <span style="color: #065f46; font-weight: 600;">Audience: Open</span>
+                    {% else %}
+                        <span style="color: #991b1b; font-weight: 600;">Audience: Closed</span>
                     {% endif %}
                 </div>
             </div>
@@ -94,7 +100,15 @@
         </div>
 
         <div style="margin-top: -8px; margin-bottom: 16px; padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">
-            <div style="font-weight: 600; margin-bottom: 8px;">Collection Window Controls</div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <div style="font-weight: 600;">Collection Window Controls</div>
+                <span style="font-size: 12px; color: var(--text-secondary);">Current state of data collection:</span>
+                {% if study.is_currently_active %}
+                    <span id="collection-state-{{ study.name_short }}" style="font-size: 12px; font-weight: 600; color: var(--success-color);">Active</span>
+                {% else %}
+                    <span id="collection-state-{{ study.name_short }}" style="font-size: 12px; font-weight: 600; color: var(--error-color);">Inactive</span>
+                {% endif %}
+            </div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: end;">
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                     <label for="window-start-{{ study.id }}" style="font-size: 12px; color: var(--text-secondary);">Start date</label>
@@ -121,14 +135,28 @@
                 >
                     Save Window
                 </button>
+                {% if study.is_currently_active %}
                 <button
                     type="button"
+                    id="pause-study-btn-{{ study.name_short }}"
                     class="btn"
                     style="background: var(--danger-color); color: white;"
                     onclick="pauseStudyByDateRange('{{ study.name_short }}', '{{ study.id }}')"
                 >
-                    Pause (Exclude Today)
+                    Pause (End Collection Yesterday)
                 </button>
+                {% else %}
+                <button
+                    type="button"
+                    id="pause-study-btn-{{ study.name_short }}"
+                    class="btn"
+                    style="background: var(--danger-color); color: white; opacity: 0.5; cursor: not-allowed;"
+                    disabled
+                    title="Study is already inactive"
+                >
+                    Pause (End Collection Yesterday)
+                </button>
+                {% endif %}
             </div>
             <div id="window-status-{{ study.id }}" style="margin-top: 8px; font-size: 13px;"></div>
         </div>
@@ -352,11 +380,11 @@
 
         {% if study.allow_unlisted_participants %}
         <p class="timestamp" style="margin-top: 15px;">
-            ⚠️ This study allows unlisted participants.
+            ⚠️ This study is <b></b>open</b>: it allows unlisted participants.
         </p>
         {% else %}
         <p class="timestamp" style="margin-top: 15px;">
-            This study does not allow unlisted participants.
+            This study is <b>closed</b>: it does not allow unlisted participants.
         </p>
         {% endif %}
     </div>
@@ -376,6 +404,67 @@
             }
             statusEl.textContent = message;
             statusEl.style.color = isError ? 'var(--danger-color)' : 'var(--success-color)';
+        }
+
+        function getIsoDateString(dateValue) {
+            if (!dateValue) {
+                return '';
+            }
+
+            if (typeof dateValue === 'string') {
+                return dateValue.slice(0, 10);
+            }
+
+            return '';
+        }
+
+        function updateStudyCollectionWindowUI(studyNameShort, studyId, updatedStart, updatedEnd, isCurrentlyCollecting) {
+            const startDate = getIsoDateString(updatedStart);
+            const endDate = getIsoDateString(updatedEnd);
+            const startInput = document.getElementById(`window-start-${studyId}`);
+            const endInput = document.getElementById(`window-end-${studyId}`);
+            const startLabel = document.getElementById(`study-start-${studyNameShort}`);
+            const endLabel = document.getElementById(`study-end-${studyNameShort}`);
+            const statusLabel = document.getElementById(`study-status-${studyNameShort}`);
+            const currentStateLabel = document.getElementById(`collection-state-${studyNameShort}`);
+            const pauseButton = document.getElementById(`pause-study-btn-${studyNameShort}`);
+
+            if (startInput && startDate) {
+                startInput.value = startDate;
+            }
+            if (endInput && endDate) {
+                endInput.value = endDate;
+            }
+            if (startLabel && startDate) {
+                startLabel.textContent = startDate;
+            }
+            if (endLabel && endDate) {
+                endLabel.textContent = endDate;
+            }
+
+            if (statusLabel) {
+                statusLabel.textContent = isCurrentlyCollecting ? 'Collection: Active' : 'Collection: Inactive';
+                statusLabel.style.color = isCurrentlyCollecting ? 'var(--success-color)' : 'var(--error-color)';
+            }
+
+            if (currentStateLabel) {
+                currentStateLabel.textContent = isCurrentlyCollecting ? 'Active' : 'Inactive';
+                currentStateLabel.style.color = isCurrentlyCollecting ? 'var(--success-color)' : 'var(--error-color)';
+            }
+
+            if (pauseButton) {
+                pauseButton.disabled = !isCurrentlyCollecting;
+                pauseButton.style.opacity = isCurrentlyCollecting ? '1' : '0.5';
+                pauseButton.style.cursor = isCurrentlyCollecting ? 'pointer' : 'not-allowed';
+
+                if (isCurrentlyCollecting) {
+                    pauseButton.title = '';
+                    pauseButton.setAttribute('onclick', `pauseStudyByDateRange('${studyNameShort}', '${studyId}')`);
+                } else {
+                    pauseButton.title = 'Study is already inactive';
+                    pauseButton.removeAttribute('onclick');
+                }
+            }
         }
 
         async function saveStudyCollectionWindow(studyNameShort, studyId) {
@@ -419,10 +508,16 @@
                     return;
                 }
 
-                showWindowStatus(studyId, 'Collection window updated. Reloading...');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 700);
+                const responsePayload = await response.json();
+                const updated = responsePayload.updated || {};
+                updateStudyCollectionWindowUI(
+                    studyNameShort,
+                    studyId,
+                    updated.data_collection_start,
+                    updated.data_collection_end,
+                    responsePayload.is_currently_collecting
+                );
+                showWindowStatus(studyId, 'Collection window updated.');
             } catch (error) {
                 showWindowStatus(studyId, `Request failed: ${error.message}`, true);
             }

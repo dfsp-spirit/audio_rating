@@ -3,6 +3,10 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 
+function formatUtcDate(date) {
+  return date.toISOString().slice(0, 10);
+}
+
 test('admin interface study dashboard and participant management', async ({ page }) => {
   const adminUrl = 'http://localhost:3000/ar_backend/admin';
   const participantMgmtUrl = 'http://localhost:3000/ar_backend/admin/participant-management?study_name_short=default';
@@ -27,7 +31,7 @@ test('admin interface study dashboard and participant management', async ({ page
   await expect(page.locator('#study-title-default')).toBeVisible();
   await expect(page.locator('#study-title-default')).toContainText("Default Study (name_short: 'default')");
   await expect(page.locator('#study-total-songs-default')).toHaveText('2');
-  await expect(page.locator('#study-status-default')).toHaveText('Active');
+  await expect(page.locator('#study-status-default')).toContainText('Collection:');
 
   // ===== SWITCH TO PARTICIPANT MANAGEMENT TAB =====
   await page.locator('#nav-participant-management').click();
@@ -142,4 +146,106 @@ test('admin runtime config download buttons export JSON', async ({ page }) => {
 
   const studyNames = allStudiesContent.studies_config.studies.map((study) => study.name_short);
   expect(studyNames).toContain('default');
+});
+
+
+test('admin dashboard collection window controls update active state and visible dates', async ({ page }) => {
+  const adminUrl = 'http://localhost:3000/ar_backend/admin';
+  const username = 'audiorating_api_admin';
+  const password = 'audiorating_api_admin_password';
+
+  await page.context().setHTTPCredentials({ username, password });
+  await page.goto(adminUrl);
+
+  const studyShortName = 'default';
+  const studyCard = page.locator(`#study-card-${studyShortName}`);
+  const now = new Date();
+  const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+  const twoDaysAgo = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 2));
+  const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+
+  const pausedStartDate = formatUtcDate(twoDaysAgo);
+  const pausedEndDate = formatUtcDate(yesterday);
+  const activeStartDate = formatUtcDate(yesterday);
+  const activeEndDate = formatUtcDate(tomorrow);
+
+  const startInput = studyCard.locator('[id^="window-start-"]');
+  const endInput = studyCard.locator('[id^="window-end-"]');
+  const saveWindowButton = studyCard.getByRole('button', { name: 'Save Window' });
+  const pauseButton = studyCard.locator('#pause-study-btn-default');
+  const studyStatus = studyCard.locator('#study-status-default');
+  const collectionState = studyCard.locator('#collection-state-default');
+  const studyStartLabel = studyCard.locator('#study-start-default');
+  const studyEndLabel = studyCard.locator('#study-end-default');
+  const windowStatus = studyCard.locator('[id^="window-status-"]');
+
+  await startInput.fill(activeStartDate);
+  await endInput.fill(activeEndDate);
+  await saveWindowButton.click();
+
+  await expect(windowStatus).toHaveText('Collection window updated.');
+  await expect(studyStatus).toHaveText('Collection: Active');
+  await expect(collectionState).toHaveText('Active');
+  const updatedActiveStartDate = await startInput.inputValue();
+  const updatedActiveEndDate = await endInput.inputValue();
+  await expect(studyStartLabel).toHaveText(updatedActiveStartDate);
+  await expect(studyEndLabel).toHaveText(updatedActiveEndDate);
+  await expect(pauseButton).toBeEnabled();
+
+  await pauseButton.click();
+  await expect(windowStatus).toHaveText('Collection window updated.');
+  await expect(studyStatus).toHaveText('Collection: Inactive');
+  await expect(collectionState).toHaveText('Inactive');
+  const updatedPausedStartDate = await startInput.inputValue();
+  const updatedPausedEndDate = await endInput.inputValue();
+  await expect(studyStartLabel).toHaveText(updatedPausedStartDate);
+  await expect(studyEndLabel).toHaveText(updatedPausedEndDate);
+  await expect(pauseButton).toBeDisabled();
+
+  await startInput.fill(activeStartDate);
+  await endInput.fill(activeEndDate);
+  await saveWindowButton.click();
+
+  await expect(windowStatus).toHaveText('Collection window updated.');
+  await expect(studyStatus).toHaveText('Collection: Active');
+  await expect(collectionState).toHaveText('Active');
+  const reactivatedStartDate = await startInput.inputValue();
+  const reactivatedEndDate = await endInput.inputValue();
+  await expect(studyStartLabel).toHaveText(reactivatedStartDate);
+  await expect(studyEndLabel).toHaveText(reactivatedEndDate);
+  await expect(pauseButton).toBeEnabled();
+});
+
+
+test('admin participant management can switch study from open to closed and back', async ({ page }) => {
+  const participantMgmtUrl = 'http://localhost:3000/ar_backend/admin/participant-management?study_name_short=default';
+  const username = 'audiorating_api_admin';
+  const password = 'audiorating_api_admin_password';
+
+  page.on('dialog', dialog => dialog.accept());
+
+  await page.context().setHTTPCredentials({ username, password });
+  await page.goto(participantMgmtUrl);
+
+  const studyTypeBadge = page.locator('#study-type-badge');
+  const toggleStudyTypeButton = page.locator('#toggle-study-type-btn');
+
+  const initialIsOpen = (await toggleStudyTypeButton.getAttribute('data-is-open')) === 'true';
+
+  if (!initialIsOpen) {
+    await toggleStudyTypeButton.click();
+    await expect(studyTypeBadge).toHaveText('Open Study');
+    await expect(toggleStudyTypeButton).toHaveText('Switch to Closed');
+    await expect(toggleStudyTypeButton).toHaveAttribute('data-is-open', 'true');
+  }
+
+  await toggleStudyTypeButton.click();
+  await expect(studyTypeBadge).toHaveText('Closed Study');
+  await expect(toggleStudyTypeButton).toHaveText('Switch to Open');
+  await expect(toggleStudyTypeButton).toHaveAttribute('data-is-open', 'false');
+
+  await toggleStudyTypeButton.click();
+  await expect(studyTypeBadge).toHaveText('Open Study');
+  await expect(toggleStudyTypeButton).toHaveText('Switch to Closed');
+  await expect(toggleStudyTypeButton).toHaveAttribute('data-is-open', 'true');
 });

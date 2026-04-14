@@ -40,10 +40,19 @@
                     </span>
                 </h3>
             </div>
-            <div>
-                <span style="padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; {% if selected_study.allow_unlisted_participants %}background: #d1fae5; color: #065f46;{% else %}background: #fee2e2; color: #991b1b;{% endif %}">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span id="study-type-badge" style="padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; {% if selected_study.allow_unlisted_participants %}background: #d1fae5; color: #065f46;{% else %}background: #fee2e2; color: #991b1b;{% endif %}">
                     {{ "Open Study" if selected_study.allow_unlisted_participants else "Closed Study" }}
                 </span>
+                <button
+                    id="toggle-study-type-btn"
+                    data-study-name="{{ selected_study.name_short }}"
+                    data-is-open="{{ 'true' if selected_study.allow_unlisted_participants else 'false' }}"
+                    onclick="toggleStudyType()"
+                    style="padding: 6px 12px; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; {% if selected_study.allow_unlisted_participants %}background: #dc2626; color: #ffffff;{% else %}background: #059669; color: #ffffff;{% endif %}"
+                >
+                    {{ "Switch to Closed" if selected_study.allow_unlisted_participants else "Switch to Open" }}
+                </button>
             </div>
         </div>
 
@@ -194,6 +203,87 @@ participant_003"></textarea>
         const api_assign_pattern = `${root_path}/api/admin/studies/__STUDY_NAME__/assign-participants`;
         const api_remove_pattern = `${root_path}/api/admin/studies/__STUDY_NAME__/participants/__PARTICIPANT_ID__`;
         const api_delete_ratings_pattern = `${root_path}/api/admin/studies/__STUDY_NAME__/participants/__PARTICIPANT_ID__/ratings`;
+        const api_update_study_type_pattern = `${root_path}/api/admin/studies/__STUDY_NAME__/study-type`;
+
+        function setStudyTypeUI(isOpen) {
+            const badge = document.getElementById('study-type-badge');
+            const toggleButton = document.getElementById('toggle-study-type-btn');
+
+            if (!badge || !toggleButton) {
+                return;
+            }
+
+            if (isOpen) {
+                badge.textContent = 'Open Study';
+                badge.style.background = '#d1fae5';
+                badge.style.color = '#065f46';
+                toggleButton.textContent = 'Switch to Closed';
+                toggleButton.style.background = '#dc2626';
+                toggleButton.style.color = '#ffffff';
+            } else {
+                badge.textContent = 'Closed Study';
+                badge.style.background = '#fee2e2';
+                badge.style.color = '#991b1b';
+                toggleButton.textContent = 'Switch to Open';
+                toggleButton.style.background = '#059669';
+                toggleButton.style.color = '#ffffff';
+            }
+        }
+
+        async function toggleStudyType() {
+            const toggleButton = document.getElementById('toggle-study-type-btn');
+            if (!toggleButton) {
+                return;
+            }
+
+            const studyName = toggleButton.dataset.studyName;
+            const isCurrentlyOpen = toggleButton.dataset.isOpen === 'true';
+            const targetOpen = !isCurrentlyOpen;
+
+            const confirmMessage = targetOpen
+                ? `Switch study "${studyName}" to OPEN? Unlisted participants will be able to join.`
+                : `Switch study "${studyName}" to CLOSED? Only assigned participants will be able to join.`;
+
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+
+            const originalText = toggleButton.textContent;
+            toggleButton.disabled = true;
+            toggleButton.textContent = 'Saving...';
+            toggleButton.style.opacity = '0.7';
+
+            try {
+                const api_update_study_type_url = api_update_study_type_pattern
+                    .replace('__STUDY_NAME__', encodeURIComponent(studyName));
+
+                const response = await fetch(api_update_study_type_url, {
+                    method: 'PATCH',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        allow_unlisted_participants: targetOpen
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to update study type');
+                }
+
+                const result = await response.json();
+                toggleButton.dataset.isOpen = String(result.allow_unlisted_participants);
+                setStudyTypeUI(result.allow_unlisted_participants);
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+                toggleButton.textContent = originalText;
+            } finally {
+                toggleButton.disabled = false;
+                toggleButton.style.opacity = '1';
+            }
+        }
 
         function copyInvitationLink(studyShortName, participantId, buttonElement) {
             // Normalize URL by removing trailing slash from frontend_url if it exists
