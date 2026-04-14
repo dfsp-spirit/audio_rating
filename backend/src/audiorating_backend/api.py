@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 from .settings import settings
 from .models import Participant, Study, Song, Rating, StudyParticipantLink, StudySongLink, StudyRatingDimension, RatingSegment, RatingSegmentBase
 from .database import get_session, create_db_and_tables
-from .parsers.studies_config import load_studies_config, resolve_localized_text
+from .parsers.studies_config import CfgFileStudyConfig, load_studies_config, resolve_localized_text
 from pydantic import field_validator
 
 
@@ -1506,6 +1506,133 @@ def _build_logged_ratings_export_for_study(study: Study, session: Session) -> di
 class AssignParticipantsRequest(BaseModel):
     participant_ids: List[str]
     must_be_new: bool = False
+
+
+class CreateStudyResponse(BaseModel):
+    id: str
+    name_short: str
+    name: str
+    allow_unlisted_participants: bool
+    data_collection_start: datetime
+    data_collection_end: datetime
+    songs_count: int
+    rating_dimensions_count: int
+    participant_links_count: int
+
+
+@app.post(
+    "/api/admin/studies",
+    name="api_create_study",
+    response_model=CreateStudyResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(verify_admin)],
+)
+async def create_study(
+    study_cfg: CfgFileStudyConfig,
+    session: Session = Depends(get_session),
+):
+    """Create a new study and all related links from a validated study config payload."""
+    try:
+        existing_study = session.exec(
+            select(Study).where(Study.name_short == study_cfg.name_short)
+        ).first()
+        if existing_study:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Study '{study_cfg.name_short}' already exists",
+            )
+
+        new_study = Study(
+            name=study_cfg.name,
+            name_short=study_cfg.name_short,
+            description=resolve_localized_text(study_cfg.description, study_cfg.default_language),
+            allow_unlisted_participants=study_cfg.allow_unlisted_participants,
+            data_collection_start=study_cfg.data_collection_start,
+            data_collection_end=study_cfg.data_collection_end,
+        )
+        session.add(new_study)
+        session.flush()
+
+        participant_links_count = 0
+        for participant_id in study_cfg.study_participant_ids:
+            participant = session.exec(
+                select(Participant).where(Participant.id == participant_id)
+            ).first()
+            if not participant:
+                participant = Participant(id=participant_id)
+                session.add(participant)
+                session.flush()
+
+            existing_link = session.exec(
+                select(StudyParticipantLink).where(
+                    StudyParticipantLink.study_id == new_study.id,
+                    StudyParticipantLink.participant_id == participant_id,
+                )
+            ).first()
+            if not existing_link:
+                session.add(
+                    StudyParticipantLink(
+                        study_id=new_study.id,
+                        participant_id=participant_id,
+                    )
+                )
+                participant_links_count += 1
+
+        for song_index, song_cfg in enumerate(study_cfg.songs_to_rate):
+            song = session.exec(
+                select(Song).where(Song.media_url == song_cfg.media_url)
+            ).first()
+            if not song:
+                song = Song(
+                    display_name=resolve_localized_text(song_cfg.display_name, study_cfg.default_language),
+                    media_url=song_cfg.media_url,
+                    description=resolve_localized_text(song_cfg.description, study_cfg.default_language),
+                )
+                session.add(song)
+                session.flush()
+
+            session.add(
+                StudySongLink(
+                    study_id=new_study.id,
+                    song_id=song.id,
+                    song_index=song_index,
+                )
+            )
+
+        for dim_index, dimension_cfg in enumerate(study_cfg.rating_dimensions):
+            session.add(
+                StudyRatingDimension(
+                    study_id=new_study.id,
+                    dimension_title=dimension_cfg.dimension_title,
+                    num_values=dimension_cfg.num_values,
+                    minimal_value=dimension_cfg.minimal_value,
+                    default_value=dimension_cfg.default_value,
+                    dimension_order=dim_index,
+                    description=resolve_localized_text(dimension_cfg.description, study_cfg.default_language),
+                )
+            )
+
+        session.commit()
+        session.refresh(new_study)
+
+        return CreateStudyResponse(
+            id=new_study.id,
+            name_short=new_study.name_short,
+            name=new_study.name,
+            allow_unlisted_participants=new_study.allow_unlisted_participants,
+            data_collection_start=new_study.data_collection_start,
+            data_collection_end=new_study.data_collection_end,
+            songs_count=len(study_cfg.songs_to_rate),
+            rating_dimensions_count=len(study_cfg.rating_dimensions),
+            participant_links_count=participant_links_count,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Failed to create study '{study_cfg.name_short}': {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to create study")
 
 # Pydantic model for the response
 class ParticipantAssignmentResult(BaseModel):
