@@ -93,6 +93,46 @@
             </div>
         </div>
 
+        <div style="margin-top: -8px; margin-bottom: 16px; padding: 12px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">
+            <div style="font-weight: 600; margin-bottom: 8px;">Collection Window Controls</div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: end;">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label for="window-start-{{ study.id }}" style="font-size: 12px; color: var(--text-secondary);">Start date</label>
+                    <input
+                        id="window-start-{{ study.id }}"
+                        type="date"
+                        value="{{ study.data_collection_start.strftime('%Y-%m-%d') }}"
+                        style="padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 6px; background: white;"
+                    >
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label for="window-end-{{ study.id }}" style="font-size: 12px; color: var(--text-secondary);">End date</label>
+                    <input
+                        id="window-end-{{ study.id }}"
+                        type="date"
+                        value="{{ study.data_collection_end.strftime('%Y-%m-%d') }}"
+                        style="padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 6px; background: white;"
+                    >
+                </div>
+                <button
+                    type="button"
+                    class="btn btn-primary"
+                    onclick="saveStudyCollectionWindow('{{ study.name_short }}', '{{ study.id }}')"
+                >
+                    Save Window
+                </button>
+                <button
+                    type="button"
+                    class="btn"
+                    style="background: var(--danger-color); color: white;"
+                    onclick="pauseStudyByDateRange('{{ study.name_short }}', '{{ study.id }}')"
+                >
+                    Pause (Exclude Today)
+                </button>
+            </div>
+            <div id="window-status-{{ study.id }}" style="margin-top: 8px; font-size: 13px;"></div>
+        </div>
+
         {% set has_ratings = study.active_participants and study.active_participants|selectattr('songs_rated_count', 'greaterthan', 0)|list|length > 0 %}
 
         <div class="study-tabs-nav" style="display: flex; gap: 0; margin-bottom: 16px; border-bottom: 2px solid var(--border-color);">
@@ -303,6 +343,94 @@
     {% endfor %}
 
     <script>
+        const ADMIN_ROOT_PATH = "{{ request.scope.root_path }}";
+
+        function formatDateUtc(dateObj) {
+            return dateObj.toISOString().slice(0, 10);
+        }
+
+        function showWindowStatus(studyId, message, isError = false) {
+            const statusEl = document.getElementById(`window-status-${studyId}`);
+            if (!statusEl) {
+                return;
+            }
+            statusEl.textContent = message;
+            statusEl.style.color = isError ? 'var(--danger-color)' : 'var(--success-color)';
+        }
+
+        async function saveStudyCollectionWindow(studyNameShort, studyId) {
+            const startInput = document.getElementById(`window-start-${studyId}`);
+            const endInput = document.getElementById(`window-end-${studyId}`);
+            if (!startInput || !endInput) {
+                return;
+            }
+
+            const startDate = startInput.value;
+            const endDate = endInput.value;
+
+            if (!startDate || !endDate) {
+                showWindowStatus(studyId, 'Start and end date are required.', true);
+                return;
+            }
+
+            if (startDate >= endDate) {
+                showWindowStatus(studyId, 'Start date must be earlier than end date.', true);
+                return;
+            }
+
+            const payload = {
+                data_collection_start: `${startDate}T00:00:00Z`,
+                data_collection_end: `${endDate}T23:59:59Z`
+            };
+
+            try {
+                const response = await fetch(
+                    `${ADMIN_ROOT_PATH}/api/admin/studies/${encodeURIComponent(studyNameShort)}/collection-window`,
+                    {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    }
+                );
+
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    showWindowStatus(studyId, errorPayload.detail || 'Failed to update collection window.', true);
+                    return;
+                }
+
+                showWindowStatus(studyId, 'Collection window updated. Reloading...');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 700);
+            } catch (error) {
+                showWindowStatus(studyId, `Request failed: ${error.message}`, true);
+            }
+        }
+
+        function pauseStudyByDateRange(studyNameShort, studyId) {
+            const startInput = document.getElementById(`window-start-${studyId}`);
+            const endInput = document.getElementById(`window-end-${studyId}`);
+            if (!startInput || !endInput) {
+                return;
+            }
+
+            const now = new Date();
+            const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+            const pauseEndDate = formatDateUtc(yesterday);
+
+            let startDate = startInput.value;
+            if (!startDate || startDate >= pauseEndDate) {
+                const fallbackStart = new Date(Date.UTC(yesterday.getUTCFullYear(), yesterday.getUTCMonth(), yesterday.getUTCDate() - 1));
+                startDate = formatDateUtc(fallbackStart);
+                startInput.value = startDate;
+            }
+
+            endInput.value = pauseEndDate;
+            showWindowStatus(studyId, 'Pause date range prepared. Saving...');
+            saveStudyCollectionWindow(studyNameShort, studyId);
+        }
+
         function switchStudyTab(tabId, button, studyShortName) {
             const studyCard = document.getElementById('study-card-' + studyShortName);
             studyCard.querySelectorAll('.study-tab-panel').forEach((panel) => {

@@ -1520,6 +1520,11 @@ class CreateStudyResponse(BaseModel):
     participant_links_count: int
 
 
+class UpdateStudyCollectionWindowRequest(BaseModel):
+    data_collection_start: Optional[datetime] = None
+    data_collection_end: Optional[datetime] = None
+
+
 @app.post(
     "/api/admin/studies",
     name="api_create_study",
@@ -1633,6 +1638,59 @@ async def create_study(
         session.rollback()
         logger.error(f"Failed to create study '{study_cfg.name_short}': {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to create study")
+
+
+@app.patch(
+    "/api/admin/studies/{study_name_short}/collection-window",
+    name="api_update_study_collection_window",
+    dependencies=[Depends(verify_admin)],
+)
+async def update_study_collection_window(
+    study_name_short: str,
+    payload: UpdateStudyCollectionWindowRequest,
+    session: Session = Depends(get_session),
+):
+    """Update data collection start/end of an existing study."""
+    study = session.exec(select(Study).where(Study.name_short == study_name_short)).first()
+    if not study:
+        raise HTTPException(status_code=404, detail=f"Study '{study_name_short}' not found")
+
+    if payload.data_collection_start is None and payload.data_collection_end is None:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one of data_collection_start or data_collection_end must be provided",
+        )
+
+    previous_start = study.data_collection_start
+    previous_end = study.data_collection_end
+
+    new_start = payload.data_collection_start or previous_start
+    new_end = payload.data_collection_end or previous_end
+
+    if new_start >= new_end:
+        raise HTTPException(
+            status_code=400,
+            detail="data_collection_start must be earlier than data_collection_end",
+        )
+
+    study.data_collection_start = new_start
+    study.data_collection_end = new_end
+    session.add(study)
+    session.commit()
+    session.refresh(study)
+
+    return {
+        "study_name_short": study_name_short,
+        "previous": {
+            "data_collection_start": previous_start,
+            "data_collection_end": previous_end,
+        },
+        "updated": {
+            "data_collection_start": study.data_collection_start,
+            "data_collection_end": study.data_collection_end,
+        },
+        "is_currently_collecting": study.data_collection_start <= utc_now() <= study.data_collection_end,
+    }
 
 # Pydantic model for the response
 class ParticipantAssignmentResult(BaseModel):

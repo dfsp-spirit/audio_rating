@@ -1,5 +1,11 @@
 ## audio_rating ChangeLog
 
+
+WIP
+-------
+* NEW: add admin endpoint to create studies at runtime
+* NEW: add buttons in admin interface to change start/end dates of existing studies
+
 Version 0.7.2 -- Bug fixes
 ---------------------------
 * NEW: extend admin interface with tabs on songs, rating dims

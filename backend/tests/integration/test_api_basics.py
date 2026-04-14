@@ -1,6 +1,7 @@
 import pytest
 import httpx
 import os
+from datetime import datetime, timedelta, timezone
 
 # import settings.py to get BASE_URL from environment variables
 from audiorating_backend.settings import settings
@@ -170,3 +171,54 @@ async def test_admin_runtime_studies_export_returns_expected_top_level_shape():
         assert "allow_unlisted_participants" in first_study
 
         assert first_study["name_short"] in data["logged_ratings"]
+
+
+@pytest.mark.asyncio
+async def test_admin_can_update_study_collection_window_and_restore():
+    """Integration test for updating study collection window through admin API."""
+    stats_url = f"{BASE_URL}/admin/api/stats"
+
+    async with httpx.AsyncClient() as client:
+        stats_response = await client.get(stats_url, auth=(settings.admin_username, settings.admin_password))
+        assert stats_response.status_code == 200
+        stats_data = stats_response.json()
+
+        studies = stats_data.get("studies", [])
+        if not studies:
+            pytest.skip("No studies available to test collection-window update")
+
+        study = studies[0]
+        study_name_short = study["name_short"]
+        original_start = study["data_collection_start"]
+        original_end = study["data_collection_end"]
+
+        parsed_end = datetime.fromisoformat(original_end.replace("Z", "+00:00"))
+        new_end = (parsed_end + timedelta(days=1)).astimezone(timezone.utc)
+        new_end_iso = new_end.isoformat().replace("+00:00", "Z")
+
+        update_url = f"{BASE_URL}/api/admin/studies/{study_name_short}/collection-window"
+
+        try:
+            update_response = await client.patch(
+                update_url,
+                auth=(settings.admin_username, settings.admin_password),
+                json={"data_collection_end": new_end_iso},
+            )
+
+            assert update_response.status_code == 200, update_response.text
+            payload = update_response.json()
+            assert payload["study_name_short"] == study_name_short
+            updated_end = datetime.fromisoformat(
+                payload["updated"]["data_collection_end"].replace("Z", "+00:00")
+            ).astimezone(timezone.utc)
+            expected_end = datetime.fromisoformat(new_end_iso.replace("Z", "+00:00")).astimezone(timezone.utc)
+            assert updated_end == expected_end
+        finally:
+            await client.patch(
+                update_url,
+                auth=(settings.admin_username, settings.admin_password),
+                json={
+                    "data_collection_start": original_start,
+                    "data_collection_end": original_end,
+                },
+            )
