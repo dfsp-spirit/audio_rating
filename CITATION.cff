@@ -1,6 +1,11 @@
 # CITATION.cff for Audio Rating
 # This file provides citation metadata for the software.
 # Schema version: 1.2.0
+# You can validate this file:
+#
+#  pip3 install cffconvert       # run this in a venv
+#  cffconvert --validate CITATION.cff
+#
 
 # Required: The CFF schema version
 cff-version: 1.2.0
@@ -13,25 +18,23 @@ title: "Audio Rating: A Scientific Software for Music Aesthetics Research"
 
 # Required: List of authors/contributors
 authors:
-  # Person 1: Author and Maintainer (wrote code)
   - family-names: "Schäfer"
     given-names: "Tim"
     orcid: "https://orcid.org/0000-0002-3683-8070"
     affiliation: "Max-Planck-Institute for Empirical Aesthetics"
     email: "tim.schaefer@ae.mpg.de"
-    CRediT roles: 'Software'
-    # See: https://credit.niso.org/
-    aliases:
-      - "Tim Schaefer"
-    role: "Software, Writing - review & editing, Maintenance"
 
-  # Person 2: Has Research ID, but did NOT write code
   - family-names: "De Manzano"
     given-names: "Örjan"
     orcid: "https://orcid.org/0000-0002-4632-1112"
     affiliation: "Max-Planck-Institute for Empirical Aesthetics"
     email: "oerjan.demanzano@ae.mpg.de"
-    role: "Methodology, Project Administration, Supervision"
+
+  - family-names: "Ullén"
+    given-names: "Fredrik"
+    orcid: "https://orcid.org/0000-0002-2974-9256"
+    affiliation: "Max-Planck-Institute for Empirical Aesthetics"
+    email: "fredrik.ullen@ae.mpg.de"
 
 # Optional but recommended: Type of work (software, dataset, article)
 type: software
@@ -67,6 +70,9 @@ keywords:
 references:
   - type: software
     title: "wavesurfer.js"
+    authors:
+      - family-names: "FelisCatus"
+        given-names: "katspaugh"
     url: "https://wavesurfer.xyz/"
     repository-code: "https://github.com/katspaugh/wavesurfer.js"
     license: "BSD-3-Clause"
