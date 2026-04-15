@@ -1,5 +1,6 @@
 # audio_rating
 
+[![DOI](https://zenodo.org/badge/1046774366.svg)](https://doi.org/10.5281/zenodo.19595115)
 [![Backend Unit Tests](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_unit_tests.yml/badge.svg)](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_unit_tests.yml)
 [![Backend Integration Tests](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_integration_tests.yml/badge.svg)](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_integration_tests.yml)
 [![Frontend E2E Tests](https://github.com/dfsp-spirit/audio_rating/actions/workflows/e2e_tests.yml/badge.svg)](https://github.com/dfsp-spirit/audio_rating/actions/workflows/e2e_tests.yml)
