@@ -33,6 +33,82 @@ You can try audio_rating live on GitHub pages:
 
 - https://dfsp-spirit.github.io/audio_rating/study.html
 
+## Installation Instructions
+
+Audiorating consists of three components that are set up together:
+
+1. PostgreSQL database
+2. Python/FastAPI backend
+3. Static frontend files
+
+### Prerequisites
+
+- PostgreSQL (recent version)
+- Python 3.11+ and [`uv`](https://github.com/astral-sh/uv)
+- Any web server that can serve static files and optionally proxy backend requests
+
+### 1) Database Setup
+
+Create a dedicated PostgreSQL database and user for Audiorating.
+
+The backend creates required tables automatically on startup, as long as the database connection is configured correctly.
+
+### 2) Backend Configuration
+
+Copy the example environment file and adapt values for your setup:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+At minimum, configure:
+
+- Database connection values (`AR_DATABASE_*` / `AR_DATABASE_URL`)
+- Admin credentials (`AR_API_ADMIN_USERNAME`, `AR_API_ADMIN_PASSWORD`)
+- Frontend URL and root path (`AR_FRONTEND_URL`, `AR_ROOTPATH`) depending on deployment path
+
+Then install backend dependencies:
+
+```bash
+cd backend
+uv sync --dev
+```
+
+### 3) Study Setup
+
+Studies are defined in `backend/studies_config.json`.
+
+On startup, the backend imports studies that do not exist yet. Existing studies are not overwritten automatically.
+
+### 4) Frontend Configuration
+
+Frontend runtime settings are defined in `frontend/src/settings/ar_settings.js`.
+
+The most important value is `API_BASE_URL`, which must point to your backend API endpoint as seen from the browser.
+
+No frontend build step is required for normal deployment.
+
+### 5) Web Server Setup
+
+Serve `frontend/src/` as static files with your preferred web server.
+
+If frontend and backend share a domain, you can route backend requests through a sub-path (for example `/ar_backend/`) and set `AR_ROOTPATH` accordingly.
+
+### 6) Admin Interface
+
+The backend includes an admin interface for participant/study management and data export.
+
+Access is protected with HTTP Basic Auth using the configured admin credentials.
+
+### 7) Security Notes
+
+For production deployments:
+
+- Use HTTPS
+- Use strong, unique passwords
+- Restrict `AR_ALLOWED_ORIGINS` to the actual frontend origins
+- Protect admin access and credentials
+
 ## Development
 
 This project supports two local development workflows:
@@ -48,7 +124,7 @@ Both workflows use the same URL layout that mirrors production-style routing:
 
 ### Local Development Without Docker
 
-Use this when you want maximum local control and the fastest edit/run loop on your host.
+Use this when you want maximum local control and the fastest edit/run loop on your host, or if you cannot or do not want to use Docker.
 
 #### Prerequisites
 
