@@ -1,0 +1,73 @@
+# CITATION.cff for Audio Rating
+# This file provides citation metadata for the software.
+# Schema version: 1.2.0
+
+# Required: The CFF schema version
+cff-version: 1.2.0
+
+# Required: A message to the user about how to cite
+message: "If you use this software in your research, please cite it using the metadata from this file."
+
+# Required: The title of the software
+title: "Audio Rating: A Scientific Software for Music Aesthetics Research"
+
+# Required: List of authors/contributors
+authors:
+  # Person 1: Author and Maintainer (wrote code)
+  - family-names: "Schäfer"
+    given-names: "Tim"
+    orcid: "https://orcid.org/0000-0002-3683-8070"
+    affiliation: "Max-Planck-Institute for Empirical Aesthetics"
+    email: "tim.schaefer@ae.mpg.de"
+    CRediT roles: 'Software'
+    # See: https://credit.niso.org/
+    aliases:
+      - "Tim Schaefer"
+    role: "Software, Writing - review & editing, Maintenance"
+
+  # Person 2: Has Research ID, but did NOT write code
+  - family-names: "De Manzano"
+    given-names: "Örjan"
+    orcid: "https://orcid.org/0000-0002-4632-1112"
+    affiliation: "Max-Planck-Institute for Empirical Aesthetics"
+    email: "oerjan.demanzano@ae.mpg.de"
+    role: "Methodology, Project Administration, Supervision"
+
+# Optional but recommended: Type of work (software, dataset, article)
+type: software
+
+# Required by GitHub's sidebar: Repository URL
+repository-code: "https://github.com/dfsp-spirit/audio_rating"
+
+# Recommended: Version of the software
+#version: "1.0.0"
+
+# Recommended: Release date (YYYY-MM-DD)
+date-released: "2026-04-01"
+
+# Recommended: License (SPDX identifier)
+license: "BSD-3-Clause" # or "Apache-2.0", "GPL-3.0", etc.
+
+# Recommended: Brief description
+abstract: "Audio Rating is an open-source software tool designed for researchers in the field of music aesthetics. It provides a platform for collecting and analyzing subjective ratings of musical stimuli, enabling scientists to explore the relationship between acoustic features and aesthetic judgments. The software includes a web-based interface for participants to rate music samples, as well as backend tools for data management and analysis. Audio Rating aims to facilitate reproducible research in music perception and aesthetics by providing a standardized framework for data collection and analysis."
+
+# Recommended: Keywords for discoverability
+keywords:
+  - "music-aesthetics"
+  - "perception-research"
+  - "subjective-ratings"
+  - "data-collection"
+  - "software-tool"
+
+# Optional: Digital Object Identifier (if you have one from Zenodo)
+# doi: "10.1234/zenodo.1234567"
+
+
+# References to software/libraries used by your tool
+references:
+  - type: software
+    title: "wavesurfer.js"
+    url: "https://wavesurfer.xyz/"
+    repository-code: "https://github.com/katspaugh/wavesurfer.js"
+    license: "BSD-3-Clause"
+    notes: "Audio waveform visualization library for modern web browsers"
