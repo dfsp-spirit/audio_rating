@@ -46,7 +46,9 @@ export class StudyCoordinator {
     this.songSyncStatus = {}; // 'unsaved', 'synced', or 'modified'
 
     this.localStorageKey = `audio_rating_study_${this.studyName}_${this.uid}`;
+    this.uiStateStorageKey = `audio_rating_ui_state_${this.studyName}_${this.uid}`;
     this.localRatings = this.loadLocalRatings();
+    this.autoSaveTimer = null;
 
     this.init();
   }
@@ -574,8 +576,17 @@ export class StudyCoordinator {
       }
     });
 
-    this.showPhase('instructions-phase');
+    const restoredPhase = await this.restoreProgressAfterInit();
+    if (!restoredPhase) {
+      this.showPhase('instructions-phase');
+    }
     this.updateBackendStatus();
+
+    this._onBeforeUnload = () => {
+      this.flushCurrentSongToLocalStorage();
+      this.saveUIState();
+    };
+    window.addEventListener('beforeunload', this._onBeforeUnload);
 
     window.addEventListener('i18n:languageChanged', () => {
       this.onLanguageChanged().catch((error) => {
@@ -707,6 +718,8 @@ async loadStudyConfigFromBackend() {
             if (ratingsResponse.ok) {
               const data = await ratingsResponse.json();
               const songKey = `${this.studyName}_song_${i}`;
+              const existingLocalEntry = this.localRatings[songKey];
+              const keepLocal = this.shouldKeepLocalSongData(existingLocalEntry);
 
               if(data.has_ratings) {
                 const backendRatings = {};
@@ -716,24 +729,42 @@ async loadStudyConfigFromBackend() {
                   });
                 }
 
-                this.localRatings[songKey] = {
-                  data: backendRatings,
-                  source: 'backend',
-                  timestamp: new Date().toISOString()
-                };
-                this.songSyncStatus[i] = 'synced';
+                if (keepLocal) {
+                  this.songSyncStatus[i] = 'modified';
+                } else {
+                  this.localRatings[songKey] = {
+                    data: backendRatings,
+                    source: 'backend',
+                    timestamp: new Date().toISOString()
+                  };
+                  this.songSyncStatus[i] = 'synced';
+                }
               } else {
-                this.initializeEmptySongRatings(i);
+                if (keepLocal) {
+                  this.songSyncStatus[i] = 'modified';
+                } else {
+                  this.initializeEmptySongRatings(i);
+                }
               }
             } else {
               ratingLoadFailed = true;
               console.error(`Failed to load backend ratings for song ${i}: HTTP ${ratingsResponse.status}`);
-              this.initializeEmptySongRatings(i);
+              const songKey = `${this.studyName}_song_${i}`;
+              if (this.shouldKeepLocalSongData(this.localRatings[songKey])) {
+                this.songSyncStatus[i] = 'modified';
+              } else {
+                this.initializeEmptySongRatings(i);
+              }
             }
           } catch (error) {
             ratingLoadFailed = true;
             console.error(`Failed to load backend ratings for song ${i}`, error);
-            this.initializeEmptySongRatings(i);
+            const songKey = `${this.studyName}_song_${i}`;
+            if (this.shouldKeepLocalSongData(this.localRatings[songKey])) {
+              this.songSyncStatus[i] = 'modified';
+            } else {
+              this.initializeEmptySongRatings(i);
+            }
           }
 
           // Verify that the song media URL is accessible
@@ -781,6 +812,7 @@ async loadStudyConfigFromBackend() {
 
   async startRating() {
     this.showPhase('rating-phase');
+    this.saveUIState();
     await this.loadSong(this.currentSongIndex);
   }
 
@@ -813,6 +845,7 @@ async loadStudyConfigFromBackend() {
     }
 
     this.currentSongIndex = songIndex;
+    this.saveUIState();
     const song = this.studyConfig.songs_to_rate[songIndex];
 
     document.getElementById('current-song-number').textContent = songIndex + 1;
@@ -852,6 +885,7 @@ async loadStudyConfigFromBackend() {
         if (this.songSyncStatus[this.currentSongIndex] === 'synced') {
           this.songSyncStatus[this.currentSongIndex] = 'modified';
         }
+        this.scheduleAutoSaveCurrentSong();
         this.updateAllUI();
       });
 
@@ -897,9 +931,96 @@ async loadStudyConfigFromBackend() {
 
     try {
       this.saveLocalRatings();
+      this.saveUIState();
     } catch (error) {
       console.error('Auto-save failed:', error);
     }
+  }
+
+  scheduleAutoSaveCurrentSong(delayMs = 400) {
+    if (this.autoSaveTimer) {
+      clearTimeout(this.autoSaveTimer);
+    }
+    this.autoSaveTimer = setTimeout(async () => {
+      this.autoSaveTimer = null;
+      await this.autoSaveCurrentSong();
+    }, delayMs);
+  }
+
+  flushCurrentSongToLocalStorage() {
+    if (this.autoSaveTimer) {
+      clearTimeout(this.autoSaveTimer);
+      this.autoSaveTimer = null;
+    }
+
+    if (!this.widget) return;
+
+    const ratingData = this.widget.getData();
+    if (!ratingData || Object.keys(ratingData).length === 0) return;
+
+    const songKey = this.getSongKey();
+    const song = this.studyConfig.songs_to_rate[this.currentSongIndex];
+
+    this.localRatings[songKey] = {
+      data: ratingData,
+      timestamp: new Date().toISOString(),
+      study: this.studyName,
+      songIndex: this.currentSongIndex,
+      songName: song?.display_name,
+      songUrl: song?.media_url,
+      source: 'local'
+    };
+
+    this.saveLocalRatings();
+  }
+
+  loadUIState() {
+    try {
+      const raw = localStorage.getItem(this.uiStateStorageKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch (error) {
+      console.warn('Error loading UI state:', error);
+      return null;
+    }
+  }
+
+  saveUIState() {
+    try {
+      const activePhase = document.querySelector('.study-phase.active');
+      const phaseId = activePhase?.id || 'instructions-phase';
+      const state = {
+        phaseId,
+        currentSongIndex: this.currentSongIndex,
+        updatedAt: new Date().toISOString()
+      };
+      localStorage.setItem(this.uiStateStorageKey, JSON.stringify(state));
+      return true;
+    } catch (error) {
+      console.warn('Error saving UI state:', error);
+      return false;
+    }
+  }
+
+  async restoreProgressAfterInit() {
+    if (this.studyAccessBlocked) return false;
+
+    const savedState = this.loadUIState();
+    if (!savedState || !savedState.phaseId) return false;
+
+    if (savedState.phaseId === 'rating-phase') {
+      const maxSongIndex = Math.max(0, this.studyConfig.songs_to_rate.length - 1);
+      const restoredSongIndex = Math.max(0, Math.min(maxSongIndex, Number(savedState.currentSongIndex) || 0));
+      this.showPhase('rating-phase');
+      await this.loadSong(restoredSongIndex);
+      return true;
+    }
+
+    if (savedState.phaseId === 'completion-phase') {
+      this.showPhase('completion-phase');
+      return true;
+    }
+
+    return false;
   }
 
   getSongKey() {
@@ -943,6 +1064,17 @@ async loadStudyConfigFromBackend() {
       timestamp: new Date().toISOString()
     };
     this.songSyncStatus[songIndex] = 'unsaved';
+  }
+
+  hasAnyRatingSegments(ratingData) {
+    if (!ratingData || typeof ratingData !== 'object') return false;
+    return Object.values(ratingData).some((segments) => Array.isArray(segments) && segments.length > 0);
+  }
+
+  shouldKeepLocalSongData(localEntry) {
+    if (!localEntry || typeof localEntry !== 'object') return false;
+    if (localEntry.source !== 'local') return false;
+    return this.hasAnyRatingSegments(localEntry.data);
   }
 
   wait(ms) {
@@ -1169,6 +1301,7 @@ async loadStudyConfigFromBackend() {
     }
 
     this.showPhase('completion-phase');
+    this.saveUIState();
   }
 
   downloadAllRatings() {
@@ -1214,6 +1347,7 @@ async loadStudyConfigFromBackend() {
     }
 
     document.body.classList.toggle('top-banner-visible', hasVisibleTopBanner);
+    this.saveUIState();
   }
 
 
