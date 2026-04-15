@@ -1,10 +1,15 @@
 ## audio_rating ChangeLog
 
 
-WIP
--------
+Version 0.8.0 -- Admin interface improvals and dependency updates
+-------------------------------------------------------------------
 * NEW: add admin endpoint to create studies at runtime
 * NEW: add buttons in admin interface to change start/end dates of existing studies
+* NEW: addd admin buttons to make study open/closed, add tests for that
+* NEW: add endpoint and buttons to check for song availability (file in served frontend web dir) in admin interface
+* CHG: update versions of all dependencies (via renovate)
+* NEW: add CITATION.cff file
+
 
 Version 0.7.2 -- Bug fixes
 ---------------------------
