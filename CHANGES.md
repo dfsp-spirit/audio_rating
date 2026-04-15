@@ -1,7 +1,7 @@
 ## audio_rating ChangeLog
 
 
-Version 0.8.0 -- Admin interface improvals and dependency updates
+Version 0.8.0 -- Admin interface improvements and dependency updates
 -------------------------------------------------------------------
 * NEW: add admin endpoint to create studies at runtime
 * NEW: add buttons in admin interface to change start/end dates of existing studies
