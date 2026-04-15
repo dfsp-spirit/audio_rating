@@ -126,6 +126,8 @@
 		"pause": "Pause",
 		"stop": "Arrêter",
 		"volume": "Volume :",
+		"segmentBorderTooltipLine1": "limite du segment",
+		"segmentBorderTooltipLine2": "glisser pour deplacer, clic droit pour supprimer",
 		"statusLoading": "Chargement...",
 		"statusCurrent": "Actuel : {{current}}s / Total : {{total}}s",
 		"stepsCount": "{{count}} pas ({{min}} à {{max}})"

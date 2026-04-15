@@ -126,6 +126,8 @@
 		"pause": "Pause",
 		"stop": "Stopp",
 		"volume": "Lautstärke:",
+		"segmentBorderTooltipLine1": "Segmentgrenze",
+		"segmentBorderTooltipLine2": "Zum Verschieben ziehen, per Rechtsklick löschen",
 		"statusLoading": "Lädt...",
 		"statusCurrent": "Aktuell: {{current}}s / Gesamt: {{total}}s",
 		"stepsCount": "{{count}} Stufen ({{min}} bis {{max}})"

@@ -61,6 +61,7 @@ export class AudioRatingWidget {
     this.lastPointerY = 0;
     this.HANDLE_HIT = 8;
     this.hoverSegIndex = null;
+    this.hoverHandleIndex = null;
     this.hoverPointerX = 0;
     this.hoverPointerY = 0;
 
@@ -1180,18 +1181,27 @@ _drawAll() {
   }
 
   if (this.hoverSegIndex != null && this.hoverSegIndex >= 0 && this.hoverSegIndex < this.segments.length) {
-    const seg = this.segments[this.hoverSegIndex];
-    const duration = this._durationOrOne();
-    const segmentStart = Math.max(0, seg.start);
-    const segmentEnd = Math.max(segmentStart, Math.min(seg.end, duration));
-    const segmentLengthSec = segmentEnd - segmentStart;
+    let tooltipLines = [];
 
-    const tooltipLines = [
-      `segment #${this.hoverSegIndex + 1}`,
-      `${segmentLengthSec.toFixed(1)} seconds length`,
-      `from ${this._formatTimeLabel(segmentStart)} to ${this._formatTimeLabel(segmentEnd)}`,
-      `rating ${seg.value}`
-    ];
+    if (this.hoverHandleIndex != null) {
+      tooltipLines = [
+        this.t('widget.segmentBorderTooltipLine1'),
+        this.t('widget.segmentBorderTooltipLine2')
+      ];
+    } else {
+      const seg = this.segments[this.hoverSegIndex];
+      const duration = this._durationOrOne();
+      const segmentStart = Math.max(0, seg.start);
+      const segmentEnd = Math.max(segmentStart, Math.min(seg.end, duration));
+      const segmentLengthSec = segmentEnd - segmentStart;
+
+      tooltipLines = [
+        `segment #${this.hoverSegIndex + 1}`,
+        `${segmentLengthSec.toFixed(1)} seconds length`,
+        `from ${this._formatTimeLabel(segmentStart)} to ${this._formatTimeLabel(segmentEnd)}`,
+        `rating ${seg.value}`
+      ];
+    }
 
     ctx.font = '12px system-ui, Arial';
     const tooltipPadding = 7;
@@ -1289,11 +1299,13 @@ _drawAll() {
     this.hoverPointerX = x;
     this.hoverPointerY = y;
     this.hoverSegIndex = this._findSegmentIndexAtTime(this._xToTime(x));
+    this.hoverHandleIndex = null;
     this.pointerDown = true;
 
     const handle = this._hitTestHandle(x);
     if (handle) {
       this.activeHandle = { index: handle.i, startSeg: handle.i - 1, endSeg: handle.i };
+      this.hoverHandleIndex = handle.i;
       this._setSelectedSegmentIndex(handle.i - 1);
       this.overlay.setPointerCapture(ev.pointerId);
 
@@ -1342,6 +1354,7 @@ _drawAll() {
     this.hoverPointerY = y;
     this.hoverSegIndex = this._findSegmentIndexAtTime(this._xToTime(x));
     const handle = this._hitTestHandle(x);
+    this.hoverHandleIndex = handle ? handle.i : null;
     const ratingLine = this._hitTestRatingLine(x, y);
     if (handle || this.activeHandle) {
       this.overlay.style.cursor = 'ew-resize';
@@ -1415,6 +1428,7 @@ _drawAll() {
     this.hoverPointerY = y;
     this.hoverSegIndex = this._findSegmentIndexAtTime(this._xToTime(x));
     const handle = this._hitTestHandle(x);
+    this.hoverHandleIndex = handle ? handle.i : null;
     const ratingLine = this._hitTestRatingLine(x, y);
     this.overlay.style.cursor = handle ? 'ew-resize' : (ratingLine ? 'ns-resize' : 'default');
     try { this.overlay.releasePointerCapture(ev.pointerId); } catch {}
@@ -1425,6 +1439,7 @@ _drawAll() {
     this._cancelLongPress();
     if (this.pointerDown) return;
     this.hoverSegIndex = null;
+    this.hoverHandleIndex = null;
     this.overlay.style.cursor = 'default';
     this._drawAll();
   }

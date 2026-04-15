@@ -126,6 +126,8 @@
 		"pause": "Paus",
 		"stop": "Stopp",
 		"volume": "Volym:",
+		"segmentBorderTooltipLine1": "segmentgrans",
+		"segmentBorderTooltipLine2": "dra for att flytta, hogerklicka for att ta bort",
 		"statusLoading": "Laddar...",
 		"statusCurrent": "Aktuell: {{current}}s / Total: {{total}}s",
 		"stepsCount": "{{count}} steg ({{min}} till {{max}})"

@@ -126,6 +126,8 @@
 		"pause": "Pause",
 		"stop": "Stop",
 		"volume": "Volume:",
+		"segmentBorderTooltipLine1": "segment border",
+		"segmentBorderTooltipLine2": "drag to move, right-click to delete",
 		"statusLoading": "Loading...",
 		"statusCurrent": "Current: {{current}}s / Total: {{total}}s",
 		"stepsCount": "{{count}} steps ({{min}} to {{max}})"
