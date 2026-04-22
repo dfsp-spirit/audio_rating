@@ -45,9 +45,10 @@ static_dir = Path(__file__).parent / "static"
 
 
 
-from .logging_config import setup_logging
+from .logging_config import setup_logging, get_admin_audit_logger
 setup_logging()
 logger = logging.getLogger(__name__)
+admin_audit_logger = get_admin_audit_logger()
 
 from .settings import settings
 from .models import Participant, Study, Song, Rating, StudyParticipantLink, StudySongLink, StudyRatingDimension, RatingSegment, RatingSegmentBase
@@ -80,6 +81,11 @@ if args.studies_config_json_file and not args.check_frontend_audio_files:
 
 # Store the parsed args globally
 _cli_args = args
+
+
+def audit_admin_action(admin_username: str, action_text: str) -> None:
+    """Write a high-level admin action entry to the dedicated audit log."""
+    admin_audit_logger.info("Admin '%s' %s", admin_username, action_text)
 
 class RatingSubmitRequest(BaseModel):
     """Request body for submitting ratings - Pure API schema, not a database model"""
@@ -206,7 +212,7 @@ async def favicon():
         return FileResponse(favicon_path)
     return Response(status_code=204)
 
-def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
+def verify_admin(request: Request, credentials: HTTPBasicCredentials = Depends(security)):
     is_valid_admin = any(
         secrets.compare_digest(credentials.username, username)
         and secrets.compare_digest(credentials.password, password)
@@ -215,6 +221,12 @@ def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
 
     if not is_valid_admin:
         logger.info(f"Failed admin authentication attempt for user '{credentials.username}'")
+        admin_audit_logger.warning(
+            "Failed admin authentication for user '%s' on %s %s",
+            credentials.username,
+            request.method,
+            request.url.path,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid admin credentials",
@@ -222,6 +234,12 @@ def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
         )
 
     logger.info(f"Admin '{credentials.username}' authenticated successfully.")
+    admin_audit_logger.info(
+        "Admin '%s' authenticated on %s %s",
+        credentials.username,
+        request.method,
+        request.url.path,
+    )
 
     return credentials.username
 
@@ -815,6 +833,10 @@ async def export_runtime_studies_config(
         current_admin,
         f" for study '{study_name}'" if study_name else " for all studies",
     )
+    audit_admin_action(
+        current_admin,
+        f"exported runtime studies config{f' for study {study_name}' if study_name else ' for all studies'}",
+    )
 
     response_payload = {
         "studies_config": {
@@ -883,6 +905,10 @@ async def admin_download(
             )
 
         logger.info(f"Admin '{current_admin}' downloading {len(rating_data)} rating segments for study '{study_name}'")
+        audit_admin_action(
+            current_admin,
+            f"downloaded {len(rating_data)} rating segments for study {study_name} in format {format.lower()}",
+        )
 
         # Transform data for output - now each row is a segment
         segments_data = []
@@ -949,6 +975,10 @@ async def admin_api_stats(
         logger.debug(f"Admin '{current_admin}' requested API stats for all studies")
 
     try:
+        audit_admin_action(
+            current_admin,
+            f"requested admin stats{f' for study_id {study_id}' if study_id else ' for all studies'}",
+        )
         # Similar logic as above but returns JSON
         if study_id:
             studies = session.exec(
@@ -1043,6 +1073,7 @@ async def admin_dashboard(
     download_url_base = f"{root_path}/api/admin/datasets/download"
 
     try:
+        audit_admin_action(current_admin, "opened admin dashboard")
         studies_config = load_studies_config(settings.studies_config_path)
         studies_config_by_short = {
             study_cfg.name_short: study_cfg for study_cfg in studies_config.studies
@@ -1540,11 +1571,11 @@ class UpdateStudyTypeResponse(BaseModel):
     name="api_create_study",
     response_model=CreateStudyResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(verify_admin)],
 )
 async def create_study(
     study_cfg: CfgFileStudyConfig,
     session: Session = Depends(get_session),
+    current_admin: str = Depends(verify_admin),
 ):
     """Create a new study and all related links from a validated study config payload."""
     try:
@@ -1630,6 +1661,15 @@ async def create_study(
         session.commit()
         session.refresh(new_study)
 
+        audit_admin_action(
+            current_admin,
+            (
+                f"created study {new_study.name_short} with {len(study_cfg.songs_to_rate)} songs, "
+                f"{len(study_cfg.rating_dimensions)} rating dimensions, and "
+                f"{participant_links_count} participant links"
+            ),
+        )
+
         return CreateStudyResponse(
             id=new_study.id,
             name_short=new_study.name_short,
@@ -1653,12 +1693,12 @@ async def create_study(
 @app.patch(
     "/api/admin/studies/{study_name_short}/collection-window",
     name="api_update_study_collection_window",
-    dependencies=[Depends(verify_admin)],
 )
 async def update_study_collection_window(
     study_name_short: str,
     payload: UpdateStudyCollectionWindowRequest,
     session: Session = Depends(get_session),
+    current_admin: str = Depends(verify_admin),
 ):
     """Update data collection start/end of an existing study."""
     study = session.exec(select(Study).where(Study.name_short == study_name_short)).first()
@@ -1688,6 +1728,15 @@ async def update_study_collection_window(
     session.add(study)
     session.commit()
     session.refresh(study)
+
+    audit_admin_action(
+        current_admin,
+        (
+            f"updated collection window for study {study_name_short} "
+            f"from {previous_start.isoformat()}..{previous_end.isoformat()} "
+            f"to {study.data_collection_start.isoformat()}..{study.data_collection_end.isoformat()}"
+        ),
+    )
 
     return {
         "study_name_short": study_name_short,
@@ -1730,11 +1779,11 @@ def _is_song_url_available(url: str, timeout_seconds: float = 5.0) -> Tuple[bool
 @app.post(
     "/api/admin/studies/{study_name_short}/songs/check",
     name="api_check_study_song_availability",
-    dependencies=[Depends(verify_admin)],
 )
 async def check_study_song_availability(
     study_name_short: str,
     session: Session = Depends(get_session),
+    current_admin: str = Depends(verify_admin),
 ):
     """Check whether each configured song URL is reachable for a given study."""
     study = session.exec(select(Study).where(Study.name_short == study_name_short)).first()
@@ -1773,6 +1822,11 @@ async def check_study_song_availability(
             }
         )
 
+    audit_admin_action(
+        current_admin,
+        f"checked song availability for study {study_name_short}: {available_count} available, {missing_count} missing",
+    )
+
     return {
         "study_name_short": study_name_short,
         "frontend_url": settings.frontend_url,
@@ -1803,12 +1857,12 @@ class AssignParticipantsResponse(BaseModel):
     "/api/admin/studies/{study_name_short}/study-type",
     name="api_update_study_type",
     response_model=UpdateStudyTypeResponse,
-    dependencies=[Depends(verify_admin)],
 )
 async def update_study_type(
     study_name_short: str,
     request: UpdateStudyTypeRequest,
     session: Session = Depends(get_session),
+    current_admin: str = Depends(verify_admin),
 ):
     """Update whether a study is open (allows unlisted participants) or closed."""
     try:
@@ -1835,6 +1889,14 @@ async def update_study_type(
             f"Admin updated study type for '{study_name_short}' "
             f"from {'OPEN' if was_open else 'CLOSED'} to {'OPEN' if study.allow_unlisted_participants else 'CLOSED'}"
         )
+        audit_admin_action(
+            current_admin,
+            (
+                f"updated study type for {study_name_short} "
+                f"from {'OPEN' if was_open else 'CLOSED'} to "
+                f"{'OPEN' if study.allow_unlisted_participants else 'CLOSED'}"
+            ),
+        )
 
         return UpdateStudyTypeResponse(
             study_name_short=study.name_short,
@@ -1857,12 +1919,12 @@ async def update_study_type(
         )
 
 @app.post("/api/admin/studies/{study_name_short}/assign-participants",
-          name="api_assign_participants_to_study",
-          dependencies=[Depends(verify_admin)])
+          name="api_assign_participants_to_study")
 async def assign_participants_to_study(
     study_name_short: str,
     request: AssignParticipantsRequest,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_admin: str = Depends(verify_admin),
 ):
     """
     Assign participants to a study.
@@ -2001,6 +2063,14 @@ async def assign_participants_to_study(
             f"Study is {'OPEN' if study.allow_unlisted_participants else 'CLOSED'}. "
             f"must_be_new was {request.must_be_new}"
         )
+        audit_admin_action(
+            current_admin,
+            (
+                f"assigned {len(participant_ids)} participants to study {study_name_short} "
+                f"(created={created_count}, assigned_existing={assigned_count}, already_assigned={already_assigned_count}, "
+                f"must_be_new={request.must_be_new})"
+            ),
+        )
 
         # Prepare response
         summary = {
@@ -2036,12 +2106,12 @@ async def assign_participants_to_study(
 
 # Endpoint to remove participants from a study
 @app.delete("/api/admin/studies/{study_name_short}/participants/{participant_id}",
-           name="api_remove_participant_from_study",
-           dependencies=[Depends(verify_admin)])
+           name="api_remove_participant_from_study")
 async def remove_participant_from_study(
     study_name_short: str,
     participant_id: str,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_admin: str = Depends(verify_admin),
 ):
     """
     Remove a participant from a study.
@@ -2080,6 +2150,10 @@ async def remove_participant_from_study(
         session.commit()
 
         logger.info(f"Admin removed participant '{participant_id}' from study '{study_name_short}'")
+        audit_admin_action(
+            current_admin,
+            f"removed participant {participant_id} from study {study_name_short}",
+        )
 
         return {
             "status": "success",
@@ -2101,12 +2175,12 @@ async def remove_participant_from_study(
 
 
 @app.delete("/api/admin/studies/{study_name_short}/participants/{participant_id}/ratings",
-           name="api_delete_participant_ratings",
-           dependencies=[Depends(verify_admin)])
+           name="api_delete_participant_ratings")
 async def delete_participant_ratings(
     study_name_short: str,
     participant_id: str,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_admin: str = Depends(verify_admin),
 ):
     """
     Delete all ratings (and their segments) for a specific participant in a study.
@@ -2179,6 +2253,13 @@ async def delete_participant_ratings(
             f"in study '{study_name_short}': "
             f"{ratings_deleted} ratings and {segments_deleted} segments deleted"
         )
+        audit_admin_action(
+            current_admin,
+            (
+                f"deleted participant ratings in study {study_name_short} for participant {participant_id} "
+                f"({ratings_deleted} ratings, {segments_deleted} segments)"
+            ),
+        )
 
         return {
             "status": "success",
@@ -2202,13 +2283,13 @@ async def delete_participant_ratings(
 
 # Endpoint to get current participants for a study
 @app.get("/api/admin/studies/{study_name_short}/participants",
-         name="admin_get_study_participants",
-         dependencies=[Depends(verify_admin)])
+         name="admin_get_study_participants")
 async def get_study_participants(
     study_name_short: str,
     session: Session = Depends(get_session),
     skip: int = Query(0, ge=0),
-    limit: int = Query(0, ge=0, le=1000)
+    limit: int = Query(0, ge=0, le=1000),
+    current_admin: str = Depends(verify_admin),
 ):
     """
     Get all participants assigned to a specific study.
@@ -2292,6 +2373,11 @@ async def get_study_participants(
             .where(StudyParticipantLink.study_id == study.id)
         ).first() or 0
 
+        audit_admin_action(
+            current_admin,
+            f"listed participants for study {study_name_short} (skip={skip}, limit={limit})",
+        )
+
         return {
             "study_name_short": study.name_short,
             "allow_unlisted_participants": study.allow_unlisted_participants,
@@ -2325,6 +2411,10 @@ async def admin_participant_management(
     Allows adding/removing participants from studies.
     """
     try:
+        audit_admin_action(
+            current_admin,
+            f"opened participant management page{f' for study {study_name_short}' if study_name_short else ''}",
+        )
         # Get all studies for the dropdown
         studies = session.exec(
             select(Study).order_by(Study.name_short)

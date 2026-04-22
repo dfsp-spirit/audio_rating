@@ -47,3 +47,23 @@ def test_admin_credentials_from_env(monkeypatch):
     cfg = ARBackendSettings()
     assert cfg.admin_username == "admin"
     assert cfg.admin_password == "secret"
+
+
+def test_admin_audit_log_settings_defaults(monkeypatch):
+    monkeypatch.delenv("AR_ADMIN_AUDIT_LOG_FILE", raising=False)
+    monkeypatch.delenv("AR_ADMIN_AUDIT_LOG_MAX_BYTES", raising=False)
+    monkeypatch.delenv("AR_ADMIN_AUDIT_LOG_BACKUP_COUNT", raising=False)
+    cfg = ARBackendSettings()
+    assert cfg.admin_audit_log_file == "admin_actions.log"
+    assert cfg.admin_audit_log_max_bytes == 5 * 1024 * 1024
+    assert cfg.admin_audit_log_backup_count == 10
+
+
+def test_admin_audit_log_settings_from_env(monkeypatch):
+    monkeypatch.setenv("AR_ADMIN_AUDIT_LOG_FILE", "logs/admin_audit.log")
+    monkeypatch.setenv("AR_ADMIN_AUDIT_LOG_MAX_BYTES", "12345")
+    monkeypatch.setenv("AR_ADMIN_AUDIT_LOG_BACKUP_COUNT", "7")
+    cfg = ARBackendSettings()
+    assert cfg.admin_audit_log_file == "logs/admin_audit.log"
+    assert cfg.admin_audit_log_max_bytes == 12345
+    assert cfg.admin_audit_log_backup_count == 7

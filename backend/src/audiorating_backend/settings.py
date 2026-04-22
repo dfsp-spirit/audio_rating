@@ -71,5 +71,22 @@ class ARBackendSettings:
             os.getenv("AR_API_ADMIN_PASSWORD"),
         )
 
+    @property
+    def admin_audit_log_file(self):
+        """Path to persistent admin action audit log file."""
+        return os.getenv("AR_ADMIN_AUDIT_LOG_FILE", "admin_actions.log")
+
+    @property
+    def admin_audit_log_max_bytes(self):
+        """Maximum size (bytes) before rotating the admin audit log file."""
+        value = os.getenv("AR_ADMIN_AUDIT_LOG_MAX_BYTES", str(5 * 1024 * 1024))
+        return int(value)
+
+    @property
+    def admin_audit_log_backup_count(self):
+        """Number of rotated admin audit log backup files to keep."""
+        value = os.getenv("AR_ADMIN_AUDIT_LOG_BACKUP_COUNT", "10")
+        return int(value)
+
 settings = ARBackendSettings()
 
