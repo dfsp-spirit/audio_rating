@@ -207,16 +207,13 @@ async def favicon():
     return Response(status_code=204)
 
 def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
-    correct_username = secrets.compare_digest(
-        credentials.username,
-        settings.admin_username
-    )
-    correct_password = secrets.compare_digest(
-        credentials.password,
-        settings.admin_password
+    is_valid_admin = any(
+        secrets.compare_digest(credentials.username, username)
+        and secrets.compare_digest(credentials.password, password)
+        for username, password in settings.admin_credentials
     )
 
-    if not (correct_username and correct_password):
+    if not is_valid_admin:
         logger.info(f"Failed admin authentication attempt for user '{credentials.username}'")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

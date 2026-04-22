@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 import json
+from .parsers.settings_parser import parse_admin_credentials
 
 load_dotenv()   # load .env file in working directory if it exists
 
@@ -49,17 +50,26 @@ class ARBackendSettings:
 
     @property
     def admin_username(self):
-        username = os.getenv("AR_API_ADMIN_USERNAME")
-        if not username:
-            raise ValueError("AR_API_ADMIN_USERNAME environment variable is not set.")
-        return username
+        return self.admin_usernames[0]
 
     @property
     def admin_password(self):
-        password = os.getenv("AR_API_ADMIN_PASSWORD")
-        if not password:
-            raise ValueError("AR_API_ADMIN_PASSWORD environment variable is not set.")
-        return password
+        return self.admin_passwords[0]
+
+    @property
+    def admin_usernames(self):
+        return [username for username, _ in self.admin_credentials]
+
+    @property
+    def admin_passwords(self):
+        return [password for _, password in self.admin_credentials]
+
+    @property
+    def admin_credentials(self):
+        return parse_admin_credentials(
+            os.getenv("AR_API_ADMIN_USERNAME"),
+            os.getenv("AR_API_ADMIN_PASSWORD"),
+        )
 
 settings = ARBackendSettings()
 
