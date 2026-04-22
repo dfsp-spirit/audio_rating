@@ -1,6 +1,6 @@
 # audio_rating
 
-[![DOI](https://zenodo.org/badge/1046774366.svg)](https://doi.org/10.5281/zenodo.19595115)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19595116.svg)](https://doi.org/10.5281/zenodo.19595116)
 [![Backend Unit Tests](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_unit_tests.yml/badge.svg)](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_unit_tests.yml)
 [![Backend Integration Tests](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_integration_tests.yml/badge.svg)](https://github.com/dfsp-spirit/audio_rating/actions/workflows/backend_integration_tests.yml)
 [![Frontend E2E Tests](https://github.com/dfsp-spirit/audio_rating/actions/workflows/e2e_tests.yml/badge.svg)](https://github.com/dfsp-spirit/audio_rating/actions/workflows/e2e_tests.yml)
@@ -266,11 +266,16 @@ Then run test scripts from repo root:
 
 ## Author, License and Dependencies
 
-This software was written by Tim Schaefer.
+### Author, License and Citing
+
+The Audio Rating software was written by Tim Schäfer at the Department of Cognitive Neuropsychology, Max-Planck Institute for Empirical Aesthetics, Frankfurt am Main, Germany.
 
 The waveform visualization is powered by [wavesurfer.js](https://wavesurfer.xyz/).
 
-This software is licensed under the [3-clause BSD license](./LICENSE), matching the license used by wavesurfer.
+Both wavesurfer.js and this software are licensed under the very permissive [3-clause BSD license](./LICENSE).
+
+There is no academic paper on Audio Rating yet, but this software has a [DOI](https://doi.org/10.5281/zenodo.19595116) and is fully citeable. Please see the [CITATION.cff file](./CITATION.cff) for full information on how to properly cite Audio Rating in academic work.
+
 
 
 
