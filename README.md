@@ -264,11 +264,10 @@ Then run test scripts from repo root:
 ./test_docker_e2e.sh
 ```
 
-## Author, License and Dependencies
+## Author, License and Citing
 
-### Author, License and Citing
 
-The Audio Rating software was written by Tim Schäfer at the Department of Cognitive Neuropsychology, Max-Planck Institute for Empirical Aesthetics, Frankfurt am Main, Germany.
+The Audio Rating software was written by Tim Schäfer at the [Department of Cognitive Neuropsychology, Max-Planck Institute for Empirical Aesthetics, Frankfurt am Main, Germany](https://www.aesthetics.mpg.de/en/research/department-of-cognitive-neuropsychology.html).
 
 The waveform visualization is powered by [wavesurfer.js](https://wavesurfer.xyz/).
 
