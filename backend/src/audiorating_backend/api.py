@@ -1245,6 +1245,13 @@ async def admin_dashboard(
                 link.participant_id for link in participant_links
             ]
 
+            participant_ids_with_ratings = session.exec(
+                select(Participant.id)
+                .join(Rating, Rating.participant_id == Participant.id)
+                .where(Rating.study_id == study.id)
+                .distinct()
+            ).all()
+
             # Get all ratings for this study to analyze participation
             ratings = session.exec(
                 select(
@@ -1371,7 +1378,7 @@ async def admin_dashboard(
 
             # Calculate coverage percentage safely
             total_participants = len(
-                set(pre_listed_participants + [p["id"] for p in active_participants])
+                set(pre_listed_participants + participant_ids_with_ratings)
             )
             if total_songs > 0 and total_participants > 0:
                 # Simplified: percentage of total possible ratings (participants × songs) that have been completed
