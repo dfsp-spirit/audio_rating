@@ -3,16 +3,16 @@ from dotenv import load_dotenv
 import json
 from .parsers.settings_parser import parse_admin_credentials
 
-load_dotenv()   # load .env file in working directory if it exists
-
+load_dotenv()  # load .env file in working directory if it exists
 
 
 class ARBackendSettings:
     def __init__(self):
         # Backend-specific settings
         self.debug = True if os.getenv("AR_DEBUG", "false").lower() == "true" else False
-        self.studies_config_path: str = os.getenv("AR_STUDIES_CONFIG_PATH", "studies_config.json")
-
+        self.studies_config_path: str = os.getenv(
+            "AR_STUDIES_CONFIG_PATH", "studies_config.json"
+        )
 
     # Environment-dependent settings as properties
     @property
@@ -27,7 +27,9 @@ class ARBackendSettings:
         """Allowed origins for CORS, as a list of strings. Expects a JSON array in the environment variable."""
         origins = json.loads(os.getenv("AR_ALLOWED_ORIGINS", "[]"))
         if not origins:
-            raise ValueError("AR_ALLOWED_ORIGINS environment variable is not set. Please set a JSON array of allowed origins.")
+            raise ValueError(
+                "AR_ALLOWED_ORIGINS environment variable is not set. Please set a JSON array of allowed origins."
+            )
         return origins
 
     @property
@@ -88,5 +90,5 @@ class ARBackendSettings:
         value = os.getenv("AR_ADMIN_AUDIT_LOG_BACKUP_COUNT", "10")
         return int(value)
 
-settings = ARBackendSettings()
 
+settings = ARBackendSettings()

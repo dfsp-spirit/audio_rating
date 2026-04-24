@@ -39,7 +39,6 @@ The tests cover:
 import pytest
 import httpx
 import os
-from datetime import datetime, timezone, timedelta
 
 from audiorating_backend.settings import settings
 
@@ -52,6 +51,7 @@ BASE_URL = f"{BASE_SCHEME}/" + settings.rootpath.strip("/")
 # ============================================================================
 # Smoke Tests for Endpoints
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_root_api_endpoint_reachable():
@@ -145,8 +145,7 @@ async def test_admin_stats_endpoint_structure():
 
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            url,
-            auth=(settings.admin_username, settings.admin_password)
+            url, auth=(settings.admin_username, settings.admin_password)
         )
 
     assert response.status_code == 200
@@ -170,8 +169,7 @@ async def test_admin_runtime_export_endpoint_structure():
 
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            url,
-            auth=(settings.admin_username, settings.admin_password)
+            url, auth=(settings.admin_username, settings.admin_password)
         )
 
     assert response.status_code == 200
@@ -200,8 +198,7 @@ async def test_admin_runtime_export_per_study_endpoint_structure():
 
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            url,
-            auth=(settings.admin_username, settings.admin_password)
+            url, auth=(settings.admin_username, settings.admin_password)
         )
 
     # Should either return 200 or 404 if study doesn't exist
@@ -224,8 +221,7 @@ async def test_admin_participants_endpoint_structure():
 
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            url,
-            auth=(settings.admin_username, settings.admin_password)
+            url, auth=(settings.admin_username, settings.admin_password)
         )
 
     # Should either return 200 or 404 if study doesn't exist
@@ -245,8 +241,7 @@ async def test_admin_dashboard_endpoint_returns_html():
 
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            url,
-            auth=(settings.admin_username, settings.admin_password)
+            url, auth=(settings.admin_username, settings.admin_password)
         )
 
     assert response.status_code == 200
@@ -264,8 +259,7 @@ async def test_admin_participant_management_endpoint_returns_html():
 
     async with httpx.AsyncClient() as client:
         response = await client.get(
-            url,
-            auth=(settings.admin_username, settings.admin_password)
+            url, auth=(settings.admin_username, settings.admin_password)
         )
 
     assert response.status_code == 200
@@ -276,6 +270,7 @@ async def test_admin_participant_management_endpoint_returns_html():
 # ============================================================================
 # Tests for Authorization and Error Handling
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_admin_endpoint_requires_authentication():

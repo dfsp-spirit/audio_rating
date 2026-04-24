@@ -52,7 +52,9 @@ async def test_admin_dashboard_handles_legacy_localized_dict_fields(monkeypatch)
     )
     song_link = SimpleNamespace(song_id="song-1", song_index=0)
     participant_link = SimpleNamespace(participant_id="participant-1")
-    participant = SimpleNamespace(id="participant-1", created_at=now - timedelta(hours=2))
+    participant = SimpleNamespace(
+        id="participant-1", created_at=now - timedelta(hours=2)
+    )
     rating = SimpleNamespace(
         rating_name="valence",
         timestamp=now - timedelta(hours=1),
@@ -91,7 +93,9 @@ async def test_admin_dashboard_handles_legacy_localized_dict_fields(monkeypatch)
             captured["context"] = context
             return "<html>ok</html>"
 
-    monkeypatch.setattr(api_module.templates, "get_template", lambda template_name: FakeTemplate())
+    monkeypatch.setattr(
+        api_module.templates, "get_template", lambda template_name: FakeTemplate()
+    )
 
     request = Request(
         {

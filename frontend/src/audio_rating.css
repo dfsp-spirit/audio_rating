@@ -15,7 +15,6 @@
   box-shadow: none;
 }
 
-
 /* Dimension buttons */
 .arw .arw-section-box {
   margin: 15px 0;
@@ -61,10 +60,12 @@
   color: #fff;
   border-color: #1e40af;
 }
-.arw .arw-dimension-buttons button:active { transform: translateY(1px); }
+.arw .arw-dimension-buttons button:active {
+  transform: translateY(1px);
+}
 
 .arw button:focus-visible,
-.arw input[type="range"]:focus-visible,
+.arw input[type='range']:focus-visible,
 .arw .arw-overlay:focus-visible {
   outline: 3px solid #2563eb;
   outline-offset: 2px;
@@ -95,7 +96,9 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.1s ease, visibility 0.1s ease;
+  transition:
+    opacity 0.1s ease,
+    visibility 0.1s ease;
 }
 
 .arw .arw-play::before,
@@ -113,7 +116,9 @@
   z-index: 1000;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.1s ease, visibility 0.1s ease;
+  transition:
+    opacity 0.1s ease,
+    visibility 0.1s ease;
 }
 
 .arw .arw-play:hover::after,
@@ -138,7 +143,9 @@
   background: var(--arw-bg);
   border: 1px solid var(--arw-border);
 }
-.arw .arw-waveform { position: relative; }
+.arw .arw-waveform {
+  position: relative;
+}
 .arw canvas.arw-overlay {
   position: absolute;
   top: 0;
@@ -183,11 +190,18 @@
 .arw .arw-controls button:hover:not(:disabled) {
   background: #e0e0e0;
 }
-.arw .arw-controls button:active { transform: translateY(1px); }
+.arw .arw-controls button:active {
+  transform: translateY(1px);
+}
 
 /* Slider row */
-.arw .arw-slider { width: 100%; margin-top: 0; }
-.arw .arw-slider input[type="range"] { width: 100%; }
+.arw .arw-slider {
+  width: 100%;
+  margin-top: 0;
+}
+.arw .arw-slider input[type='range'] {
+  width: 100%;
+}
 
 /* Audio controls */
 .arw .arw-audio-controls {
@@ -208,7 +222,9 @@
 .arw .arw-audio-controls button:hover:not(:disabled) {
   background: #e0e0e0;
 }
-.arw .arw-audio-controls button:active { transform: translateY(1px); }
+.arw .arw-audio-controls button:active {
+  transform: translateY(1px);
+}
 
 /* Info line */
 .arw .arw-info {
@@ -220,59 +236,59 @@
 /* volume controls */
 
 .arw-volume-control {
-    margin: 10px 0;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .arw-volume-slider {
-    width: 100px;
-    height: 5px;
-    -webkit-appearance: none;
-    background: #ddd;
-    border-radius: 5px;
-    outline: none;
+  width: 100px;
+  height: 5px;
+  -webkit-appearance: none;
+  background: #ddd;
+  border-radius: 5px;
+  outline: none;
 }
 
 .arw-volume-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 15px;
-    height: 15px;
-    border-radius: 50%;
-    background: #4a5568;
-    cursor: pointer;
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #4a5568;
+  cursor: pointer;
 }
 
 .arw-volume-slider::-moz-range-thumb {
-    width: 15px;
-    height: 15px;
-    border-radius: 50%;
-    background: #4a5568;
-    cursor: pointer;
-    border: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #4a5568;
+  cursor: pointer;
+  border: none;
 }
 
 /* zoom controls */
 
 .arw-zoom-controls {
-    display: flex;
-    gap: 5px;
-    margin: 10px 0;
+  display: flex;
+  gap: 5px;
+  margin: 10px 0;
 }
 
 .arw-zoom-controls button {
-    padding: 4px 8px;
-    font-size: 12px;
-    background: #f0f0f0;
-    border: 1px solid #ccc;
-    border-radius: 3px;
-    cursor: pointer;
+  padding: 4px 8px;
+  font-size: 12px;
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  cursor: pointer;
   transition: background-color 0.2s ease;
 }
 
 .arw-zoom-controls button:hover:not(:disabled) {
-    background: #e0e0e0;
+  background: #e0e0e0;
 }
 
 /* === Fix for unwanted WaveSurfer cursor / progress line === */

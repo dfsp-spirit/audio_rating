@@ -21,7 +21,9 @@ def parse_string_or_json_list(value: str | None, env_var_name: str) -> list[str]
         if not parsed:
             raise ValueError(f"{env_var_name} environment variable is not set.")
         if not all(isinstance(item, str) and item != "" for item in parsed):
-            raise ValueError(f"{env_var_name} must be a string or a JSON list of non-empty strings.")
+            raise ValueError(
+                f"{env_var_name} must be a string or a JSON list of non-empty strings."
+            )
         return parsed
 
     raise ValueError(f"{env_var_name} must be a string or a JSON list of strings.")

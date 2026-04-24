@@ -19,7 +19,9 @@ from audiorating_backend.models import (
 )
 
 
-def test_create_study_admin_endpoint_creates_study_with_relations(tmp_path, monkeypatch):
+def test_create_study_admin_endpoint_creates_study_with_relations(
+    tmp_path, monkeypatch
+):
     db_path = tmp_path / "test_create_study.db"
     engine = create_engine(
         f"sqlite:///{db_path}",
@@ -44,7 +46,10 @@ def test_create_study_admin_endpoint_creates_study_with_relations(tmp_path, monk
             {
                 "media_url": "audio_files/default/song_a.wav",
                 "display_name": {"en": "Song A", "de": "Lied A"},
-                "description": {"en": "Song A description", "de": "Lied A Beschreibung"},
+                "description": {
+                    "en": "Song A description",
+                    "de": "Lied A Beschreibung",
+                },
             }
         ],
         "rating_dimensions": [
@@ -54,7 +59,10 @@ def test_create_study_admin_endpoint_creates_study_with_relations(tmp_path, monk
                 "num_values": 7,
                 "minimal_value": 1,
                 "default_value": 4,
-                "description": {"en": "Valence description", "de": "Valenz Beschreibung"},
+                "description": {
+                    "en": "Valence description",
+                    "de": "Valenz Beschreibung",
+                },
             }
         ],
         "study_participant_ids": ["p1", "p2"],
@@ -80,22 +88,30 @@ def test_create_study_admin_endpoint_creates_study_with_relations(tmp_path, monk
         assert body["participant_links_count"] == 2
 
         with Session(engine) as session:
-            study = session.exec(select(Study).where(Study.name_short == "api_created_study")).first()
+            study = session.exec(
+                select(Study).where(Study.name_short == "api_created_study")
+            ).first()
             assert study is not None
             assert study.allow_unlisted_participants is False
             assert study.description == "English description"
 
-            song_link = session.exec(select(StudySongLink).where(StudySongLink.study_id == study.id)).first()
+            song_link = session.exec(
+                select(StudySongLink).where(StudySongLink.study_id == study.id)
+            ).first()
             assert song_link is not None
             assert song_link.song_index == 0
 
-            song = session.exec(select(Song).where(Song.id == song_link.song_id)).first()
+            song = session.exec(
+                select(Song).where(Song.id == song_link.song_id)
+            ).first()
             assert song is not None
             assert song.display_name == "Song A"
             assert song.description == "Song A description"
 
             dimension = session.exec(
-                select(StudyRatingDimension).where(StudyRatingDimension.study_id == study.id)
+                select(StudyRatingDimension).where(
+                    StudyRatingDimension.study_id == study.id
+                )
             ).first()
             assert dimension is not None
             assert dimension.dimension_title == "valence"
@@ -104,7 +120,9 @@ def test_create_study_admin_endpoint_creates_study_with_relations(tmp_path, monk
             assert dimension.description == "Valence description"
 
             links = session.exec(
-                select(StudyParticipantLink).where(StudyParticipantLink.study_id == study.id)
+                select(StudyParticipantLink).where(
+                    StudyParticipantLink.study_id == study.id
+                )
             ).all()
             assert len(links) == 2
 

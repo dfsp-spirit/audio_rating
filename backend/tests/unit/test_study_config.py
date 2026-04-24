@@ -13,14 +13,10 @@ class TestStudyConfigValidations:
         return {
             "name": "Test Study",
             "name_short": "test_study",
-            "songs_to_rate": [
-                {"media_url": "song1.wav", "display_name": "Song 1"}
-            ],
-            "rating_dimensions": [
-                {"dimension_title": "valence", "num_values": 8}
-            ],
+            "songs_to_rate": [{"media_url": "song1.wav", "display_name": "Song 1"}],
+            "rating_dimensions": [{"dimension_title": "valence", "num_values": 8}],
             "data_collection_start": "2024-01-01T00:00:00Z",
-            "data_collection_end": "2024-12-31T23:59:59Z"
+            "data_collection_end": "2024-12-31T23:59:59Z",
         }
 
     def test_valid_config(self, base_config):
@@ -46,7 +42,7 @@ class TestStudyConfigValidations:
         """Test duplicate media_url in songs_to_rate"""
         base_config["songs_to_rate"] = [
             {"media_url": "same.wav", "display_name": "Song 1"},
-            {"media_url": "same.wav", "display_name": "Song 2"}
+            {"media_url": "same.wav", "display_name": "Song 2"},
         ]
         with pytest.raises(ValueError, match="Duplicate media_url"):
             CfgFileStudyConfig(**base_config)
@@ -55,7 +51,7 @@ class TestStudyConfigValidations:
         """Test duplicate display_name in songs_to_rate"""
         base_config["songs_to_rate"] = [
             {"media_url": "song1.wav", "display_name": "Same Name"},
-            {"media_url": "song2.wav", "display_name": "Same Name"}
+            {"media_url": "song2.wav", "display_name": "Same Name"},
         ]
         with pytest.raises(ValueError, match="Duplicate display_name"):
             CfgFileStudyConfig(**base_config)
@@ -64,7 +60,7 @@ class TestStudyConfigValidations:
         """Test duplicate dimension_title in rating_dimensions"""
         base_config["rating_dimensions"] = [
             {"dimension_title": "valence", "num_values": 8},
-            {"dimension_title": "valence", "num_values": 5}
+            {"dimension_title": "valence", "num_values": 5},
         ]
         with pytest.raises(ValueError, match="Duplicate dimension_title"):
             CfgFileStudyConfig(**base_config)

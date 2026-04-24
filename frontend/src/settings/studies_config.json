@@ -4,19 +4,139 @@
       "name": "Default Study",
       "name_short": "default",
       "default_language": "en",
-      "description": { "en": "Default study for music aesthetics research", "de": "Standardstudie zur Erforschung der Musikästhetik", "es": "Estudio predeterminado para la investigación de la estética musical", "fr": "Étude par défaut pour la recherche sur l'esthétique musicale", "sv": "Standardstudie för forskning om musikestetik" },
-      "custom_text_instructions": { "en": "Please listen to each song and rate it on the following dimensions: Valence, Arousal, Enjoyment, and Is Cool. You can split the song into segments and rate each segment separately. Make sure to complete all ratings before submitting.", "de": "Bitte hören Sie sich jedes Lied an und bewerten Sie es anhand der folgenden Dimensionen: Valenz, Erregung, Genuss und Ist Cool. Sie können das Lied in Segmente aufteilen und jedes Segment separat bewerten. Stellen Sie sicher, dass Sie alle Bewertungen abgeschlossen haben, bevor Sie sie absenden.", "es": "Por favor, escuche cada canción y califíquela en las siguientes dimensiones: Valencia, Activación, Disfrute y Es Genial. Puede dividir la canción en segmentos y calificar cada segmento por separado. Asegúrese de completar todas las calificaciones antes de enviar.", "fr": "Veuillez écouter chaque chanson et l'évaluer selon les dimensions suivantes : Valence, Activation, Plaisir et Cool. Vous pouvez diviser la chanson en segments et évaluer chaque segment séparément. Assurez-vous de compléter toutes les évaluations avant de soumettre.", "sv": "Lyssna på varje låt och bedöm den utifrån följande dimensioner: Valens, Aktivering, Njutning och Är Cool. Du kan dela upp låten i segment och bedöma varje segment separat. Se till att slutföra alla bedömningar innan du skickar in." },
-      "custom_text_thank_you": { "en": "Thank you for participating in this study! Your ratings have been saved.", "de": "Vielen Dank für Ihre Teilnahme an dieser Studie! Ihre Bewertungen wurden gespeichert.", "es": "¡Gracias por participar en este estudio! Sus calificaciones se han guardado.", "fr": "Merci d'avoir participé à cette étude ! Vos évaluations ont été enregistrées.", "sv": "Tack för att du deltog i denna studie! Dina bedömningar har sparats." },
+      "description": {
+        "en": "Default study for music aesthetics research",
+        "de": "Standardstudie zur Erforschung der Musikästhetik",
+        "es": "Estudio predeterminado para la investigación de la estética musical",
+        "fr": "Étude par défaut pour la recherche sur l'esthétique musicale",
+        "sv": "Standardstudie för forskning om musikestetik"
+      },
+      "custom_text_instructions": {
+        "en": "Please listen to each song and rate it on the following dimensions: Valence, Arousal, Enjoyment, and Is Cool. You can split the song into segments and rate each segment separately. Make sure to complete all ratings before submitting.",
+        "de": "Bitte hören Sie sich jedes Lied an und bewerten Sie es anhand der folgenden Dimensionen: Valenz, Erregung, Genuss und Ist Cool. Sie können das Lied in Segmente aufteilen und jedes Segment separat bewerten. Stellen Sie sicher, dass Sie alle Bewertungen abgeschlossen haben, bevor Sie sie absenden.",
+        "es": "Por favor, escuche cada canción y califíquela en las siguientes dimensiones: Valencia, Activación, Disfrute y Es Genial. Puede dividir la canción en segmentos y calificar cada segmento por separado. Asegúrese de completar todas las calificaciones antes de enviar.",
+        "fr": "Veuillez écouter chaque chanson et l'évaluer selon les dimensions suivantes : Valence, Activation, Plaisir et Cool. Vous pouvez diviser la chanson en segments et évaluer chaque segment séparément. Assurez-vous de compléter toutes les évaluations avant de soumettre.",
+        "sv": "Lyssna på varje låt och bedöm den utifrån följande dimensioner: Valens, Aktivering, Njutning och Är Cool. Du kan dela upp låten i segment och bedöma varje segment separat. Se till att slutföra alla bedömningar innan du skickar in."
+      },
+      "custom_text_thank_you": {
+        "en": "Thank you for participating in this study! Your ratings have been saved.",
+        "de": "Vielen Dank für Ihre Teilnahme an dieser Studie! Ihre Bewertungen wurden gespeichert.",
+        "es": "¡Gracias por participar en este estudio! Sus calificaciones se han guardado.",
+        "fr": "Merci d'avoir participé à cette étude ! Vos évaluations ont été enregistrées.",
+        "sv": "Tack för att du deltog i denna studie! Dina bedömningar har sparats."
+      },
       "songs_to_rate": [
-          { "media_url": "audio_files/default/demo.wav", "display_name": { "en": "Demo Song", "de": "Demo-Song", "es": "Canción de Demostración", "fr": "Chanson Démo", "sv": "Demolåt" }, "description": { "en": "A short demo song for testing purposes.", "de": "Ein kurzes Demo-Lied zu Testzwecken.", "es": "Una canción de demostración corta para fines de prueba.", "fr": "Une courte chanson de démonstration à des fins de test.", "sv": "En kort demolåt för teständamål." } },
-          { "media_url": "audio_files/default/demo2.wav", "display_name": { "en": "Demo Song 2", "de": "Demo-Song 2", "es": "Canción de Demostración 2", "fr": "Chanson Démo 2", "sv": "Demolåt 2" }, "description": { "en": "Another demo song for testing purposes.", "de": "Ein weiteres Demo-Lied zu Testzwecken.", "es": "Otra canción de demostración para fines de prueba.", "fr": "Une autre chanson de démonstration à des fins de test.", "sv": "En annan demolåt för teständamål." } }
-        ],
+        {
+          "media_url": "audio_files/default/demo.wav",
+          "display_name": {
+            "en": "Demo Song",
+            "de": "Demo-Song",
+            "es": "Canción de Demostración",
+            "fr": "Chanson Démo",
+            "sv": "Demolåt"
+          },
+          "description": {
+            "en": "A short demo song for testing purposes.",
+            "de": "Ein kurzes Demo-Lied zu Testzwecken.",
+            "es": "Una canción de demostración corta para fines de prueba.",
+            "fr": "Une courte chanson de démonstration à des fins de test.",
+            "sv": "En kort demolåt för teständamål."
+          }
+        },
+        {
+          "media_url": "audio_files/default/demo2.wav",
+          "display_name": {
+            "en": "Demo Song 2",
+            "de": "Demo-Song 2",
+            "es": "Canción de Demostración 2",
+            "fr": "Chanson Démo 2",
+            "sv": "Demolåt 2"
+          },
+          "description": {
+            "en": "Another demo song for testing purposes.",
+            "de": "Ein weiteres Demo-Lied zu Testzwecken.",
+            "es": "Otra canción de demostración para fines de prueba.",
+            "fr": "Une autre chanson de démonstration à des fins de test.",
+            "sv": "En annan demolåt för teständamål."
+          }
+        }
+      ],
       "rating_dimensions": [
-          {"dimension_title": "valence", "display_name": { "en": "Valence", "de": "Valenz", "es": "Valencia", "fr": "Valence", "sv": "Valens" }, "num_values": 8, "description": { "en": "Measures how positive or negative the emotional tone of the audio feels.", "de": "Misst, wie positiv oder negativ der emotionale Ton des Audios wirkt.", "es": "Mide cuán positivo o negativo se percibe el tono emocional del audio.", "fr": "Mesure à quel point la tonalité émotionnelle de l'audio est perçue comme positive ou négative.", "sv": "Mäter hur positiv eller negativ den emotionella tonen i ljudet upplevs." }},
-          {"dimension_title": "arousal", "display_name": { "en": "Arousal", "de": "Erregung", "es": "Activación", "fr": "Activation", "sv": "Aktivering" }, "num_values": 5, "minimal_value": -2, "description": { "en": "Measures the level of energy or activation the audio evokes.", "de": "Misst das Energieniveau oder die Aktivierung, die das Audio hervorruft.", "es": "Mide el nivel de energía o activación que evoca el audio.", "fr": "Mesure le niveau d'énergie ou d'activation évoqué par l'audio.", "sv": "Mäter nivån av energi eller aktivering som ljudet framkallar." }},
-          {"dimension_title": "enjoyment", "display_name": { "en": "Enjoyment", "de": "Genuss", "es": "Disfrute", "fr": "Plaisir", "sv": "Njutning" }, "num_values": 10, "description": { "en": "Measures the personal enjoyment or liking of the audio.", "de": "Misst den persönlichen Genuss oder die Vorliebe für das Audio.", "es": "Mide el disfrute personal o grado de agrado del audio.", "fr": "Mesure le plaisir personnel ou l'appréciation de l'audio.", "sv": "Mäter personligt gillande eller uppskattning av ljudet." }},
-          {"dimension_title": "is_cool", "display_name": { "en": "Is Cool", "de": "Ist Cool", "es": "Es Genial", "fr": "Est Cool", "sv": "Är Cool" }, "num_values": 2, "minimal_value": 0, "description": { "en": "Measures whether the audio is perceived as cool or impressive.", "de": "Misst, ob das Audio als cool oder beeindruckend wahrgenommen wird.", "es": "Mide si el audio se percibe como genial o impresionante.", "fr": "Mesure si l'audio est perçu comme cool ou impressionnant.", "sv": "Mäter om ljudet uppfattas som coolt eller imponerande." }}
-        ],
+        {
+          "dimension_title": "valence",
+          "display_name": {
+            "en": "Valence",
+            "de": "Valenz",
+            "es": "Valencia",
+            "fr": "Valence",
+            "sv": "Valens"
+          },
+          "num_values": 8,
+          "description": {
+            "en": "Measures how positive or negative the emotional tone of the audio feels.",
+            "de": "Misst, wie positiv oder negativ der emotionale Ton des Audios wirkt.",
+            "es": "Mide cuán positivo o negativo se percibe el tono emocional del audio.",
+            "fr": "Mesure à quel point la tonalité émotionnelle de l'audio est perçue comme positive ou négative.",
+            "sv": "Mäter hur positiv eller negativ den emotionella tonen i ljudet upplevs."
+          }
+        },
+        {
+          "dimension_title": "arousal",
+          "display_name": {
+            "en": "Arousal",
+            "de": "Erregung",
+            "es": "Activación",
+            "fr": "Activation",
+            "sv": "Aktivering"
+          },
+          "num_values": 5,
+          "minimal_value": -2,
+          "description": {
+            "en": "Measures the level of energy or activation the audio evokes.",
+            "de": "Misst das Energieniveau oder die Aktivierung, die das Audio hervorruft.",
+            "es": "Mide el nivel de energía o activación que evoca el audio.",
+            "fr": "Mesure le niveau d'énergie ou d'activation évoqué par l'audio.",
+            "sv": "Mäter nivån av energi eller aktivering som ljudet framkallar."
+          }
+        },
+        {
+          "dimension_title": "enjoyment",
+          "display_name": {
+            "en": "Enjoyment",
+            "de": "Genuss",
+            "es": "Disfrute",
+            "fr": "Plaisir",
+            "sv": "Njutning"
+          },
+          "num_values": 10,
+          "description": {
+            "en": "Measures the personal enjoyment or liking of the audio.",
+            "de": "Misst den persönlichen Genuss oder die Vorliebe für das Audio.",
+            "es": "Mide el disfrute personal o grado de agrado del audio.",
+            "fr": "Mesure le plaisir personnel ou l'appréciation de l'audio.",
+            "sv": "Mäter personligt gillande eller uppskattning av ljudet."
+          }
+        },
+        {
+          "dimension_title": "is_cool",
+          "display_name": {
+            "en": "Is Cool",
+            "de": "Ist Cool",
+            "es": "Es Genial",
+            "fr": "Est Cool",
+            "sv": "Är Cool"
+          },
+          "num_values": 2,
+          "minimal_value": 0,
+          "description": {
+            "en": "Measures whether the audio is perceived as cool or impressive.",
+            "de": "Misst, ob das Audio als cool oder beeindruckend wahrgenommen wird.",
+            "es": "Mide si el audio se percibe como genial o impresionante.",
+            "fr": "Mesure si l'audio est perçu comme cool ou impressionnant.",
+            "sv": "Mäter om ljudet uppfattas som coolt eller imponerande."
+          }
+        }
+      ],
       "study_participant_ids": [],
       "allow_unlisted_participants": true,
       "data_collection_start": "2024-01-01T00:00:00Z",
@@ -26,21 +146,145 @@
       "name": "Custom study",
       "name_short": "custom_study1",
       "default_language": "en",
-      "description": { "en": "Study covering classic songs from the 70s and 80s", "de": "Studie über klassische Songs aus den 70er und 80er Jahren", "es": "Estudio sobre canciones clásicas de los años 70 y 80", "fr": "Étude couvrant des chansons classiques des années 70 et 80", "sv": "Studie om klassiska låtar från 70- och 80-talet" },
-      "custom_text_instructions": { "en": "Please listen to each song and rate it on the following dimensions: Valence, Arousal, Enjoyment, and Is Cool. You can split the song into segments and rate each segment separately. Make sure to complete all ratings before submitting.", "de": "Bitte hören Sie sich jedes Lied an und bewerten Sie es anhand der folgenden Dimensionen: Valenz, Erregung, Genuss und Ist Cool. Sie können das Lied in Segmente aufteilen und jedes Segment separat bewerten. Stellen Sie sicher, dass Sie alle Bewertungen abgeschlossen haben, bevor Sie sie absenden.", "es": "Por favor, escuche cada canción y califíquela en las siguientes dimensiones: Valencia, Activación, Disfrute y Es Genial. Puede dividir la canción en segmentos y calificar cada segmento por separado. Asegúrese de completar todas las calificaciones antes de enviar.", "fr": "Veuillez écouter chaque chanson et l'évaluer selon les dimensions suivantes : Valence, Activation, Plaisir et Cool. Vous pouvez diviser la chanson en segments et évaluer chaque segment séparément. Assurez-vous de compléter toutes les évaluations avant de soumettre.", "sv": "Lyssna på varje låt och bedöm den utifrån följande dimensioner: Valens, Aktivering, Njutning och Är Cool. Du kan dela upp låten i segment och bedöma varje segment separat. Se till att slutföra alla bedömningar innan du skickar in." },
-      "custom_text_thank_you": { "en": "Thank you for participating in this study! Your ratings have been saved.", "de": "Vielen Dank für Ihre Teilnahme an dieser Studie! Ihre Bewertungen wurden gespeichert.", "es": "¡Gracias por participar en este estudio! Sus calificaciones se han guardado.", "fr": "Merci d'avoir participé à cette étude ! Vos évaluations ont été enregistrées.", "sv": "Tack för att du deltog i denna studie! Dina bedömningar har sparats." },
+      "description": {
+        "en": "Study covering classic songs from the 70s and 80s",
+        "de": "Studie über klassische Songs aus den 70er und 80er Jahren",
+        "es": "Estudio sobre canciones clásicas de los años 70 y 80",
+        "fr": "Étude couvrant des chansons classiques des années 70 et 80",
+        "sv": "Studie om klassiska låtar från 70- och 80-talet"
+      },
+      "custom_text_instructions": {
+        "en": "Please listen to each song and rate it on the following dimensions: Valence, Arousal, Enjoyment, and Is Cool. You can split the song into segments and rate each segment separately. Make sure to complete all ratings before submitting.",
+        "de": "Bitte hören Sie sich jedes Lied an und bewerten Sie es anhand der folgenden Dimensionen: Valenz, Erregung, Genuss und Ist Cool. Sie können das Lied in Segmente aufteilen und jedes Segment separat bewerten. Stellen Sie sicher, dass Sie alle Bewertungen abgeschlossen haben, bevor Sie sie absenden.",
+        "es": "Por favor, escuche cada canción y califíquela en las siguientes dimensiones: Valencia, Activación, Disfrute y Es Genial. Puede dividir la canción en segmentos y calificar cada segmento por separado. Asegúrese de completar todas las calificaciones antes de enviar.",
+        "fr": "Veuillez écouter chaque chanson et l'évaluer selon les dimensions suivantes : Valence, Activation, Plaisir et Cool. Vous pouvez diviser la chanson en segments et évaluer chaque segment séparément. Assurez-vous de compléter toutes les évaluations avant de soumettre.",
+        "sv": "Lyssna på varje låt och bedöm den utifrån följande dimensioner: Valens, Aktivering, Njutning och Är Cool. Du kan dela upp låten i segment och bedöma varje segment separat. Se till att slutföra alla bedömningar innan du skickar in."
+      },
+      "custom_text_thank_you": {
+        "en": "Thank you for participating in this study! Your ratings have been saved.",
+        "de": "Vielen Dank für Ihre Teilnahme an dieser Studie! Ihre Bewertungen wurden gespeichert.",
+        "es": "¡Gracias por participar en este estudio! Sus calificaciones se han guardado.",
+        "fr": "Merci d'avoir participé à cette étude ! Vos évaluations ont été enregistrées.",
+        "sv": "Tack för att du deltog i denna studie! Dina bedömningar har sparats."
+      },
       "songs_to_rate": [
-          { "media_url": "audio_files/custom_study1/eyeofthetiger.wav", "display_name": { "en": "Eye of the Tiger", "de": "Eye of the Tiger", "es": "Eye of the Tiger", "fr": "Eye of the Tiger", "sv": "Eye of the Tiger" } },
-          { "media_url": "audio_files/custom_study1/jet_generation.wav", "display_name": { "en": "Jet Generation by Guitar Wolf", "de": "Jet Generation von Guitar Wolf", "es": "Jet Generation de Guitar Wolf", "fr": "Jet Generation par Guitar Wolf", "sv": "Jet Generation av Guitar Wolf" } },
-          { "media_url": "audio_files/custom_study1/bohemianrhapsody.wav", "display_name": { "en": "Bohemian Rhapsody", "de": "Bohemian Rhapsody", "es": "Bohemian Rhapsody", "fr": "Bohemian Rhapsody", "sv": "Bohemian Rhapsody" } },
-          { "media_url": "audio_files/custom_study1/hotelcalifornia.wav", "display_name": { "en": "Hotel California", "de": "Hotel California", "es": "Hotel California", "fr": "Hotel California", "sv": "Hotel California" } }
-        ],
+        {
+          "media_url": "audio_files/custom_study1/eyeofthetiger.wav",
+          "display_name": {
+            "en": "Eye of the Tiger",
+            "de": "Eye of the Tiger",
+            "es": "Eye of the Tiger",
+            "fr": "Eye of the Tiger",
+            "sv": "Eye of the Tiger"
+          }
+        },
+        {
+          "media_url": "audio_files/custom_study1/jet_generation.wav",
+          "display_name": {
+            "en": "Jet Generation by Guitar Wolf",
+            "de": "Jet Generation von Guitar Wolf",
+            "es": "Jet Generation de Guitar Wolf",
+            "fr": "Jet Generation par Guitar Wolf",
+            "sv": "Jet Generation av Guitar Wolf"
+          }
+        },
+        {
+          "media_url": "audio_files/custom_study1/bohemianrhapsody.wav",
+          "display_name": {
+            "en": "Bohemian Rhapsody",
+            "de": "Bohemian Rhapsody",
+            "es": "Bohemian Rhapsody",
+            "fr": "Bohemian Rhapsody",
+            "sv": "Bohemian Rhapsody"
+          }
+        },
+        {
+          "media_url": "audio_files/custom_study1/hotelcalifornia.wav",
+          "display_name": {
+            "en": "Hotel California",
+            "de": "Hotel California",
+            "es": "Hotel California",
+            "fr": "Hotel California",
+            "sv": "Hotel California"
+          }
+        }
+      ],
       "rating_dimensions": [
-          {"dimension_title": "valence", "display_name": { "en": "Valence", "de": "Valenz", "es": "Valencia", "fr": "Valence", "sv": "Valens" }, "num_values": 8, "description": { "en": "Measures how positive or negative the emotional tone of the audio feels.", "de": "Misst, wie positiv oder negativ der emotionale Ton des Audios wirkt.", "es": "Mide cuán positivo o negativo se percibe el tono emocional del audio.", "fr": "Mesure à quel point la tonalité émotionnelle de l'audio est perçue comme positive ou négative.", "sv": "Mäter hur positiv eller negativ den emotionella tonen i ljudet upplevs." }},
-          {"dimension_title": "arousal", "display_name": { "en": "Arousal", "de": "Erregung", "es": "Activación", "fr": "Activation", "sv": "Aktivering" }, "num_values": 5, "minimal_value": -2, "description": { "en": "Measures the level of energy or activation the audio evokes.", "de": "Misst das Energieniveau oder die Aktivierung, die das Audio hervorruft.", "es": "Mide el nivel de energía o activación que evoca el audio.", "fr": "Mesure le niveau d'énergie ou d'activation évoqué par l'audio.", "sv": "Mäter nivån av energi eller aktivering som ljudet framkallar." }},
-          {"dimension_title": "enjoyment", "display_name": { "en": "Enjoyment", "de": "Genuss", "es": "Disfrute", "fr": "Plaisir", "sv": "Njutning" }, "num_values": 10, "description": { "en": "Measures the personal enjoyment or liking of the audio.", "de": "Misst den persönlichen Genuss oder die Vorliebe für das Audio.", "es": "Mide el disfrute personal o grado de agrado del audio.", "fr": "Mesure le plaisir personnel ou l'appréciation de l'audio.", "sv": "Mäter personligt gillande eller uppskattning av ljudet." }},
-          {"dimension_title": "is_cool", "display_name": { "en": "Is Cool", "de": "Ist Cool", "es": "Es Genial", "fr": "Est Cool", "sv": "Är Cool" }, "num_values": 2, "minimal_value": 0, "description": { "en": "Measures whether the audio is perceived as cool or impressive.", "de": "Misst, ob das Audio als cool oder beeindruckend wahrgenommen wird.", "es": "Mide si el audio se percibe como genial o impresionante.", "fr": "Mesure si l'audio est perçu comme cool ou impressionnant.", "sv": "Mäter om ljudet uppfattas som coolt eller imponerande." } }
-        ],
+        {
+          "dimension_title": "valence",
+          "display_name": {
+            "en": "Valence",
+            "de": "Valenz",
+            "es": "Valencia",
+            "fr": "Valence",
+            "sv": "Valens"
+          },
+          "num_values": 8,
+          "description": {
+            "en": "Measures how positive or negative the emotional tone of the audio feels.",
+            "de": "Misst, wie positiv oder negativ der emotionale Ton des Audios wirkt.",
+            "es": "Mide cuán positivo o negativo se percibe el tono emocional del audio.",
+            "fr": "Mesure à quel point la tonalité émotionnelle de l'audio est perçue comme positive ou négative.",
+            "sv": "Mäter hur positiv eller negativ den emotionella tonen i ljudet upplevs."
+          }
+        },
+        {
+          "dimension_title": "arousal",
+          "display_name": {
+            "en": "Arousal",
+            "de": "Erregung",
+            "es": "Activación",
+            "fr": "Activation",
+            "sv": "Aktivering"
+          },
+          "num_values": 5,
+          "minimal_value": -2,
+          "description": {
+            "en": "Measures the level of energy or activation the audio evokes.",
+            "de": "Misst das Energieniveau oder die Aktivierung, die das Audio hervorruft.",
+            "es": "Mide el nivel de energía o activación que evoca el audio.",
+            "fr": "Mesure le niveau d'énergie ou d'activation évoqué par l'audio.",
+            "sv": "Mäter nivån av energi eller aktivering som ljudet framkallar."
+          }
+        },
+        {
+          "dimension_title": "enjoyment",
+          "display_name": {
+            "en": "Enjoyment",
+            "de": "Genuss",
+            "es": "Disfrute",
+            "fr": "Plaisir",
+            "sv": "Njutning"
+          },
+          "num_values": 10,
+          "description": {
+            "en": "Measures the personal enjoyment or liking of the audio.",
+            "de": "Misst den persönlichen Genuss oder die Vorliebe für das Audio.",
+            "es": "Mide el disfrute personal o grado de agrado del audio.",
+            "fr": "Mesure le plaisir personnel ou l'appréciation de l'audio.",
+            "sv": "Mäter personligt gillande eller uppskattning av ljudet."
+          }
+        },
+        {
+          "dimension_title": "is_cool",
+          "display_name": {
+            "en": "Is Cool",
+            "de": "Ist Cool",
+            "es": "Es Genial",
+            "fr": "Est Cool",
+            "sv": "Är Cool"
+          },
+          "num_values": 2,
+          "minimal_value": 0,
+          "description": {
+            "en": "Measures whether the audio is perceived as cool or impressive.",
+            "de": "Misst, ob das Audio als cool oder beeindruckend wahrgenommen wird.",
+            "es": "Mide si el audio se percibe como genial o impresionante.",
+            "fr": "Mesure si l'audio est perçu comme cool ou impressionnant.",
+            "sv": "Mäter om ljudet uppfattas som coolt eller imponerande."
+          }
+        }
+      ],
       "study_participant_ids": ["bernddasbrot", "annasmith", "john_doe"],
       "allow_unlisted_participants": false,
       "data_collection_start": "2024-01-01T00:00:00Z",

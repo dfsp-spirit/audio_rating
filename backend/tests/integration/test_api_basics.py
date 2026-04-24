@@ -10,7 +10,9 @@ from audiorating_backend.settings import settings
 # Get the base URL from environment (default to CI Nginx port)
 # In your CI, you will set BASE_URL=http://localhost:3000/ar_backend
 BASE_SCHEME = os.getenv("AR_BASE_SCHEME", "http://localhost:3000")
-BASE_URL = f"{BASE_SCHEME}/" + settings.rootpath.strip("/")  # Ensure no leading or trailing slash
+BASE_URL = f"{BASE_SCHEME}/" + settings.rootpath.strip(
+    "/"
+)  # Ensure no leading or trailing slash
 
 
 @pytest.mark.asyncio
@@ -21,7 +23,7 @@ async def test_api_is_reachable_through_proxy_with_basepath():
     """
     # Construct the full URL
     url = f"{BASE_URL}/api"
-    #print(f"Trying to reach backend at: {url} (rootpath is set to: '{settings.rootpath}')")
+    # print(f"Trying to reach backend at: {url} (rootpath is set to: '{settings.rootpath}')")
 
     async with httpx.AsyncClient() as client:
         response = await client.get(url)
@@ -31,7 +33,7 @@ async def test_api_is_reachable_through_proxy_with_basepath():
     data = response.json()
     assert "message" in data
     assert "is running" in data["message"]
-    #print(f"Successfully reached proxy at: {url} (rootpath is set to: '{settings.rootpath}')")
+    # print(f"Successfully reached proxy at: {url} (rootpath is set to: '{settings.rootpath}')")
 
 
 @pytest.mark.asyncio
@@ -45,14 +47,18 @@ async def test_admin_interface_reachable_through_proxy_with_auth():
 
     async with httpx.AsyncClient() as client:
         # Pass the auth tuple: (username, password)
-        response = await client.get(url, auth=(settings.admin_username, settings.admin_password))
+        response = await client.get(
+            url, auth=(settings.admin_username, settings.admin_password)
+        )
 
     # Assertions
     # We expect 200 for a successful authenticated request
     assert response.status_code == 200, f"Expected 200, got {response.status_code}"
 
     # We expect to receive HTML page content for the admin interface
-    assert "text/html" in response.headers.get("Content-Type", ""), "Expected HTML content"
+    assert "text/html" in response.headers.get(
+        "Content-Type", ""
+    ), "Expected HTML content"
 
 
 @pytest.mark.asyncio
@@ -116,7 +122,9 @@ async def test_admin_stats_endpoint_returns_expected_top_level_fields():
     url = f"{BASE_URL}/admin/api/stats"
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(url, auth=(settings.admin_username, settings.admin_password))
+        response = await client.get(
+            url, auth=(settings.admin_username, settings.admin_password)
+        )
 
     assert response.status_code == 200
     data = response.json()
@@ -148,7 +156,9 @@ async def test_admin_runtime_studies_export_returns_expected_top_level_shape():
     url = f"{BASE_URL}/api/admin/export/studies-runtime-config"
 
     async with httpx.AsyncClient() as client:
-        response = await client.get(url, auth=(settings.admin_username, settings.admin_password))
+        response = await client.get(
+            url, auth=(settings.admin_username, settings.admin_password)
+        )
 
     assert response.status_code == 200
     assert "attachment; filename=" in response.headers.get("Content-Disposition", "")
@@ -179,7 +189,9 @@ async def test_admin_can_update_study_collection_window_and_restore():
     stats_url = f"{BASE_URL}/admin/api/stats"
 
     async with httpx.AsyncClient() as client:
-        stats_response = await client.get(stats_url, auth=(settings.admin_username, settings.admin_password))
+        stats_response = await client.get(
+            stats_url, auth=(settings.admin_username, settings.admin_password)
+        )
         assert stats_response.status_code == 200
         stats_data = stats_response.json()
 
@@ -196,7 +208,9 @@ async def test_admin_can_update_study_collection_window_and_restore():
         new_end = (parsed_end + timedelta(days=1)).astimezone(timezone.utc)
         new_end_iso = new_end.isoformat().replace("+00:00", "Z")
 
-        update_url = f"{BASE_URL}/api/admin/studies/{study_name_short}/collection-window"
+        update_url = (
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/collection-window"
+        )
 
         try:
             update_response = await client.patch(
@@ -211,7 +225,9 @@ async def test_admin_can_update_study_collection_window_and_restore():
             updated_end = datetime.fromisoformat(
                 payload["updated"]["data_collection_end"].replace("Z", "+00:00")
             ).astimezone(timezone.utc)
-            expected_end = datetime.fromisoformat(new_end_iso.replace("Z", "+00:00")).astimezone(timezone.utc)
+            expected_end = datetime.fromisoformat(
+                new_end_iso.replace("Z", "+00:00")
+            ).astimezone(timezone.utc)
             assert updated_end == expected_end
         finally:
             await client.patch(

@@ -7,10 +7,10 @@ from pydantic import ValidationError, BaseModel
 from fastapi.exceptions import RequestValidationError
 import logging
 import uuid
+import sys
 from typing import List, Optional, Tuple
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import csv
-import json
 import io
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
@@ -23,17 +23,35 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, FileResponse
 from sqlalchemy.sql import func
 from pathlib import Path
-from fastapi.staticfiles import StaticFiles
-from fastapi import Header, Query
-from typing import Dict, List
+from typing import Dict
 from sqlalchemy import delete
 from .utils import utc_now
-from fastapi import Header, Query
-from typing import Dict, List
-from sqlalchemy import delete
-from pydantic import BaseModel
-from typing import List, Optional, Dict
-import logging
+from .logging_config import setup_logging, get_admin_audit_logger
+from .settings import settings
+from .models import (
+    Participant,
+    Study,
+    Song,
+    Rating,
+    StudyParticipantLink,
+    StudySongLink,
+    StudyRatingDimension,
+    RatingSegment,
+    RatingSegmentBase,
+)
+from .database import get_session, create_db_and_tables
+from .parsers.studies_config import (
+    CfgFileStudyConfig,
+    load_studies_config,
+    resolve_localized_text,
+)
+from pydantic import field_validator
+import audiorating_backend
+
+
+# Add with other imports at the top
+import argparse
+from .database import engine
 
 
 security = HTTPBasic()
@@ -44,35 +62,33 @@ templates = Jinja2Templates(directory=str(current_dir / "templates"))
 static_dir = Path(__file__).parent / "static"
 
 
-
-from .logging_config import setup_logging, get_admin_audit_logger
 setup_logging()
 logger = logging.getLogger(__name__)
 admin_audit_logger = get_admin_audit_logger()
 
-from .settings import settings
-from .models import Participant, Study, Song, Rating, StudyParticipantLink, StudySongLink, StudyRatingDimension, RatingSegment, RatingSegmentBase
-from .database import get_session, create_db_and_tables
-from .parsers.studies_config import CfgFileStudyConfig, load_studies_config, resolve_localized_text
-from pydantic import field_validator
-
-
-# Add with other imports at the top
-import argparse
-from sqlmodel import Session, select, delete
-from .database import engine
-
 # Define command line arguments for out app (not fastapi/uvicorn): you would run it like:
 #   uv run python -m audiorating_backend.api --drop-study "study_name_short_to_delete"
 parser = argparse.ArgumentParser(description="Audiorating Backend API", add_help=False)
-parser.add_argument("--drop-study", type=str, metavar="STUDY_SHORT_NAME",
-                    help="rop all data for a specific study and exit. Use with caution, this will delete all ratings, segments, and study-specific links for the specified study, but will keep songs and participants (but not their links to the study). The argument is the 'name_short' of the study you want to delete, e.g., --drop-study 'pilot_study'.")
+parser.add_argument(
+    "--drop-study",
+    type=str,
+    metavar="STUDY_SHORT_NAME",
+    help="rop all data for a specific study and exit. Use with caution, this will delete all ratings, segments, and study-specific links for the specified study, but will keep songs and participants (but not their links to the study). The argument is the 'name_short' of the study you want to delete, e.g., --drop-study 'pilot_study'.",
+)
 # Create a mutually exclusive group for the frontend check: this allows checking whether the audio files configured actually exist on disk in the frontend dir.
-frontend_group = parser.add_argument_group('frontend audio check options')
-frontend_group.add_argument("--check-frontend-audio-files", type=str, metavar="FRONTEND_DIR",
-                            help="Check audio files in given frontend directory on disk")
-frontend_group.add_argument("--studies-config-json-file", type=str, metavar="CONFIG_FILE",
-                            help="Configuration file containing paths of the audio files for frontend audio check (requires --check-frontend-audio-files)")
+frontend_group = parser.add_argument_group("frontend audio check options")
+frontend_group.add_argument(
+    "--check-frontend-audio-files",
+    type=str,
+    metavar="FRONTEND_DIR",
+    help="Check audio files in given frontend directory on disk",
+)
+frontend_group.add_argument(
+    "--studies-config-json-file",
+    type=str,
+    metavar="CONFIG_FILE",
+    help="Configuration file containing paths of the audio files for frontend audio check (requires --check-frontend-audio-files)",
+)
 # Parse only known arguments to avoid interfering with uvicorn
 args, unknown = parser.parse_known_args()
 
@@ -87,12 +103,14 @@ def audit_admin_action(admin_username: str, action_text: str) -> None:
     """Write a high-level admin action entry to the dedicated audit log."""
     admin_audit_logger.info("Admin '%s' %s", admin_username, action_text)
 
+
 class RatingSubmitRequest(BaseModel):
     """Request body for submitting ratings - Pure API schema, not a database model"""
+
     timestamp: datetime
     ratings: Dict[str, List[RatingSegmentBase]]
 
-    @field_validator('timestamp')
+    @field_validator("timestamp")
     @classmethod
     def validate_timestamp(cls, v: datetime) -> datetime:
         """Ensure timestamp is timezone-aware and in UTC"""
@@ -110,17 +128,22 @@ def drop_study_data(study_name_short: str):
         ).first()
 
         if not study:
-            logger.warning(f"Study '{study_name_short}' not found, cannot delete data for this study. Ignoring --drop-study argument.")
+            logger.warning(
+                f"Study '{study_name_short}' not found, cannot delete data for this study. Ignoring --drop-study argument."
+            )
             return
 
-        logger.info(f"Found study '{study_name_short}' (ID: {study.id}). Deleting related data...")
+        logger.info(
+            f"Found study '{study_name_short}' (ID: {study.id}). Deleting related data..."
+        )
 
         # Delete rating segments for this study
         segments_deleted = session.exec(
-            delete(RatingSegment)
-            .where(RatingSegment.rating_id.in_(
-                select(Rating.id).where(Rating.study_id == study.id)
-            ))
+            delete(RatingSegment).where(
+                RatingSegment.rating_id.in_(
+                    select(Rating.id).where(Rating.study_id == study.id)
+                )
+            )
         ).rowcount
 
         # Delete ratings for this study
@@ -134,11 +157,15 @@ def drop_study_data(study_name_short: str):
         ).rowcount
 
         participant_links_deleted = session.exec(
-            delete(StudyParticipantLink).where(StudyParticipantLink.study_id == study.id)
+            delete(StudyParticipantLink).where(
+                StudyParticipantLink.study_id == study.id
+            )
         ).rowcount
 
         rating_dims_deleted = session.exec(
-            delete(StudyRatingDimension).where(StudyRatingDimension.study_id == study.id)
+            delete(StudyRatingDimension).where(
+                StudyRatingDimension.study_id == study.id
+            )
         ).rowcount
 
         # Finally, delete the study itself
@@ -156,14 +183,16 @@ def drop_study_data(study_name_short: str):
 
 
 # get version from __init__.py
-import audiorating_backend
+
+
 ar_version = audiorating_backend.__version__
 
-import sys
+
 if _cli_args.drop_study:
     print(f"Dropping data for study: {_cli_args.drop_study}")
     # We need to ensure database engine is initialized
     from .database import engine
+
     # Call the function immediately
     drop_study_data(_cli_args.drop_study)
     # Exit
@@ -171,28 +200,38 @@ if _cli_args.drop_study:
 
 if _cli_args.check_frontend_audio_files:
     from .frontend_audio_check import check_frontend_audio_files
-    check_frontend_audio_files(_cli_args.check_frontend_audio_files, _cli_args.studies_config_json_file)
+
+    check_frontend_audio_files(
+        _cli_args.check_frontend_audio_files, _cli_args.studies_config_json_file
+    )
     sys.exit(0)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logger.info(f"AR Backend version {ar_version} starting with allowed origins: {settings.allowed_origins}")
+    logger.info(
+        f"AR Backend version {ar_version} starting with allowed origins: {settings.allowed_origins}"
+    )
     if settings.debug:
-        print(f"Debug mode enabled.")
-
+        print("Debug mode enabled.")
 
     logger.info("Running FastAPI on_startup tasks...")
 
     create_db_and_tables()
 
-    yield   # running
+    yield  # running
 
     # This line is reached only at shutdown
     logger.info(f"AR version {ar_version} Backend shutting down")
 
 
-app = FastAPI(title="Audiorating (AR) API", version=ar_version, root_path=settings.rootpath, lifespan=lifespan)
+app = FastAPI(
+    title="Audiorating (AR) API",
+    version=ar_version,
+    root_path=settings.rootpath,
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -200,9 +239,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Operation"] # custom header to tell frontend on submit if the entry was created or updated.
+    expose_headers=[
+        "X-Operation"
+    ],  # custom header to tell frontend on submit if the entry was created or updated.
 )
-
 
 
 @app.get("/favicon.ico", include_in_schema=False)
@@ -212,7 +252,10 @@ async def favicon():
         return FileResponse(favicon_path)
     return Response(status_code=204)
 
-def verify_admin(request: Request, credentials: HTTPBasicCredentials = Depends(security)):
+
+def verify_admin(
+    request: Request, credentials: HTTPBasicCredentials = Depends(security)
+):
     is_valid_admin = any(
         secrets.compare_digest(credentials.username, username)
         and secrets.compare_digest(credentials.password, password)
@@ -220,7 +263,9 @@ def verify_admin(request: Request, credentials: HTTPBasicCredentials = Depends(s
     )
 
     if not is_valid_admin:
-        logger.info(f"Failed admin authentication attempt for user '{credentials.username}'")
+        logger.info(
+            f"Failed admin authentication attempt for user '{credentials.username}'"
+        )
         admin_audit_logger.warning(
             "Failed admin authentication for user '%s' on %s %s",
             credentials.username,
@@ -242,7 +287,6 @@ def verify_admin(request: Request, credentials: HTTPBasicCredentials = Depends(s
     )
 
     return credentials.username
-
 
 
 @app.exception_handler(Exception)
@@ -270,8 +314,8 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={
             "detail": "Internal server error",
             "error_id": error_id,
-            "message": "Something went wrong on our end"
-        }
+            "message": "Something went wrong on our end",
+        },
     )
 
     # Get the origin from the request
@@ -284,7 +328,10 @@ async def global_exception_handler(request: Request, exc: Exception):
         try:
             parsed = urlparse(origin)
             return parsed.hostname in ["localhost", "127.0.0.1", "::1"]
-        except:
+        except Exception as e:
+            logger.error(
+                f"Error parsing origin '{origin}': assuming not localhost. Exception: {e}"
+            )
             return False
 
     # Check if the origin is in our configured allowed origins
@@ -300,17 +347,21 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # Add this exception handler for request validation errors
 @app.exception_handler(RequestValidationError)
-async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
+async def request_validation_exception_handler(
+    request: Request, exc: RequestValidationError
+):
     error_id = str(uuid.uuid4())
 
     # Log detailed error information server-side
     error_details = []
     for error in exc.errors():
-        error_details.append({
-            "field": " -> ".join(str(loc) for loc in error["loc"]),
-            "message": error["msg"],
-            "type": error["type"]
-        })
+        error_details.append(
+            {
+                "field": " -> ".join(str(loc) for loc in error["loc"]),
+                "message": error["msg"],
+                "type": error["type"],
+            }
+        )
 
     logger.error(
         f"Request Validation error ID {error_id}: "
@@ -325,9 +376,10 @@ async def request_validation_exception_handler(request: Request, exc: RequestVal
         content={
             "detail": "Invalid request data",
             "error_id": error_id,
-            "message": "Please check your request data format and values"
-        }
+            "message": "Please check your request data format and values",
+        },
     )
+
 
 @app.exception_handler(ValidationError)
 async def validation_exception_handler(request: Request, exc: ValidationError):
@@ -337,11 +389,13 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
     # Log detailed error information server-side
     error_details = []
     for error in exc.errors():
-        error_details.append({
-            "field": " -> ".join(str(loc) for loc in error["loc"]),
-            "message": error["msg"],
-            "type": error["type"]
-        })
+        error_details.append(
+            {
+                "field": " -> ".join(str(loc) for loc in error["loc"]),
+                "message": error["msg"],
+                "type": error["type"],
+            }
+        )
 
     logger.error(
         f"Validation error ID {error_id}: "
@@ -356,8 +410,8 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
         content={
             "detail": "Invalid request data",
             "error_id": error_id,  # Client can reference this if needed
-            "message": "Please check your request data format and values"
-        }
+            "message": "Please check your request data format and values",
+        },
     )
 
 
@@ -366,13 +420,15 @@ def root():
     return {"message": "AR API is running"}
 
 
-@app.post("/api/participants/{participant_id}/studies/{study_name_short}/songs/{song_index}/ratings")
+@app.post(
+    "/api/participants/{participant_id}/studies/{study_name_short}/songs/{song_index}/ratings"
+)
 async def submit_rating_restful(
     participant_id: str,  # Now a path parameter
     study_name_short: str,
     song_index: int,
     rating_request: RatingSubmitRequest,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
 ):
     """
     Submit ratings for a specific study, song, and participant.
@@ -391,8 +447,7 @@ async def submit_rating_restful(
 
         if not study:
             raise HTTPException(
-                status_code=404,
-                detail=f"Study '{study_name_short}' not found"
+                status_code=404, detail=f"Study '{study_name_short}' not found"
             )
 
         # Validate study dates
@@ -400,12 +455,12 @@ async def submit_rating_restful(
         if now < study.data_collection_start:
             raise HTTPException(
                 status_code=403,
-                detail=f"Study hasn't started yet (starts {study.data_collection_start.isoformat()})"
+                detail=f"Study hasn't started yet (starts {study.data_collection_start.isoformat()})",
             )
         if now > study.data_collection_end:
             raise HTTPException(
                 status_code=403,
-                detail=f"Study has ended (ended {study.data_collection_end.isoformat()})"
+                detail=f"Study has ended (ended {study.data_collection_end.isoformat()})",
             )
 
         # Get or create participant
@@ -423,13 +478,12 @@ async def submit_rating_restful(
             link_exists = session.exec(
                 select(StudyParticipantLink).where(
                     StudyParticipantLink.study_id == study.id,
-                    StudyParticipantLink.participant_id == participant.id
+                    StudyParticipantLink.participant_id == participant.id,
                 )
             ).first()
             if not link_exists:
                 raise HTTPException(
-                    status_code=403,
-                    detail="Participant not authorized for this study"
+                    status_code=403, detail="Participant not authorized for this study"
                 )
 
         # Get song by index in study
@@ -438,14 +492,14 @@ async def submit_rating_restful(
             .join(Song, StudySongLink.song_id == Song.id)
             .where(
                 StudySongLink.study_id == study.id,
-                StudySongLink.song_index == song_index
+                StudySongLink.song_index == song_index,
             )
         ).first()
 
         if not song_link:
             raise HTTPException(
                 status_code=404,
-                detail=f"Song with index {song_index} not found in study '{study_name_short}'"
+                detail=f"Song with index {song_index} not found in study '{study_name_short}'",
             )
 
         song = song_link[1]  # Get the Song object
@@ -461,7 +515,7 @@ async def submit_rating_restful(
                     Rating.participant_id == participant.id,
                     Rating.study_id == study.id,
                     Rating.song_id == song.id,
-                    Rating.rating_name == rating_name
+                    Rating.rating_name == rating_name,
                 )
             ).first()
 
@@ -478,7 +532,7 @@ async def submit_rating_restful(
                     study_id=study.id,
                     song_id=song.id,
                     rating_name=rating_name,
-                    timestamp=rating_request.timestamp
+                    timestamp=rating_request.timestamp,
                 )
                 session.add(rating)
                 rating_count += 1
@@ -494,12 +548,14 @@ async def submit_rating_restful(
                     start_time=segment_data.start,
                     end_time=segment_data.end,
                     value=segment_data.value,
-                    segment_order=segment_order
+                    segment_order=segment_order,
                 )
                 session.add(segment)
                 segment_count += 1
 
-            logger.info(f"{operation.capitalize()} rating '{rating_name}' with {len(segments)} segments")
+            logger.info(
+                f"{operation.capitalize()} rating '{rating_name}' with {len(segments)} segments"
+            )
 
         session.commit()
 
@@ -519,9 +575,9 @@ async def submit_rating_restful(
                 "ratings_created": rating_count,
                 "ratings_updated": len(rating_request.ratings) - rating_count,
                 "segments_saved": segment_count,
-                "timestamp": rating_request.timestamp.isoformat()
+                "timestamp": rating_request.timestamp.isoformat(),
             },
-            headers=response_headers
+            headers=response_headers,
         )
 
     except HTTPException:
@@ -529,19 +585,17 @@ async def submit_rating_restful(
     except Exception as e:
         session.rollback()
         logger.error(f"Rating submission error: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
-
-@app.get("/api/participants/{participant_id}/studies/{study_name_short}/songs/{song_index}/ratings")
+@app.get(
+    "/api/participants/{participant_id}/studies/{study_name_short}/songs/{song_index}/ratings"
+)
 async def get_rating(
     participant_id: str,  # Now a path parameter
     study_name_short: str,
     song_index: int,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
 ):
     """
     Get existing ratings for a participant, study, and song.
@@ -556,8 +610,7 @@ async def get_rating(
 
         if not study:
             raise HTTPException(
-                status_code=404,
-                detail=f"Study '{study_name_short}' not found"
+                status_code=404, detail=f"Study '{study_name_short}' not found"
             )
 
         # Check whether study is open to all participants or not, and if not, check if participant is authorized
@@ -565,13 +618,12 @@ async def get_rating(
             link_exists = session.exec(
                 select(StudyParticipantLink).where(
                     StudyParticipantLink.study_id == study.id,
-                    StudyParticipantLink.participant_id == participant_id
+                    StudyParticipantLink.participant_id == participant_id,
                 )
             ).first()
             if not link_exists:
                 raise HTTPException(
-                    status_code=403,
-                    detail="Participant not authorized for this study"
+                    status_code=403, detail="Participant not authorized for this study"
                 )
 
         # Get participant
@@ -589,7 +641,7 @@ async def get_rating(
                 "message": "No ratings found for this participant, participant does not exist yet",
                 "retrieved_at": utc_now().isoformat(),
                 "has_ratings": False,
-                "has_participant": False
+                "has_participant": False,
             }
 
         # Get song by index in study
@@ -598,14 +650,14 @@ async def get_rating(
             .join(Song, StudySongLink.song_id == Song.id)
             .where(
                 StudySongLink.study_id == study.id,
-                StudySongLink.song_index == song_index
+                StudySongLink.song_index == song_index,
             )
         ).first()
 
         if not song_link:
             raise HTTPException(
                 status_code=404,
-                detail=f"Song with index {song_index} not found in study '{study_name_short}'"
+                detail=f"Song with index {song_index} not found in study '{study_name_short}'",
             )
 
         song = song_link[1]  # Get the Song object
@@ -617,7 +669,7 @@ async def get_rating(
             .where(
                 Rating.participant_id == participant.id,
                 Rating.study_id == study.id,
-                Rating.song_id == song.id
+                Rating.song_id == song.id,
             )
             .order_by(Rating.rating_name, RatingSegment.segment_order)
         ).all()
@@ -632,17 +684,23 @@ async def get_rating(
             if rating.rating_name not in organized_ratings:
                 organized_ratings[rating.rating_name] = {
                     "rating_id": rating.id,
-                    "timestamp": rating.timestamp.isoformat() if rating.timestamp else None,
-                    "created_at": rating.created_at.isoformat() if rating.created_at else None,
-                    "segments": []
+                    "timestamp": rating.timestamp.isoformat()
+                    if rating.timestamp
+                    else None,
+                    "created_at": rating.created_at.isoformat()
+                    if rating.created_at
+                    else None,
+                    "segments": [],
                 }
 
-            organized_ratings[rating.rating_name]["segments"].append({
-                "start": segment.start_time,
-                "end": segment.end_time,
-                "value": segment.value,
-                "segment_order": segment.segment_order
-            })
+            organized_ratings[rating.rating_name]["segments"].append(
+                {
+                    "start": segment.start_time,
+                    "end": segment.end_time,
+                    "value": segment.value,
+                    "segment_order": segment.segment_order,
+                }
+            )
 
         # Check if we found any ratings
         if not organized_ratings:
@@ -655,7 +713,7 @@ async def get_rating(
                 "message": "No ratings found",
                 "retrieved_at": utc_now().isoformat(),
                 "has_ratings": False,
-                "has_participant": True
+                "has_participant": True,
             }
         else:
             return {
@@ -667,21 +725,15 @@ async def get_rating(
                 "retrieved_at": utc_now().isoformat(),
                 "message": "",
                 "has_ratings": True,
-                "has_participant": True
+                "has_participant": True,
             }
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error retrieving ratings: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error"
-        )
+        raise HTTPException(status_code=500, detail="Internal server error")
 
-
-from pydantic import BaseModel
-from typing import List, Optional
 
 # Add this Pydantic model for the response
 class ActiveOpenStudyResponse(BaseModel):
@@ -689,10 +741,9 @@ class ActiveOpenStudyResponse(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
 
+
 @app.get("/api/active_open_study_names", response_model=List[ActiveOpenStudyResponse])
-async def get_active_open_study_names(
-    session: Session = Depends(get_session)
-):
+async def get_active_open_study_names(session: Session = Depends(get_session)):
     """
     Public endpoint (no authentication required) that returns a list of all studies
     that:
@@ -708,11 +759,13 @@ async def get_active_open_study_names(
 
         # Query for studies that match both criteria
         studies = session.exec(
-            select(Study).where(
-                Study.allow_unlisted_participants == True,
+            select(Study)
+            .where(
+                Study.allow_unlisted_participants,
                 Study.data_collection_start <= now,
-                Study.data_collection_end >= now
-            ).order_by(Study.name_short)  # Optional: order alphabetically
+                Study.data_collection_end >= now,
+            )
+            .order_by(Study.name_short)  # Optional: order alphabetically
         ).all()
 
         # Create response objects with the required fields
@@ -720,7 +773,7 @@ async def get_active_open_study_names(
             ActiveOpenStudyResponse(
                 name_short=study.name_short,
                 name=study.name,
-                description=study.description
+                description=study.description,
             )
             for study in studies
         ]
@@ -733,13 +786,13 @@ async def get_active_open_study_names(
         logger.error(f"Error fetching active open study names: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail="Internal server error while fetching study information"
+            detail="Internal server error while fetching study information",
         )
 
 
-
-
-def _generate_csv_response(segments_data: List[dict], study_name: str, with_ids: bool) -> StreamingResponse:
+def _generate_csv_response(
+    segments_data: List[dict], study_name: str, with_ids: bool
+) -> StreamingResponse:
     """Generate CSV response with all segment data."""
     if not segments_data:
         raise HTTPException(status_code=404, detail="No data to export")
@@ -750,10 +803,17 @@ def _generate_csv_response(segments_data: List[dict], study_name: str, with_ids:
 
     # Write header - now includes all segment details
     headers = [
-        "study_name", "study_description", "participant_id",
-        "song_url", "song_title", "rating_name",
-        "start_time", "end_time", "value", "segment_order",
-        "rating_created_at"
+        "study_name",
+        "study_description",
+        "participant_id",
+        "song_url",
+        "song_title",
+        "rating_name",
+        "start_time",
+        "end_time",
+        "value",
+        "segment_order",
+        "rating_created_at",
     ]
 
     if with_ids:
@@ -763,7 +823,6 @@ def _generate_csv_response(segments_data: List[dict], study_name: str, with_ids:
 
     # Write data rows - each row is one segment
     for segment in segments_data:
-
         row = [
             segment["study_name"],
             segment["study_description"],
@@ -775,7 +834,7 @@ def _generate_csv_response(segments_data: List[dict], study_name: str, with_ids:
             segment["end_time"],
             segment["value"],
             segment["segment_order"],
-            segment["rating_created_at"]
+            segment["rating_created_at"],
         ]
 
         if with_ids:
@@ -793,7 +852,7 @@ def _generate_csv_response(segments_data: List[dict], study_name: str, with_ids:
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
@@ -825,8 +884,12 @@ async def export_runtime_studies_config(
 
     for study in studies:
         cfg_study = cfg_studies_by_name.get(study.name_short)
-        exported_studies.append(_build_runtime_study_config_export(study, session, cfg_study))
-        logged_ratings_by_study[study.name_short] = _build_logged_ratings_export_for_study(study, session)
+        exported_studies.append(
+            _build_runtime_study_config_export(study, session, cfg_study)
+        )
+        logged_ratings_by_study[study.name_short] = (
+            _build_logged_ratings_export_for_study(study, session)
+        )
 
     logger.info(
         "Admin '%s' exported runtime studies config%s",
@@ -855,19 +918,19 @@ async def export_runtime_studies_config(
 
     return JSONResponse(
         content=jsonable_encoder(response_payload),
-        headers={
-            "Content-Disposition": f"attachment; filename={filename}"
-        },
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
 @app.get("/api/admin/datasets/download", name="admin_download")
 async def admin_download(
-    study_name: str = Query(..., description="Name of the study to download ratings for"),
+    study_name: str = Query(
+        ..., description="Name of the study to download ratings for"
+    ),
     format: str = Query("json", description="Output format: json or csv"),
     with_ids: bool = Query(False, description="Include database IDs in the output"),
     session: Session = Depends(get_session),
-    current_admin: str = Depends(verify_admin)
+    current_admin: str = Depends(verify_admin),
 ):
     """
     Download all ratings for a specific study in JSON or CSV format.
@@ -881,8 +944,7 @@ async def admin_download(
 
         if not study:
             raise HTTPException(
-                status_code=404,
-                detail=f"Study '{study_name}' not found"
+                status_code=404, detail=f"Study '{study_name}' not found"
             )
 
         # Get all ratings for this study with related data including segments
@@ -892,7 +954,12 @@ async def admin_download(
             .join(Song, Rating.song_id == Song.id)
             .join(RatingSegment, RatingSegment.rating_id == Rating.id)
             .where(Rating.study_id == study.id)
-            .order_by(Rating.participant_id, Rating.song_id, Rating.rating_name, RatingSegment.segment_order)
+            .order_by(
+                Rating.participant_id,
+                Rating.song_id,
+                Rating.rating_name,
+                RatingSegment.segment_order,
+            )
         )
 
         results = session.exec(statement)
@@ -900,11 +967,12 @@ async def admin_download(
 
         if not rating_data:
             raise HTTPException(
-                status_code=404,
-                detail=f"No ratings found for study '{study_name}'"
+                status_code=404, detail=f"No ratings found for study '{study_name}'"
             )
 
-        logger.info(f"Admin '{current_admin}' downloading {len(rating_data)} rating segments for study '{study_name}'")
+        logger.info(
+            f"Admin '{current_admin}' downloading {len(rating_data)} rating segments for study '{study_name}'"
+        )
         audit_admin_action(
             current_admin,
             f"downloaded {len(rating_data)} rating segments for study {study_name} in format {format.lower()}",
@@ -916,7 +984,7 @@ async def admin_download(
             segment_data = {
                 "study_name": study.name_short,
                 "study_description": study.name or study.description,
-                "participant_id": participant.id, # This is always included, even if with_ids is False, as it is required context.
+                "participant_id": participant.id,  # This is always included, even if with_ids is False, as it is required context.
                 "song_url": song.media_url,
                 "song_title": song.display_name,
                 "rating_name": rating.rating_name,
@@ -924,14 +992,14 @@ async def admin_download(
                 "end_time": segment.end_time,
                 "value": segment.value,
                 "segment_order": segment.segment_order,
-                "rating_created_at": rating.created_at.isoformat() if rating.created_at else None
+                "rating_created_at": rating.created_at.isoformat()
+                if rating.created_at
+                else None,
             }
             if with_ids:
                 segment_data["song_id"] = song.id
                 segment_data["rating_id"] = rating.id
                 segment_data["segment_id"] = segment.id
-
-
 
             segments_data.append(segment_data)
 
@@ -944,10 +1012,10 @@ async def admin_download(
                     "name_short": study.name_short,
                     "name": study.name,
                     "description": study.description,
-                    "allow_unlisted_participants": study.allow_unlisted_participants
+                    "allow_unlisted_participants": study.allow_unlisted_participants,
                 },
                 "total_segments": len(segments_data),
-                "segments": segments_data
+                "segments": segments_data,
             }
 
     except HTTPException:
@@ -955,8 +1023,7 @@ async def admin_download(
     except Exception as e:
         logger.error(f"Error downloading dataset for study '{study_name}': {str(e)}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to download dataset: {str(e)}"
+            status_code=500, detail=f"Failed to download dataset: {str(e)}"
         )
 
 
@@ -964,13 +1031,15 @@ async def admin_download(
 async def admin_api_stats(
     study_id: Optional[str] = Query(None, description="Filter by study ID"),
     session: Session = Depends(get_session),
-    current_admin: str = Depends(verify_admin)
+    current_admin: str = Depends(verify_admin),
 ):
     """
     API endpoint for admin dashboard stats.
     """
     if study_id:
-        logger.debug(f"Admin '{current_admin}' requested API stats for study_id='{study_id}'")
+        logger.debug(
+            f"Admin '{current_admin}' requested API stats for study_id='{study_id}'"
+        )
     else:
         logger.debug(f"Admin '{current_admin}' requested API stats for all studies")
 
@@ -981,9 +1050,7 @@ async def admin_api_stats(
         )
         # Similar logic as above but returns JSON
         if study_id:
-            studies = session.exec(
-                select(Study).where(Study.id == study_id)
-            ).all()
+            studies = session.exec(select(Study).where(Study.id == study_id)).all()
         else:
             studies = session.exec(select(Study).order_by(Study.created_at)).all()
 
@@ -991,86 +1058,99 @@ async def admin_api_stats(
 
         for study in studies:
             # Simplified stats for API
-            total_ratings = session.exec(
-                select(func.count(Rating.id)).where(Rating.study_id == study.id)
-            ).first() or 0
+            total_ratings = (
+                session.exec(
+                    select(func.count(Rating.id)).where(Rating.study_id == study.id)
+                ).first()
+                or 0
+            )
 
-            unique_participants = session.exec(
-                select(func.count(func.distinct(Rating.participant_id)))
-                .where(Rating.study_id == study.id)
-            ).first() or 0
+            unique_participants = (
+                session.exec(
+                    select(func.count(func.distinct(Rating.participant_id))).where(
+                        Rating.study_id == study.id
+                    )
+                ).first()
+                or 0
+            )
 
-            total_segments = session.exec(
-                select(func.count(RatingSegment.id))
-                .join(Rating, Rating.id == RatingSegment.rating_id)
-                .where(Rating.study_id == study.id)
-            ).first() or 0
-
-            study_rating_dimensions = session.exec(
-                select(StudyRatingDimension).where(StudyRatingDimension.study_id == study.id)
-            ).all()
-
-            study_stats.append({
-                "id": study.id,
-                "name_short": study.name_short,
-                "name": study.name,
-                "rating_dimensions": [
-                    {
-                        "dimension_title": dim.dimension_title,
-                        "num_values": dim.num_values,
-                        "minimal_value": dim.minimal_value,
-                        "default_value": dim.default_value,
-                        "description": dim.description
-                    }
-                    for dim in study_rating_dimensions
-                ],
-                "total_ratings": total_ratings,
-                "unique_participants": unique_participants,
-                "total_segments": total_segments,
-                "data_collection_start": study.data_collection_start,
-                "data_collection_end": study.data_collection_end,
-                "is_currently_active": study.data_collection_start <= utc_now() <= study.data_collection_end,
-                "last_activity": session.exec(
-                    select(func.max(Rating.timestamp))
+            total_segments = (
+                session.exec(
+                    select(func.count(RatingSegment.id))
+                    .join(Rating, Rating.id == RatingSegment.rating_id)
                     .where(Rating.study_id == study.id)
                 ).first()
-            })
+                or 0
+            )
+
+            study_rating_dimensions = session.exec(
+                select(StudyRatingDimension).where(
+                    StudyRatingDimension.study_id == study.id
+                )
+            ).all()
+
+            study_stats.append(
+                {
+                    "id": study.id,
+                    "name_short": study.name_short,
+                    "name": study.name,
+                    "rating_dimensions": [
+                        {
+                            "dimension_title": dim.dimension_title,
+                            "num_values": dim.num_values,
+                            "minimal_value": dim.minimal_value,
+                            "default_value": dim.default_value,
+                            "description": dim.description,
+                        }
+                        for dim in study_rating_dimensions
+                    ],
+                    "total_ratings": total_ratings,
+                    "unique_participants": unique_participants,
+                    "total_segments": total_segments,
+                    "data_collection_start": study.data_collection_start,
+                    "data_collection_end": study.data_collection_end,
+                    "is_currently_active": study.data_collection_start
+                    <= utc_now()
+                    <= study.data_collection_end,
+                    "last_activity": session.exec(
+                        select(func.max(Rating.timestamp)).where(
+                            Rating.study_id == study.id
+                        )
+                    ).first(),
+                }
+            )
 
         return {
             "studies": study_stats,
             "total_studies": len(study_stats),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
     except Exception as e:
         logger.error(f"Error in admin API stats: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get stats: {str(e)}"
-        )
-
+        raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
 
 
 @app.get("/admin", name="admin_dashboard", response_class=HTMLResponse)
 async def admin_dashboard(
     request: Request,
     session: Session = Depends(get_session),
-    current_admin: str = Depends(verify_admin)
+    current_admin: str = Depends(verify_admin),
 ):
     """
     Main admin dashboard showing all studies and participation statistics.
     Access via: /admin with HTTP Basic Auth
     """
-    base_url = str(request.base_url).rstrip('/')  # This gives "http://localhost:8000"
-    root_path = request.scope.get("root_path", "")  # This gives "" locally, "/ar_backend" in prod
+    base_url = str(request.base_url).rstrip("/")  # This gives "http://localhost:8000"
+    root_path = request.scope.get(
+        "root_path", ""
+    )  # This gives "" locally, "/ar_backend" in prod
 
     # Combine them properly
     if root_path and not base_url.endswith(root_path):
         api_base = f"{base_url}{root_path}"
     else:
         api_base = base_url
-
-    download_url_base = f"{root_path}/api/admin/datasets/download"
 
     try:
         audit_admin_action(current_admin, "opened admin dashboard")
@@ -1115,46 +1195,64 @@ async def admin_dashboard(
                 .order_by(StudySongLink.song_index, Song.id)
             ).all()
 
-            songs_cfg_by_media_url = {
-                song_cfg.media_url: song_cfg for song_cfg in study_cfg.songs_to_rate
-            } if study_cfg else {}
+            songs_cfg_by_media_url = (
+                {song_cfg.media_url: song_cfg for song_cfg in study_cfg.songs_to_rate}
+                if study_cfg
+                else {}
+            )
 
             songs_report = []
             for song_link, song in songs_for_study:
                 song_cfg = songs_cfg_by_media_url.get(song.media_url)
 
-                display_name_source = song_cfg.display_name if song_cfg else song.display_name
-                description_source = song_cfg.description if song_cfg else song.description
+                display_name_source = (
+                    song_cfg.display_name if song_cfg else song.display_name
+                )
+                description_source = (
+                    song_cfg.description if song_cfg else song.description
+                )
 
-                songs_report.append({
-                    "song_index": song_link.song_index,
-                    "media_url": song.media_url,
-                    "display_name": resolve_localized_text(display_name_source, default_language)
-                    if isinstance(display_name_source, dict)
-                    else (display_name_source or ""),
-                    "description": resolve_localized_text(description_source, default_language)
-                    if isinstance(description_source, dict)
-                    else (description_source or ""),
-                    "display_name_i18n": to_i18n_map(display_name_source, default_language),
-                    "description_i18n": to_i18n_map(description_source, default_language),
-                })
+                songs_report.append(
+                    {
+                        "song_index": song_link.song_index,
+                        "media_url": song.media_url,
+                        "display_name": resolve_localized_text(
+                            display_name_source, default_language
+                        )
+                        if isinstance(display_name_source, dict)
+                        else (display_name_source or ""),
+                        "description": resolve_localized_text(
+                            description_source, default_language
+                        )
+                        if isinstance(description_source, dict)
+                        else (description_source or ""),
+                        "display_name_i18n": to_i18n_map(
+                            display_name_source, default_language
+                        ),
+                        "description_i18n": to_i18n_map(
+                            description_source, default_language
+                        ),
+                    }
+                )
 
             # Get all participants linked to this study (pre-listed)
             participant_links = session.exec(
-                select(StudyParticipantLink).where(StudyParticipantLink.study_id == study.id)
+                select(StudyParticipantLink).where(
+                    StudyParticipantLink.study_id == study.id
+                )
             ).all()
-            pre_listed_participants = [link.participant_id for link in participant_links]
-
-            # Get all participants who have actually submitted ratings for this study
-            participants_with_ratings = session.exec(
-                select(Rating.participant_id)
-                .where(Rating.study_id == study.id)
-                .distinct()
-            ).all()
+            pre_listed_participants = [
+                link.participant_id for link in participant_links
+            ]
 
             # Get all ratings for this study to analyze participation
             ratings = session.exec(
-                select(Rating, Participant, Song, func.count(RatingSegment.id).label("segment_count"))
+                select(
+                    Rating,
+                    Participant,
+                    Song,
+                    func.count(RatingSegment.id).label("segment_count"),
+                )
                 .join(Participant, Rating.participant_id == Participant.id)
                 .join(Song, Rating.song_id == Song.id)
                 .join(RatingSegment, RatingSegment.rating_id == Rating.id, isouter=True)
@@ -1164,12 +1262,19 @@ async def admin_dashboard(
             ).all()
 
             rating_dimensions = session.exec(
-                select(StudyRatingDimension).where(StudyRatingDimension.study_id == study.id)
+                select(StudyRatingDimension).where(
+                    StudyRatingDimension.study_id == study.id
+                )
             ).all()
 
-            dimensions_cfg_by_title = {
-                dimension_cfg.dimension_title: dimension_cfg for dimension_cfg in study_cfg.rating_dimensions
-            } if study_cfg else {}
+            dimensions_cfg_by_title = (
+                {
+                    dimension_cfg.dimension_title: dimension_cfg
+                    for dimension_cfg in study_cfg.rating_dimensions
+                }
+                if study_cfg
+                else {}
+            )
 
             # Organize data by participant
             participants_data = {}
@@ -1182,24 +1287,38 @@ async def admin_dashboard(
                         "songs_rated": set(),
                         "ratings": [],
                         "total_segments": 0,
-                        "last_activity": rating.timestamp if rating.timestamp else rating.created_at
+                        "last_activity": rating.timestamp
+                        if rating.timestamp
+                        else rating.created_at,
                     }
 
-                song_display_name = resolve_localized_text(song.display_name) if isinstance(song.display_name, dict) else (song.display_name or "")
+                song_display_name = (
+                    resolve_localized_text(song.display_name)
+                    if isinstance(song.display_name, dict)
+                    else (song.display_name or "")
+                )
                 participants_data[participant.id]["songs_rated"].add(song_display_name)
-                participants_data[participant.id]["ratings"].append({
-                    "song": song_display_name,
-                    "song_url": song.media_url,
-                    "rating_name": rating.rating_name,
-                    "segment_count": segment_count,
-                    "timestamp": rating.timestamp,
-                    "created_at": rating.created_at
-                })
+                participants_data[participant.id]["ratings"].append(
+                    {
+                        "song": song_display_name,
+                        "song_url": song.media_url,
+                        "rating_name": rating.rating_name,
+                        "segment_count": segment_count,
+                        "timestamp": rating.timestamp,
+                        "created_at": rating.created_at,
+                    }
+                )
                 participants_data[participant.id]["total_segments"] += segment_count
 
                 # Update last activity if this rating is newer
-                if rating.timestamp and rating.timestamp > participants_data[participant.id]["last_activity"]:
-                    participants_data[participant.id]["last_activity"] = rating.timestamp
+                if (
+                    rating.timestamp
+                    and rating.timestamp
+                    > participants_data[participant.id]["last_activity"]
+                ):
+                    participants_data[participant.id]["last_activity"] = (
+                        rating.timestamp
+                    )
 
             # Convert sets to lists for template
             for participant_id in participants_data:
@@ -1217,55 +1336,73 @@ async def admin_dashboard(
                 {
                     "dimension_title": dim.dimension_title,
                     "num_values": dim.num_values,
-                    "minimal_value": (dim.minimal_value if dim.minimal_value is not None else 1),
+                    "minimal_value": (
+                        dim.minimal_value if dim.minimal_value is not None else 1
+                    ),
                     "default_value": (
                         dim.default_value
                         if dim.default_value is not None
-                        else ((dim.minimal_value if dim.minimal_value is not None else 1) + dim.num_values - 1) // 2
+                        else (
+                            (dim.minimal_value if dim.minimal_value is not None else 1)
+                            + dim.num_values
+                            - 1
+                        )
+                        // 2
                     ),
-                    "max_value": (dim.minimal_value if dim.minimal_value is not None else 1) + dim.num_values - 1,
-                    "description": resolve_localized_text(dim.description, default_language)
+                    "max_value": (
+                        dim.minimal_value if dim.minimal_value is not None else 1
+                    )
+                    + dim.num_values
+                    - 1,
+                    "description": resolve_localized_text(
+                        dim.description, default_language
+                    )
                     if isinstance(dim.description, dict)
                     else (dim.description or ""),
                     "description_i18n": to_i18n_map(
                         dimensions_cfg_by_title.get(dim.dimension_title).description
                         if dimensions_cfg_by_title.get(dim.dimension_title)
                         else dim.description,
-                        default_language
-                    )
+                        default_language,
+                    ),
                 }
                 for dim in rating_dimensions
             ]
 
             # Calculate coverage percentage safely
-            total_participants = len(set(pre_listed_participants + [p["id"] for p in active_participants]))
+            total_participants = len(
+                set(pre_listed_participants + [p["id"] for p in active_participants])
+            )
             if total_songs > 0 and total_participants > 0:
                 # Simplified: percentage of total possible ratings (participants × songs) that have been completed
-                total_possible_ratings = total_participants * total_songs
                 coverage_percentage = 0  # Default
             else:
                 coverage_percentage = 0
 
-            study_stats.append({
-                "id": study.id,
-                "name_short": study.name_short,
-                "name": study.name,
-                "description": study.description,
-                "rating_dimensions": rating_dimensions_report,
-                "songs": songs_report,
-                "total_songs": total_songs,
-                "default_language": default_language,
-                "allow_unlisted_participants": study.allow_unlisted_participants,
-                "pre_listed_participants": pre_listed_participants,
-                "pre_listed_count": len(pre_listed_participants),
-                "active_participants": active_participants,
-                "active_participants_count": len(active_participants),
-                "total_participants": total_participants,
-                "coverage_percentage": coverage_percentage,
-                "data_collection_start": study.data_collection_start,
-                "data_collection_end": study.data_collection_end,
-                "is_currently_active": study.data_collection_start <= utc_now() <= study.data_collection_end
-             })
+            study_stats.append(
+                {
+                    "id": study.id,
+                    "name_short": study.name_short,
+                    "name": study.name,
+                    "description": study.description,
+                    "rating_dimensions": rating_dimensions_report,
+                    "songs": songs_report,
+                    "total_songs": total_songs,
+                    "default_language": default_language,
+                    "allow_unlisted_participants": study.allow_unlisted_participants,
+                    "pre_listed_participants": pre_listed_participants,
+                    "pre_listed_count": len(pre_listed_participants),
+                    "active_participants": active_participants,
+                    "active_participants_count": len(active_participants),
+                    "total_participants": total_participants,
+                    "coverage_percentage": coverage_percentage,
+                    "data_collection_start": study.data_collection_start,
+                    "data_collection_end": study.data_collection_end,
+                    "is_currently_active": study.data_collection_start
+                    <= utc_now()
+                    <= study.data_collection_end,
+                }
+            )
 
         # Render template manually to avoid Starlette TemplateResponse caching issues with wheel-installed packages
         # See: https://github.com/encode/starlette/issues/2531
@@ -1276,7 +1413,7 @@ async def admin_dashboard(
             "studies": study_stats,
             "admin_user": current_admin,
             "current_time": datetime.now(),
-            "api_base": api_base
+            "api_base": api_base,
         }
         template = templates.get_template("admin_dashboard.html")
         html_content = template.render(context_dict)
@@ -1284,23 +1421,17 @@ async def admin_dashboard(
 
     except Exception as e:
         import traceback
+
         logger.error(f"Error loading admin dashboard: {str(e)}")
         logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to load admin dashboard: {str(e)}"
+            status_code=500, detail=f"Failed to load admin dashboard: {str(e)}"
         )
-
-
-
-
 
 
 @app.get("/api/participants/{participant_id}/studies/{study_name}/config")
 async def get_study_config(
-    participant_id: str,
-    study_name: str,
-    session: Session = Depends(get_session)
+    participant_id: str, study_name: str, session: Session = Depends(get_session)
 ):
     """
     Get configuration for a specific study, with participant authorization check.
@@ -1315,28 +1446,33 @@ async def get_study_config(
         ).first()
 
         if not study:
-            logger.warning(f"Study '{study_name}' not found when participant '{participant_id}' requested config")
+            logger.warning(
+                f"Study '{study_name}' not found when participant '{participant_id}' requested config"
+            )
             raise HTTPException(
-                status_code=404,
-                detail=f"Study '{study_name}' not found"
+                status_code=404, detail=f"Study '{study_name}' not found"
             )
 
         # Check if study is active (within data collection period)
         now = utc_now()
         if now < study.data_collection_start:
-            logger.warning(f"Study '{study_name}' has not started yet, starts at {study.data_collection_start} but it is now {now} (requested by participant '{participant_id}')")
+            logger.warning(
+                f"Study '{study_name}' has not started yet, starts at {study.data_collection_start} but it is now {now} (requested by participant '{participant_id}')"
+            )
             raise HTTPException(
                 status_code=403,
                 detail=f"Study '{study_name}' has not started yet. "
-                       f"Data collection starts on {study.data_collection_start.isoformat()}"
+                f"Data collection starts on {study.data_collection_start.isoformat()}",
             )
 
         if now > study.data_collection_end:
-            logger.warning(f"Study '{study_name}' has ended on {study.data_collection_end} but now it is {now} (requested by participant '{participant_id}')")
+            logger.warning(
+                f"Study '{study_name}' has ended on {study.data_collection_end} but now it is {now} (requested by participant '{participant_id}')"
+            )
             raise HTTPException(
                 status_code=403,
                 detail=f"Study '{study_name}' has ended. "
-                       f"Data collection ended on {study.data_collection_end.isoformat()}"
+                f"Data collection ended on {study.data_collection_end.isoformat()}",
             )
 
         # Check participant authorization if study doesn't allow unlisted participants
@@ -1345,20 +1481,24 @@ async def get_study_config(
             participant_link = session.exec(
                 select(StudyParticipantLink).where(
                     StudyParticipantLink.study_id == study.id,
-                    StudyParticipantLink.participant_id == participant_id
+                    StudyParticipantLink.participant_id == participant_id,
                 )
             ).first()
 
             if not participant_link:
-                logger.warning(f"Unauthorized access attempt to study '{study_name}' by participant '{participant_id}'")
+                logger.warning(
+                    f"Unauthorized access attempt to study '{study_name}' by participant '{participant_id}'"
+                )
                 raise HTTPException(
                     status_code=403,
-                    detail=f"Participant '{participant_id}' is not authorized to access study '{study_name}'"
+                    detail=f"Participant '{participant_id}' is not authorized to access study '{study_name}'",
                 )
 
         # Load config from studies config file to preserve multilingual text objects
         cfg = load_studies_config(settings.studies_config_path)
-        cfg_study = next((s for s in cfg.studies if s.name_short == study.name_short), None)
+        cfg_study = next(
+            (s for s in cfg.studies if s.name_short == study.name_short), None
+        )
 
         if cfg_study is None:
             logger.warning(
@@ -1366,7 +1506,7 @@ async def get_study_config(
             )
             raise HTTPException(
                 status_code=500,
-                detail="Study configuration inconsistency: study missing in config file"
+                detail="Study configuration inconsistency: study missing in config file",
             )
 
         # Build response from config file (multilingual), but keep DB-controlled access/date fields
@@ -1378,10 +1518,12 @@ async def get_study_config(
             "custom_text_instructions": cfg_study.custom_text_instructions,
             "custom_text_thank_you": cfg_study.custom_text_thank_you,
             "songs_to_rate": [song.model_dump() for song in cfg_study.songs_to_rate],
-            "rating_dimensions": [dim.model_dump() for dim in cfg_study.rating_dimensions],
+            "rating_dimensions": [
+                dim.model_dump() for dim in cfg_study.rating_dimensions
+            ],
             "allow_unlisted_participants": study.allow_unlisted_participants,
             "data_collection_start": study.data_collection_start.isoformat(),
-            "data_collection_end": study.data_collection_end.isoformat()
+            "data_collection_end": study.data_collection_end.isoformat(),
         }
 
         logger.info(
@@ -1396,19 +1538,19 @@ async def get_study_config(
     except Exception as e:
         logger.error(
             f"Error loading study config for '{study_name}' (participant '{participant_id}'): {e}",
-            exc_info=True
+            exc_info=True,
         )
         raise HTTPException(
-            status_code=500,
-            detail="Failed to load study configuration"
+            status_code=500, detail="Failed to load study configuration"
         )
-
 
 
 logger = logging.getLogger(__name__)
 
 
-def _build_runtime_study_config_export(study: Study, session: Session, cfg_study=None) -> dict:
+def _build_runtime_study_config_export(
+    study: Study, session: Session, cfg_study=None
+) -> dict:
     participant_links = session.exec(
         select(StudyParticipantLink)
         .where(StudyParticipantLink.study_id == study.id)
@@ -1425,7 +1567,9 @@ def _build_runtime_study_config_export(study: Study, session: Session, cfg_study
             "custom_text_instructions": cfg_study.custom_text_instructions,
             "custom_text_thank_you": cfg_study.custom_text_thank_you,
             "songs_to_rate": [song.model_dump() for song in cfg_study.songs_to_rate],
-            "rating_dimensions": [dim.model_dump() for dim in cfg_study.rating_dimensions],
+            "rating_dimensions": [
+                dim.model_dump() for dim in cfg_study.rating_dimensions
+            ],
             "study_participant_ids": participant_ids,
             "allow_unlisted_participants": study.allow_unlisted_participants,
             "data_collection_start": study.data_collection_start,
@@ -1483,14 +1627,20 @@ def _build_logged_ratings_export_for_study(study: Study, session: Session) -> di
         .join(Song, Rating.song_id == Song.id)
         .join(RatingSegment, RatingSegment.rating_id == Rating.id, isouter=True)
         .where(Rating.study_id == study.id)
-        .order_by(Rating.participant_id, Song.media_url, Rating.rating_name, RatingSegment.segment_order)
+        .order_by(
+            Rating.participant_id,
+            Song.media_url,
+            Rating.rating_name,
+            RatingSegment.segment_order,
+        )
     ).all()
 
     song_index_by_id = {
         song_id: song_index
         for song_id, song_index in session.exec(
-            select(StudySongLink.song_id, StudySongLink.song_index)
-            .where(StudySongLink.study_id == study.id)
+            select(StudySongLink.song_id, StudySongLink.song_index).where(
+                StudySongLink.study_id == study.id
+            )
         ).all()
     }
 
@@ -1531,6 +1681,7 @@ def _build_logged_ratings_export_for_study(study: Study, session: Session) -> di
             )
 
     return logged_ratings
+
 
 # Pydantic model for the request
 class AssignParticipantsRequest(BaseModel):
@@ -1591,7 +1742,9 @@ async def create_study(
         new_study = Study(
             name=study_cfg.name,
             name_short=study_cfg.name_short,
-            description=resolve_localized_text(study_cfg.description, study_cfg.default_language),
+            description=resolve_localized_text(
+                study_cfg.description, study_cfg.default_language
+            ),
             allow_unlisted_participants=study_cfg.allow_unlisted_participants,
             data_collection_start=study_cfg.data_collection_start,
             data_collection_end=study_cfg.data_collection_end,
@@ -1630,9 +1783,13 @@ async def create_study(
             ).first()
             if not song:
                 song = Song(
-                    display_name=resolve_localized_text(song_cfg.display_name, study_cfg.default_language),
+                    display_name=resolve_localized_text(
+                        song_cfg.display_name, study_cfg.default_language
+                    ),
                     media_url=song_cfg.media_url,
-                    description=resolve_localized_text(song_cfg.description, study_cfg.default_language),
+                    description=resolve_localized_text(
+                        song_cfg.description, study_cfg.default_language
+                    ),
                 )
                 session.add(song)
                 session.flush()
@@ -1654,7 +1811,9 @@ async def create_study(
                     minimal_value=dimension_cfg.minimal_value,
                     default_value=dimension_cfg.default_value,
                     dimension_order=dim_index,
-                    description=resolve_localized_text(dimension_cfg.description, study_cfg.default_language),
+                    description=resolve_localized_text(
+                        dimension_cfg.description, study_cfg.default_language
+                    ),
                 )
             )
 
@@ -1686,7 +1845,9 @@ async def create_study(
         raise
     except Exception as e:
         session.rollback()
-        logger.error(f"Failed to create study '{study_cfg.name_short}': {e}", exc_info=True)
+        logger.error(
+            f"Failed to create study '{study_cfg.name_short}': {e}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail="Failed to create study")
 
 
@@ -1701,9 +1862,13 @@ async def update_study_collection_window(
     current_admin: str = Depends(verify_admin),
 ):
     """Update data collection start/end of an existing study."""
-    study = session.exec(select(Study).where(Study.name_short == study_name_short)).first()
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
     if not study:
-        raise HTTPException(status_code=404, detail=f"Study '{study_name_short}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
 
     if payload.data_collection_start is None and payload.data_collection_end is None:
         raise HTTPException(
@@ -1748,25 +1913,39 @@ async def update_study_collection_window(
             "data_collection_start": study.data_collection_start,
             "data_collection_end": study.data_collection_end,
         },
-        "is_currently_collecting": study.data_collection_start <= utc_now() <= study.data_collection_end,
+        "is_currently_collecting": study.data_collection_start
+        <= utc_now()
+        <= study.data_collection_end,
     }
 
 
-def _is_song_url_available(url: str, timeout_seconds: float = 5.0) -> Tuple[bool, Optional[int], Optional[str]]:
+def _is_song_url_available(
+    url: str, timeout_seconds: float = 5.0
+) -> Tuple[bool, Optional[int], Optional[str]]:
     """Best-effort URL availability check for song assets."""
     try:
         head_request = urllib_request.Request(url, method="HEAD")
         with urllib_request.urlopen(head_request, timeout=timeout_seconds) as response:
             status_code = getattr(response, "status", None)
-            return (status_code is not None and 200 <= status_code < 400), status_code, None
+            return (
+                (status_code is not None and 200 <= status_code < 400),
+                status_code,
+                None,
+            )
     except urllib_error.HTTPError as exc:
         if exc.code == 405:
             # Some servers do not allow HEAD for static files; retry with GET.
             try:
                 get_request = urllib_request.Request(url, method="GET")
-                with urllib_request.urlopen(get_request, timeout=timeout_seconds) as response:
+                with urllib_request.urlopen(
+                    get_request, timeout=timeout_seconds
+                ) as response:
                     status_code = getattr(response, "status", None)
-                    return (status_code is not None and 200 <= status_code < 400), status_code, None
+                    return (
+                        (status_code is not None and 200 <= status_code < 400),
+                        status_code,
+                        None,
+                    )
             except urllib_error.HTTPError as get_exc:
                 return False, get_exc.code, str(get_exc)
             except Exception as get_exc:
@@ -1786,9 +1965,13 @@ async def check_study_song_availability(
     current_admin: str = Depends(verify_admin),
 ):
     """Check whether each configured song URL is reachable for a given study."""
-    study = session.exec(select(Study).where(Study.name_short == study_name_short)).first()
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
     if not study:
-        raise HTTPException(status_code=404, detail=f"Study '{study_name_short}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
 
     songs_for_study = session.exec(
         select(StudySongLink, Song)
@@ -1836,16 +2019,19 @@ async def check_study_song_availability(
         "results": results,
     }
 
+
 # Pydantic model for the response
 class ParticipantAssignmentResult(BaseModel):
     participant_id: str
     status: str  # "created_and_assigned" or "already_existed_and_assigned"
     message: str
 
+
 class StudyAssignmentInfo(BaseModel):
     name_short: str
     allow_unlisted_participants: bool
     total_participants: int  # total participants after assignment
+
 
 class AssignParticipantsResponse(BaseModel):
     study_info: StudyAssignmentInfo
@@ -1912,14 +2098,19 @@ async def update_study_type(
         raise
     except Exception as e:
         session.rollback()
-        logger.error(f"Error updating study type for '{study_name_short}': {e}", exc_info=True)
+        logger.error(
+            f"Error updating study type for '{study_name_short}': {e}", exc_info=True
+        )
         raise HTTPException(
             status_code=500,
             detail=f"Failed to update study type: {str(e)}",
         )
 
-@app.post("/api/admin/studies/{study_name_short}/assign-participants",
-          name="api_assign_participants_to_study")
+
+@app.post(
+    "/api/admin/studies/{study_name_short}/assign-participants",
+    name="api_assign_participants_to_study",
+)
 async def assign_participants_to_study(
     study_name_short: str,
     request: AssignParticipantsRequest,
@@ -1945,16 +2136,12 @@ async def assign_participants_to_study(
 
         if not study:
             raise HTTPException(
-                status_code=404,
-                detail=f"Study '{study_name_short}' not found"
+                status_code=404, detail=f"Study '{study_name_short}' not found"
             )
 
         # Validate participant_ids list
         if not request.participant_ids:
-            raise HTTPException(
-                status_code=400,
-                detail="No participant IDs provided"
-            )
+            raise HTTPException(status_code=400, detail="No participant IDs provided")
 
         # Remove duplicates while preserving order
         unique_ids = []
@@ -1965,15 +2152,16 @@ async def assign_participants_to_study(
                 unique_ids.append(pid)
 
         if len(unique_ids) != len(request.participant_ids):
-            logger.info(f"Removed {len(request.participant_ids) - len(unique_ids)} duplicate participant IDs")
+            logger.info(
+                f"Removed {len(request.participant_ids) - len(unique_ids)} duplicate participant IDs"
+            )
 
         participant_ids = unique_ids
 
         # If must_be_new is True, check if any participants already exist
         if request.must_be_new:
             existing_participants = session.exec(
-                select(Participant)
-                .where(Participant.id.in_(participant_ids))
+                select(Participant).where(Participant.id.in_(participant_ids))
             ).all()
 
             if existing_participants:
@@ -1984,8 +2172,8 @@ async def assign_participants_to_study(
                         "message": "Some participants already exist in the system",
                         "existing_participants": existing_ids,
                         "total_requested": len(participant_ids),
-                        "existing_count": len(existing_ids)
-                    }
+                        "existing_count": len(existing_ids),
+                    },
                 )
 
         # Process each participant
@@ -2004,17 +2192,19 @@ async def assign_participants_to_study(
             existing_link = session.exec(
                 select(StudyParticipantLink).where(
                     StudyParticipantLink.study_id == study.id,
-                    StudyParticipantLink.participant_id == participant_id
+                    StudyParticipantLink.participant_id == participant_id,
                 )
             ).first()
 
             if existing_link:
                 # Already assigned to study
-                results.append(ParticipantAssignmentResult(
-                    participant_id=participant_id,
-                    status="already_assigned",
-                    message="Participant was already assigned to this study"
-                ))
+                results.append(
+                    ParticipantAssignmentResult(
+                        participant_id=participant_id,
+                        status="already_assigned",
+                        message="Participant was already assigned to this study",
+                    )
+                )
                 already_assigned_count += 1
                 continue
 
@@ -2035,25 +2225,28 @@ async def assign_participants_to_study(
 
             # Create the study-participant link
             participant_link = StudyParticipantLink(
-                study_id=study.id,
-                participant_id=participant_id
+                study_id=study.id, participant_id=participant_id
             )
             session.add(participant_link)
 
-            results.append(ParticipantAssignmentResult(
-                participant_id=participant_id,
-                status=status,
-                message=message
-            ))
+            results.append(
+                ParticipantAssignmentResult(
+                    participant_id=participant_id, status=status, message=message
+                )
+            )
 
         # Commit all changes
         session.commit()
 
         # Get updated count of participants for this study
-        total_participants = session.exec(
-            select(func.count(StudyParticipantLink.participant_id))
-            .where(StudyParticipantLink.study_id == study.id)
-        ).first() or 0
+        total_participants = (
+            session.exec(
+                select(func.count(StudyParticipantLink.participant_id)).where(
+                    StudyParticipantLink.study_id == study.id
+                )
+            ).first()
+            or 0
+        )
 
         # Log the operation
         logger.info(
@@ -2078,17 +2271,17 @@ async def assign_participants_to_study(
             "created_and_assigned": created_count,
             "already_existed_and_assigned": assigned_count,
             "already_assigned": already_assigned_count,
-            "total_after_assignment": total_participants
+            "total_after_assignment": total_participants,
         }
 
         response = AssignParticipantsResponse(
             study_info=StudyAssignmentInfo(
                 name_short=study.name_short,
                 allow_unlisted_participants=study.allow_unlisted_participants,
-                total_participants=total_participants
+                total_participants=total_participants,
             ),
             results=results,
-            summary=summary
+            summary=summary,
         )
 
         return response
@@ -2097,16 +2290,20 @@ async def assign_participants_to_study(
         raise
     except Exception as e:
         session.rollback()
-        logger.error(f"Error assigning participants to study '{study_name_short}': {e}", exc_info=True)
+        logger.error(
+            f"Error assigning participants to study '{study_name_short}': {e}",
+            exc_info=True,
+        )
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to assign participants: {str(e)}"
+            status_code=500, detail=f"Failed to assign participants: {str(e)}"
         )
 
 
 # Endpoint to remove participants from a study
-@app.delete("/api/admin/studies/{study_name_short}/participants/{participant_id}",
-           name="api_remove_participant_from_study")
+@app.delete(
+    "/api/admin/studies/{study_name_short}/participants/{participant_id}",
+    name="api_remove_participant_from_study",
+)
 async def remove_participant_from_study(
     study_name_short: str,
     participant_id: str,
@@ -2127,29 +2324,30 @@ async def remove_participant_from_study(
 
         if not study:
             raise HTTPException(
-                status_code=404,
-                detail=f"Study '{study_name_short}' not found"
+                status_code=404, detail=f"Study '{study_name_short}' not found"
             )
 
         # Check if link exists
         link = session.exec(
             select(StudyParticipantLink).where(
                 StudyParticipantLink.study_id == study.id,
-                StudyParticipantLink.participant_id == participant_id
+                StudyParticipantLink.participant_id == participant_id,
             )
         ).first()
 
         if not link:
             raise HTTPException(
                 status_code=404,
-                detail=f"Participant '{participant_id}' is not assigned to study '{study_name_short}'"
+                detail=f"Participant '{participant_id}' is not assigned to study '{study_name_short}'",
             )
 
         # Delete the link
         session.delete(link)
         session.commit()
 
-        logger.info(f"Admin removed participant '{participant_id}' from study '{study_name_short}'")
+        logger.info(
+            f"Admin removed participant '{participant_id}' from study '{study_name_short}'"
+        )
         audit_admin_action(
             current_admin,
             f"removed participant {participant_id} from study {study_name_short}",
@@ -2159,23 +2357,25 @@ async def remove_participant_from_study(
             "status": "success",
             "message": f"Participant '{participant_id}' removed from study '{study_name_short}'",
             "study_name_short": study.name_short,
-            "participant_id": participant_id
+            "participant_id": participant_id,
         }
 
     except HTTPException:
         raise
     except Exception as e:
         session.rollback()
-        logger.error(f"Error removing participant '{participant_id}' from study '{study_name_short}': {e}")
+        logger.error(
+            f"Error removing participant '{participant_id}' from study '{study_name_short}': {e}"
+        )
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to remove participant: {str(e)}"
+            status_code=500, detail=f"Failed to remove participant: {str(e)}"
         )
 
 
-
-@app.delete("/api/admin/studies/{study_name_short}/participants/{participant_id}/ratings",
-           name="api_delete_participant_ratings")
+@app.delete(
+    "/api/admin/studies/{study_name_short}/participants/{participant_id}/ratings",
+    name="api_delete_participant_ratings",
+)
 async def delete_participant_ratings(
     study_name_short: str,
     participant_id: str,
@@ -2198,8 +2398,7 @@ async def delete_participant_ratings(
 
         if not study:
             raise HTTPException(
-                status_code=404,
-                detail=f"Study '{study_name_short}' not found"
+                status_code=404, detail=f"Study '{study_name_short}' not found"
             )
 
         # Check if participant exists
@@ -2209,15 +2408,13 @@ async def delete_participant_ratings(
 
         if not participant:
             raise HTTPException(
-                status_code=404,
-                detail=f"Participant '{participant_id}' not found"
+                status_code=404, detail=f"Participant '{participant_id}' not found"
             )
 
         # First, get all ratings for this participant in this study
         ratings = session.exec(
             select(Rating).where(
-                Rating.study_id == study.id,
-                Rating.participant_id == participant_id
+                Rating.study_id == study.id, Rating.participant_id == participant_id
             )
         ).all()
 
@@ -2228,7 +2425,7 @@ async def delete_participant_ratings(
                 "study_name_short": study.name_short,
                 "participant_id": participant_id,
                 "ratings_deleted": 0,
-                "segments_deleted": 0
+                "segments_deleted": 0,
             }
 
         rating_ids = [rating.id for rating in ratings]
@@ -2241,8 +2438,7 @@ async def delete_participant_ratings(
         # Delete the ratings
         ratings_deleted = session.exec(
             delete(Rating).where(
-                Rating.study_id == study.id,
-                Rating.participant_id == participant_id
+                Rating.study_id == study.id, Rating.participant_id == participant_id
             )
         ).rowcount
 
@@ -2267,23 +2463,27 @@ async def delete_participant_ratings(
             "study_name_short": study.name_short,
             "participant_id": participant_id,
             "ratings_deleted": ratings_deleted,
-            "segments_deleted": segments_deleted
+            "segments_deleted": segments_deleted,
         }
 
     except HTTPException:
         raise
     except Exception as e:
         session.rollback()
-        logger.error(f"Error deleting ratings for participant '{participant_id}' in study '{study_name_short}': {e}", exc_info=True)
+        logger.error(
+            f"Error deleting ratings for participant '{participant_id}' in study '{study_name_short}': {e}",
+            exc_info=True,
+        )
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to delete participant ratings: {str(e)}"
+            status_code=500, detail=f"Failed to delete participant ratings: {str(e)}"
         )
 
 
 # Endpoint to get current participants for a study
-@app.get("/api/admin/studies/{study_name_short}/participants",
-         name="admin_get_study_participants")
+@app.get(
+    "/api/admin/studies/{study_name_short}/participants",
+    name="admin_get_study_participants",
+)
 async def get_study_participants(
     study_name_short: str,
     session: Session = Depends(get_session),
@@ -2304,22 +2504,31 @@ async def get_study_participants(
 
         if not study:
             raise HTTPException(
-                status_code=404,
-                detail=f"Study '{study_name_short}' not found"
+                status_code=404, detail=f"Study '{study_name_short}' not found"
             )
 
-        num_study_songs = session.exec(
-            select(func.count(StudySongLink.song_id))
-            .where(StudySongLink.study_id == study.id)
-        ).first() or 0
+        num_study_songs = (
+            session.exec(
+                select(func.count(StudySongLink.song_id)).where(
+                    StudySongLink.study_id == study.id
+                )
+            ).first()
+            or 0
+        )
 
-        num_study_rating_dimensions = session.exec(
-            select(func.count(StudyRatingDimension.id))
-            .where(StudyRatingDimension.study_id == study.id)
-        ).first() or 0
+        num_study_rating_dimensions = (
+            session.exec(
+                select(func.count(StudyRatingDimension.id)).where(
+                    StudyRatingDimension.study_id == study.id
+                )
+            ).first()
+            or 0
+        )
 
         # number of expected ratings is number of songs * number of ratings dimensions
-        num_expected_ratings_per_participant = num_study_songs * num_study_rating_dimensions
+        num_expected_ratings_per_participant = (
+            num_study_songs * num_study_rating_dimensions
+        )
 
         use_pagination = limit > 0
 
@@ -2333,8 +2542,9 @@ async def get_study_participants(
             ).all()
         else:
             participant_links = session.exec(
-                select(StudyParticipantLink)
-                .where(StudyParticipantLink.study_id == study.id)
+                select(StudyParticipantLink).where(
+                    StudyParticipantLink.study_id == study.id
+                )
             ).all()
 
         participant_ids = [link.participant_id for link in participant_links]
@@ -2348,30 +2558,44 @@ async def get_study_participants(
 
             if participant:
                 # Check if participant has submitted any ratings for this study
-                num_ratings = session.exec(
-                    select(func.count(Rating.id))
-                    .where(
-                        Rating.participant_id == participant.id,
-                        Rating.study_id == study.id
-                    )
-                ).first() or 0
+                num_ratings = (
+                    session.exec(
+                        select(func.count(Rating.id)).where(
+                            Rating.participant_id == participant.id,
+                            Rating.study_id == study.id,
+                        )
+                    ).first()
+                    or 0
+                )
 
-                has_completed_all_ratings = num_ratings >= num_expected_ratings_per_participant if num_expected_ratings_per_participant > 0 else False
+                has_completed_all_ratings = (
+                    num_ratings >= num_expected_ratings_per_participant
+                    if num_expected_ratings_per_participant > 0
+                    else False
+                )
 
-                participants.append({
-                    "id": participant.id,
-                    "created_at": participant.created_at.isoformat() if participant.created_at else None,
-                    "has_submitted_ratings": num_ratings > 0,
-                    "rating_count": num_ratings,
-                    "expected_ratings_count": num_expected_ratings_per_participant,
-                    "has_completed_all_ratings": has_completed_all_ratings
-                })
+                participants.append(
+                    {
+                        "id": participant.id,
+                        "created_at": participant.created_at.isoformat()
+                        if participant.created_at
+                        else None,
+                        "has_submitted_ratings": num_ratings > 0,
+                        "rating_count": num_ratings,
+                        "expected_ratings_count": num_expected_ratings_per_participant,
+                        "has_completed_all_ratings": has_completed_all_ratings,
+                    }
+                )
 
         # Get total count for pagination
-        total_count = session.exec(
-            select(func.count(StudyParticipantLink.participant_id))
-            .where(StudyParticipantLink.study_id == study.id)
-        ).first() or 0
+        total_count = (
+            session.exec(
+                select(func.count(StudyParticipantLink.participant_id)).where(
+                    StudyParticipantLink.study_id == study.id
+                )
+            ).first()
+            or 0
+        )
 
         audit_admin_action(
             current_admin,
@@ -2387,24 +2611,27 @@ async def get_study_participants(
                 "skip": skip if use_pagination else None,
                 "limit": limit if use_pagination else None,
                 "total": total_count,
-                "has_more": (skip + limit) < total_count if use_pagination else False
-            }
+                "has_more": (skip + limit) < total_count if use_pagination else False,
+            },
         }
 
     except Exception as e:
         logger.error(f"Error getting participants for study '{study_name_short}': {e}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get participants: {str(e)}"
+            status_code=500, detail=f"Failed to get participants: {str(e)}"
         )
 
 
-@app.get("/admin/participant-management", name="admin_participant_management", response_class=HTMLResponse)
+@app.get(
+    "/admin/participant-management",
+    name="admin_participant_management",
+    response_class=HTMLResponse,
+)
 async def admin_participant_management(
     request: Request,
     study_name_short: Optional[str] = Query(None, description="Study to pre-select"),
     session: Session = Depends(get_session),
-    current_admin: str = Depends(verify_admin)
+    current_admin: str = Depends(verify_admin),
 ):
     """
     Admin page for managing participants in studies.
@@ -2416,9 +2643,7 @@ async def admin_participant_management(
             f"opened participant management page{f' for study {study_name_short}' if study_name_short else ''}",
         )
         # Get all studies for the dropdown
-        studies = session.exec(
-            select(Study).order_by(Study.name_short)
-        ).all()
+        studies = session.exec(select(Study).order_by(Study.name_short)).all()
 
         # Get pre-selected study details if provided
         selected_study = None
@@ -2432,8 +2657,9 @@ async def admin_participant_management(
             if selected_study:
                 # Get current participants for this study
                 participant_links = session.exec(
-                    select(StudyParticipantLink)
-                    .where(StudyParticipantLink.study_id == selected_study.id)
+                    select(StudyParticipantLink).where(
+                        StudyParticipantLink.study_id == selected_study.id
+                    )
                 ).all()
 
                 for link in participant_links:
@@ -2443,20 +2669,24 @@ async def admin_participant_management(
 
                     if participant:
                         # Check if participant has ratings
-                        has_ratings = session.exec(
-                            select(func.count(Rating.id))
-                            .where(
-                                Rating.participant_id == participant.id,
-                                Rating.study_id == selected_study.id
-                            )
-                        ).first() or 0
+                        has_ratings = (
+                            session.exec(
+                                select(func.count(Rating.id)).where(
+                                    Rating.participant_id == participant.id,
+                                    Rating.study_id == selected_study.id,
+                                )
+                            ).first()
+                            or 0
+                        )
 
-                        current_participants.append({
-                            "id": participant.id,
-                            "created_at": participant.created_at,
-                            "has_ratings": has_ratings > 0,
-                            "rating_count": has_ratings
-                        })
+                        current_participants.append(
+                            {
+                                "id": participant.id,
+                                "created_at": participant.created_at,
+                                "has_ratings": has_ratings > 0,
+                                "rating_count": has_ratings,
+                            }
+                        )
 
         context_dict = {
             "request": request,
@@ -2465,7 +2695,7 @@ async def admin_participant_management(
             "selected_study": selected_study,
             "current_participants": current_participants,
             "current_time": datetime.now(),
-            "frontend_url": settings.frontend_url
+            "frontend_url": settings.frontend_url,
         }
         template = templates.get_template("admin_participant_management.html")
         html_content = template.render(context_dict)
@@ -2475,5 +2705,5 @@ async def admin_participant_management(
         logger.error(f"Error loading participant management page: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to load participant management page: {str(e)}"
+            detail=f"Failed to load participant management page: {str(e)}",
         )

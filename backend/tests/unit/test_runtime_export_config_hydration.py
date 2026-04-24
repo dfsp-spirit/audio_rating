@@ -12,7 +12,14 @@ os.environ.setdefault("AR_API_ADMIN_PASSWORD", "test_password")
 
 from audiorating_backend import api as api_module
 from audiorating_backend import database as database_module
-from audiorating_backend.models import Participant, Song, Study, StudyParticipantLink, StudyRatingDimension, StudySongLink
+from audiorating_backend.models import (
+    Participant,
+    Song,
+    Study,
+    StudyParticipantLink,
+    StudyRatingDimension,
+    StudySongLink,
+)
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
@@ -20,7 +27,9 @@ STUDIES_CONFIG_PATH = BACKEND_ROOT / "studies_config.json"
 
 
 @pytest.mark.asyncio
-async def test_runtime_export_file_can_be_reloaded_by_create_config_file_studies(tmp_path, monkeypatch):
+async def test_runtime_export_file_can_be_reloaded_by_create_config_file_studies(
+    tmp_path, monkeypatch
+):
     source_db_path = tmp_path / "source.db"
     target_db_path = tmp_path / "target.db"
     export_path = tmp_path / "runtime_export.json"
@@ -42,12 +51,18 @@ async def test_runtime_export_file_can_be_reloaded_by_create_config_file_studies
     )
     source_study_dimension_count = len(source_studies[0]["rating_dimensions"])
     arousal_dimension_cfg = next(
-        (dimension for dimension in source_studies[0]["rating_dimensions"] if dimension["dimension_title"] == "arousal"),
+        (
+            dimension
+            for dimension in source_studies[0]["rating_dimensions"]
+            if dimension["dimension_title"] == "arousal"
+        ),
         None,
     )
 
     with Session(source_engine) as session:
-        source_study = session.exec(select(Study).where(Study.name_short == source_study_name_short)).first()
+        source_study = session.exec(
+            select(Study).where(Study.name_short == source_study_name_short)
+        ).first()
         assert source_study is not None
 
         runtime_participant = Participant(id="runtime_added_participant")
@@ -76,11 +91,15 @@ async def test_runtime_export_file_can_be_reloaded_by_create_config_file_studies
         studies = session.exec(select(Study).order_by(Study.name_short)).all()
         assert len(studies) == len(export_payload["studies_config"]["studies"])
 
-        reloaded_study = session.exec(select(Study).where(Study.name_short == source_study_name_short)).first()
+        reloaded_study = session.exec(
+            select(Study).where(Study.name_short == source_study_name_short)
+        ).first()
         assert reloaded_study is not None
 
         participant_links = session.exec(
-            select(StudyParticipantLink).where(StudyParticipantLink.study_id == reloaded_study.id)
+            select(StudyParticipantLink).where(
+                StudyParticipantLink.study_id == reloaded_study.id
+            )
         ).all()
         participant_ids = sorted(link.participant_id for link in participant_links)
         assert "runtime_added_participant" in participant_ids
@@ -89,19 +108,28 @@ async def test_runtime_export_file_can_be_reloaded_by_create_config_file_studies
             select(StudySongLink).where(StudySongLink.study_id == reloaded_study.id)
         ).all()
         rating_dimensions = session.exec(
-            select(StudyRatingDimension).where(StudyRatingDimension.study_id == reloaded_study.id)
+            select(StudyRatingDimension).where(
+                StudyRatingDimension.study_id == reloaded_study.id
+            )
         ).all()
 
         assert len(song_links) == len(source_study_song_urls)
         assert len(rating_dimensions) == source_study_dimension_count
 
         arousal_dimension = next(
-            (dimension for dimension in rating_dimensions if dimension.dimension_title == "arousal"),
+            (
+                dimension
+                for dimension in rating_dimensions
+                if dimension.dimension_title == "arousal"
+            ),
             None,
         )
         if arousal_dimension_cfg is not None:
             assert arousal_dimension is not None
-            assert arousal_dimension.minimal_value == arousal_dimension_cfg["minimal_value"]
+            assert (
+                arousal_dimension.minimal_value
+                == arousal_dimension_cfg["minimal_value"]
+            )
             assert arousal_dimension.num_values == arousal_dimension_cfg["num_values"]
 
         song_ids = [link.song_id for link in song_links]

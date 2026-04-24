@@ -11,7 +11,9 @@ def test_parse_string_or_json_list_accepts_plain_string():
 
 
 def test_parse_string_or_json_list_accepts_json_list():
-    assert parse_string_or_json_list('["admin1", "admin2"]', "AR_API_ADMIN_USERNAME") == [
+    assert parse_string_or_json_list(
+        '["admin1", "admin2"]', "AR_API_ADMIN_USERNAME"
+    ) == [
         "admin1",
         "admin2",
     ]

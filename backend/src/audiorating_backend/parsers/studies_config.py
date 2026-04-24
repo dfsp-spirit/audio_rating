@@ -10,7 +10,9 @@ from datetime import datetime, timezone
 LocalizedText = Union[str, Dict[str, str]]
 
 
-def resolve_localized_text(value: Optional[LocalizedText], default_language: str = "en") -> str:
+def resolve_localized_text(
+    value: Optional[LocalizedText], default_language: str = "en"
+) -> str:
     if value is None:
         return ""
     if isinstance(value, str):
@@ -27,21 +29,22 @@ def resolve_localized_text(value: Optional[LocalizedText], default_language: str
             return text
     return ""
 
+
 class CfgFileSong(BaseModel):
     media_url: str
     display_name: LocalizedText
     description: Optional[LocalizedText] = None
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def set_display_name_from_media_url(self):
         if not self.display_name and self.media_url:
             # Extract a nice display name from the URL
-            name = self.media_url.split('/')[-1]  # Get filename from path or url
-            name = name.rsplit('.', 1)[0] if '.' in name else name  # Remove extension
+            name = self.media_url.split("/")[-1]  # Get filename from path or url
+            name = name.rsplit(".", 1)[0] if "." in name else name  # Remove extension
             self.display_name = name
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def fill_description_from_display_name_if_missing(self):
         if not self.description:
             self.description = self.display_name
@@ -56,15 +59,19 @@ class CfgFileRatingDimension(BaseModel):
     default_value: Optional[int] = None
     description: Optional[LocalizedText] = None
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_num_values(self):
         if self.num_values < 2:
-            raise ValueError(f'num_values for dimension "{self.dimension_title}" must be at least 2')
+            raise ValueError(
+                f'num_values for dimension "{self.dimension_title}" must be at least 2'
+            )
         if self.num_values > 20:
-            raise ValueError(f'num_values for dimension "{self.dimension_title}" cannot exceed 20')
+            raise ValueError(
+                f'num_values for dimension "{self.dimension_title}" cannot exceed 20'
+            )
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def fill_description_from_title_if_missing(self):
         if not self.display_name:
             self.display_name = self.dimension_title
@@ -72,26 +79,28 @@ class CfgFileRatingDimension(BaseModel):
             self.description = self.display_name
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def fill_minimal_and_default_values(self):
         if self.minimal_value is None:
             self.minimal_value = 1
         if self.default_value is None:
-            self.default_value = (self.minimal_value + self.num_values - 1) // 2  # Middle value
+            self.default_value = (
+                self.minimal_value + self.num_values - 1
+            ) // 2  # Middle value
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_default_value_within_range(self):
         if self.default_value is not None:
             max_value = self.minimal_value + self.num_values - 1
             if not (self.minimal_value <= self.default_value <= max_value):
                 raise ValueError(
                     f'default_value for dimension "{self.dimension_title}" must be between '
-                    f'{self.minimal_value} and {max_value} (inclusive)'
+                    f"{self.minimal_value} and {max_value} (inclusive)"
                 )
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_minimal_value_and_num_values(self):
         if self.minimal_value is not None and self.num_values is not None:
             max_value = self.minimal_value + self.num_values - 1
@@ -114,19 +123,19 @@ class CfgFileStudyConfig(BaseModel):
     study_participant_ids: List[str] = []
     allow_unlisted_participants: bool = True
     data_collection_start: datetime  # Changed from str to datetime
-    data_collection_end: datetime    # Changed from str to datetime
+    data_collection_end: datetime  # Changed from str to datetime
 
-    @field_validator('name_short')
+    @field_validator("name_short")
     @classmethod
     def validate_name_short(cls, v):
         if not v:
-            raise ValueError('name_short cannot be empty')
+            raise ValueError("name_short cannot be empty")
 
         # Check for URL-friendly characters only: lowercase a-z, numbers 0-9, underscore
-        if not re.match(r'^[a-z0-9_]+$', v):
+        if not re.match(r"^[a-z0-9_]+$", v):
             raise ValueError(
                 f'name_short "{v}" can only contain lowercase letters (a-z), numbers (0-9), and underscores (_). '
-                f'No uppercase letters, spaces, hyphens, or special characters allowed.'
+                f"No uppercase letters, spaces, hyphens, or special characters allowed."
             )
 
         # Check length
@@ -137,14 +146,14 @@ class CfgFileStudyConfig(BaseModel):
 
         return v
 
-    @field_validator('data_collection_start', 'data_collection_end', mode='before')
+    @field_validator("data_collection_start", "data_collection_end", mode="before")
     @classmethod
     def parse_iso8601_datetime(cls, v):
         """Parse ISO 8601 string to datetime object"""
         if isinstance(v, str):
             try:
                 # Parse ISO 8601 string
-                dt = datetime.fromisoformat(v.replace('Z', '+00:00'))
+                dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
 
                 # Ensure it's timezone-aware
                 if dt.tzinfo is None:
@@ -154,52 +163,62 @@ class CfgFileStudyConfig(BaseModel):
                 return dt
             except ValueError:
                 # Check format before attempting to parse
-                iso8601_regex = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$'
+                iso8601_regex = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$"
                 if not re.match(iso8601_regex, v):
                     raise ValueError(
                         f'Date "{v}" is not in valid ISO 8601 format '
-                        f'(e.g., 2024-01-01T00:00:00Z or 2024-01-01T00:00:00+00:00)'
+                        f"(e.g., 2024-01-01T00:00:00Z or 2024-01-01T00:00:00+00:00)"
                     )
                 raise
         return v
 
-    @field_validator('songs_to_rate')
+    @field_validator("songs_to_rate")
     @classmethod
     def validate_songs_to_rate(cls, v):
         """Ensure songs_to_rate is not empty and has unique entries"""
         if not v:
-            raise ValueError('songs_to_rate cannot be empty')
+            raise ValueError("songs_to_rate cannot be empty")
 
         # Check for duplicate media_url values
         media_urls = [song.media_url for song in v]
         if len(media_urls) != len(set(media_urls)):
             duplicates = [url for url in media_urls if media_urls.count(url) > 1]
-            raise ValueError(f'Duplicate media_url found in songs_to_rate: {set(duplicates)}')
+            raise ValueError(
+                f"Duplicate media_url found in songs_to_rate: {set(duplicates)}"
+            )
 
         # Check for duplicate display_name values (resolved to English/default fallback)
         display_names = [resolve_localized_text(song.display_name, "en") for song in v]
         if len(display_names) != len(set(display_names)):
-            duplicates = [name for name in display_names if display_names.count(name) > 1]
-            raise ValueError(f'Duplicate display_name found in songs_to_rate: {set(duplicates)}')
+            duplicates = [
+                name for name in display_names if display_names.count(name) > 1
+            ]
+            raise ValueError(
+                f"Duplicate display_name found in songs_to_rate: {set(duplicates)}"
+            )
 
         return v
 
-    @field_validator('rating_dimensions')
+    @field_validator("rating_dimensions")
     @classmethod
     def validate_rating_dimensions(cls, v):
         """Ensure rating_dimensions is not empty and has unique entries"""
         if not v:
-            raise ValueError('rating_dimensions cannot be empty')
+            raise ValueError("rating_dimensions cannot be empty")
 
         # Check for duplicate dimension_title values
         dimension_titles = [dim.dimension_title for dim in v]
         if len(dimension_titles) != len(set(dimension_titles)):
-            duplicates = [title for title in dimension_titles if dimension_titles.count(title) > 1]
-            raise ValueError(f'Duplicate dimension_title found in rating_dimensions: {set(duplicates)}')
+            duplicates = [
+                title for title in dimension_titles if dimension_titles.count(title) > 1
+            ]
+            raise ValueError(
+                f"Duplicate dimension_title found in rating_dimensions: {set(duplicates)}"
+            )
 
         return v
 
-    @field_validator('study_participant_ids')
+    @field_validator("study_participant_ids")
     @classmethod
     def validate_study_participant_ids(cls, v):
         """Ensure study_participant_ids has unique entries"""
@@ -208,18 +227,20 @@ class CfgFileStudyConfig(BaseModel):
         # Check for duplicate participant IDs
         if len(v) != len(set(v)):
             duplicates = [pid for pid in v if v.count(pid) > 1]
-            raise ValueError(f'Duplicate study_participant_ids found: {set(duplicates)}')
+            raise ValueError(
+                f"Duplicate study_participant_ids found: {set(duplicates)}"
+            )
 
         return v
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_date_order(self):
         """Ensure start date is before end date"""
         if self.data_collection_start and self.data_collection_end:
             if self.data_collection_start >= self.data_collection_end:
                 raise ValueError(
-                    f'data_collection_start ({self.data_collection_start}) '
-                    f'must be before data_collection_end ({self.data_collection_end})'
+                    f"data_collection_start ({self.data_collection_start}) "
+                    f"must be before data_collection_end ({self.data_collection_end})"
                 )
         return self
 
@@ -227,26 +248,33 @@ class CfgFileStudyConfig(BaseModel):
 class CfgFileStudiesConfig(BaseModel):
     studies: List[CfgFileStudyConfig]
 
+
 def load_studies_config(config_path: str) -> CfgFileStudiesConfig:
     """Load studies configuration from YAML or JSON file"""
 
     config_path = Path(config_path)
 
     if not config_path.exists():
-        raise FileNotFoundError(f"Studies configuration file not found at '{config_path}'")
+        raise FileNotFoundError(
+            f"Studies configuration file not found at '{config_path}'"
+        )
 
-    if config_path.suffix in ['.yaml', '.yml']:
-        with open(config_path, 'r') as f:
+    if config_path.suffix in [".yaml", ".yml"]:
+        with open(config_path, "r") as f:
             data = yaml.safe_load(f)
-    elif config_path.suffix == '.json':
-        with open(config_path, 'r') as f:
+    elif config_path.suffix == ".json":
+        with open(config_path, "r") as f:
             data = json.load(f)
     else:
         raise ValueError(f"Unsupported config file format: {config_path.suffix}")
 
     # Add support for directly using the wrapped config, as returned by API endpoint api.export_runtime_studies_config(),
     # where the study data is nested under "studies_config", because there are also other fields such as "logged_ratings" at the top level
-    if isinstance(data, dict) and "studies_config" in data and isinstance(data["studies_config"], dict):
+    if (
+        isinstance(data, dict)
+        and "studies_config" in data
+        and isinstance(data["studies_config"], dict)
+    ):
         data = data["studies_config"]
 
     return CfgFileStudiesConfig(**data)

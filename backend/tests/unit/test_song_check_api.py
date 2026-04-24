@@ -49,7 +49,9 @@ def test_check_study_songs_endpoint_returns_availability(tmp_path, monkeypatch):
         session.flush()
 
         session.add(StudySongLink(study_id=study.id, song_id=song_ok.id, song_index=0))
-        session.add(StudySongLink(study_id=study.id, song_id=song_missing.id, song_index=1))
+        session.add(
+            StudySongLink(study_id=study.id, song_id=song_missing.id, song_index=1)
+        )
         session.commit()
 
     def override_get_session():
@@ -86,13 +88,19 @@ def test_check_study_songs_endpoint_returns_availability(tmp_path, monkeypatch):
 
         assert results[0]["song_index"] == 0
         assert results[0]["media_url"] == "audio_files/default/song_ok.wav"
-        assert results[0]["check_url"] == "http://frontend.local/audio_files/default/song_ok.wav"
+        assert (
+            results[0]["check_url"]
+            == "http://frontend.local/audio_files/default/song_ok.wav"
+        )
         assert results[0]["available"] is True
         assert results[0]["status_code"] == 200
 
         assert results[1]["song_index"] == 1
         assert results[1]["media_url"] == "audio_files/default/song_missing.wav"
-        assert results[1]["check_url"] == "http://frontend.local/audio_files/default/song_missing.wav"
+        assert (
+            results[1]["check_url"]
+            == "http://frontend.local/audio_files/default/song_missing.wav"
+        )
         assert results[1]["available"] is False
         assert results[1]["status_code"] == 404
     finally:

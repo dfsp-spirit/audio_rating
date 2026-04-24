@@ -49,9 +49,11 @@ class I18n {
       localStorage.setItem('ar_lang', language);
       this.applyTranslations();
 
-      window.dispatchEvent(new CustomEvent('i18n:languageChanged', {
-        detail: { language, translations: this.translations }
-      }));
+      window.dispatchEvent(
+        new CustomEvent('i18n:languageChanged', {
+          detail: { language, translations: this.translations },
+        })
+      );
     } catch (error) {
       console.error(`Failed to set language to ${language}:`, error);
       if (language !== 'en') {
@@ -66,7 +68,9 @@ class I18n {
   async loadTranslations(language) {
     const response = await fetch(`./locales/${language}.json`);
     if (!response.ok) {
-      throw new Error(`Failed to load ${language} translations: ${response.status}`);
+      throw new Error(
+        `Failed to load ${language} translations: ${response.status}`
+      );
     }
     this.translations = await response.json();
   }
@@ -124,7 +128,7 @@ class I18n {
       return;
     }
 
-    container.querySelectorAll('[data-i18n]').forEach(element => {
+    container.querySelectorAll('[data-i18n]').forEach((element) => {
       const key = element.getAttribute('data-i18n');
       const value = this.t(key);
       if (value !== key) {
@@ -132,7 +136,7 @@ class I18n {
       }
     });
 
-    container.querySelectorAll('[data-i18n-html]').forEach(element => {
+    container.querySelectorAll('[data-i18n-html]').forEach((element) => {
       const key = element.getAttribute('data-i18n-html');
       const value = this.t(key);
       if (value !== key) {
@@ -140,7 +144,7 @@ class I18n {
       }
     });
 
-    container.querySelectorAll('[data-i18n-title]').forEach(element => {
+    container.querySelectorAll('[data-i18n-title]').forEach((element) => {
       const key = element.getAttribute('data-i18n-title');
       const value = this.t(key);
       if (value !== key) {
@@ -148,7 +152,7 @@ class I18n {
       }
     });
 
-    container.querySelectorAll('[data-i18n-aria-label]').forEach(element => {
+    container.querySelectorAll('[data-i18n-aria-label]').forEach((element) => {
       const key = element.getAttribute('data-i18n-aria-label');
       const value = this.t(key);
       if (value !== key) {

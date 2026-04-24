@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 from sqlmodel import SQLModel
 from audiorating_backend.settings import settings
 
+
 @pytest.fixture(autouse=True)
 def setup_db():
     # Connect to the DB

@@ -70,7 +70,7 @@ def test_load_studies_config_with_multilingual_fields(tmp_path):
                     {
                         "media_url": "audio_files/default/song.wav",
                         "display_name": {"en": "Song", "de": "Lied"},
-                        "description": {"en": "Desc", "de": "Beschreibung"}
+                        "description": {"en": "Desc", "de": "Beschreibung"},
                     }
                 ],
                 "rating_dimensions": [
@@ -78,11 +78,11 @@ def test_load_studies_config_with_multilingual_fields(tmp_path):
                         "dimension_title": "valence",
                         "display_name": {"en": "Valence", "de": "Valenz"},
                         "num_values": 7,
-                        "description": {"en": "Desc", "de": "Beschreibung"}
+                        "description": {"en": "Desc", "de": "Beschreibung"},
                     }
                 ],
                 "data_collection_start": "2024-01-01T00:00:00Z",
-                "data_collection_end": "2030-01-01T00:00:00Z"
+                "data_collection_end": "2030-01-01T00:00:00Z",
             }
         ]
     }

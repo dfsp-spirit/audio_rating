@@ -50,4 +50,7 @@ def test_check_frontend_audio_files_returns_false_when_config_missing(tmp_path):
     frontend_dir = tmp_path / "frontend"
     frontend_dir.mkdir()
 
-    assert check_frontend_audio_files(str(frontend_dir), str(tmp_path / "missing.json")) is False
+    assert (
+        check_frontend_audio_files(str(frontend_dir), str(tmp_path / "missing.json"))
+        is False
+    )
