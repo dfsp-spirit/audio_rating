@@ -72,7 +72,7 @@ Then install backend dependencies:
 
 ```bash
 cd backend
-uv sync --dev
+uv sync
 ```
 
 ### 3) Study Setup
@@ -169,6 +169,7 @@ cp dev_tools/local_nginx/frontend_settings/ar_settings.dev-nginx.js frontend/src
 ```bash
 cd backend
 uv sync --dev
+uv run pre-commit install
 uv run pytest tests/unit -v --tb=short
 cd ..
 ```
